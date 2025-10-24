@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Card, CardHeader, CardBody, Form, Input, Button } from '@heroui/react';
 import { EyeCloseIcon, EyeOpenIcon } from '@/components/icons';
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
+    const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [usuario, setUsuario] = useState('');
@@ -21,6 +23,7 @@ export default function Login() {
         try {
             const response = await axios.post('/api/auth/login', { usuario, password });
             console.log("Login successful:", response.data);
+            router.push('/'); 
         } catch (error) {
             console.error("Login failed:", error);
             const serverMsg = (error as any)?.response?.data?.message || 'Credenciales inválidas';

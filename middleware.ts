@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Middleware rules:
-// - If no session (no `token` cookie): allow `/` and `/login` and auth APIs, redirect other pages to `/login`.
-// - If session exists: prevent access to `/login` (redirect to `/`), allow other pages.
+// Middleware rules (swapped routes):
+// - The login page is now `/` (was `/login`). The protected home is `/dashboard` (was `/`).
+// - If no session (no `token` cookie): allow `/` (login) and auth APIs, redirect other pages to `/`.
+// - If session exists: prevent access to `/` (login) and redirect to `/dashboard`, allow other pages.
+// - For compatibility, requests to the old `/login` path are redirected to `/`.
 // - Static assets and Next internals are excluded by the matcher below.
 
 export function middleware(req: NextRequest) {
@@ -12,34 +14,37 @@ export function middleware(req: NextRequest) {
   // Read session token cookie. Adjust the cookie name if you use a different one.
   const token = req.cookies.get("token")?.value ?? null;
 
-  // Allow unauthenticated access only to the login page and authentication APIs.
-  // The root `/` will require a session and will redirect to `/login` when no session.
-  const isLoginPath = pathname === "/login" || pathname === "/login/";
-  const isRoot = pathname === "/";
+  // Compatibility redirect: old login path -> new login root
+  if (pathname === "/login" || pathname === "/login/") {
+    const toRoot = req.nextUrl.clone();
+    toRoot.pathname = "/";
+    return NextResponse.redirect(toRoot);
+  }
+
+  const isLoginPath = pathname === "/" || pathname === "/"; // new login is /
   const isAuthApi = pathname.startsWith("/api/auth");
 
   if (!token) {
-    // No session: allow only login and auth APIs. Root `/` is NOT allowed and
-    // will be redirected to `/login` by the fallback below.
+    // No session: allow only the login page (now `/`) and auth APIs.
     if (isLoginPath || isAuthApi) {
       return NextResponse.next();
     }
 
-    // Redirect other requests (including `/`) to /login
+    // Redirect other requests to the login root `/`
     const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = "/login";
+    loginUrl.pathname = "/";
     return NextResponse.redirect(loginUrl);
   }
 
-  // There is a token: prevent visiting /login (redirect to home)
-  if (isLoginPath) {
-    const home = req.nextUrl.clone();
-    home.pathname = "/";
-    return NextResponse.redirect(home);
+  // There is a token: prevent visiting the login root `/` and send to /dashboard
+  if (pathname === "/" || pathname === "/") {
+    const dashboard = req.nextUrl.clone();
+    dashboard.pathname = "/dashboard";
+    return NextResponse.redirect(dashboard);
   }
 
-  // Otherwise allow the request. Note: you may want to verify the token
-  // server-side in API routes or perform JWT validation here.
+  // Otherwise allow the request. Note: consider verifying the token server-side
+  // for stronger security (expiration, signature).
   return NextResponse.next();
 }
 

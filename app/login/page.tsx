@@ -47,11 +47,11 @@ export default function Login() {
                                 {showPassword ? <EyeCloseIcon /> : <EyeOpenIcon />}
                             </button>
                         } />
-                    </Form>
 
                         <Button onPress={onSubmit} disabled={loading}>
                             {loading ? 'Cargando...' : 'Iniciar sesión'}
                         </Button>
+                    </Form>
                     {error && <p className="text-red-500 mt-2">{error}</p>}
                 </CardBody>
             </Card>

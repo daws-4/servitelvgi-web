@@ -1,41 +1,60 @@
 // app/api/agent/getOrders/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+
+// Cabeceras CORS útiles para integración (p. ej. N8N). Ajusta según necesidad.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
 // Responde a GET con el texto "ok" en formato JSON
-export async function GET(request: NextRequest) {
-  return NextResponse.json("ok", { status: 200 });
+export async function GET(request: Request) {
+  return NextResponse.json("ok", { status: 200, headers: CORS_HEADERS });
 }
-// Responde a POST leyendo el body JSON y mostrando los datos en la consola del servidor
-export async function POST(request: NextRequest) {
+
+// Maneja preflight CORS
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+}
+
+// Responde a POST leyendo el body (JSON o texto) y mostrando los datos en la consola del servidor
+export async function POST(request: Request) {
   try {
-    // 1. Obtener el cuerpo (body) de la solicitud POST
-    // Esto asume que los datos vienen como JSON.
-    const body = await request.json();
+    let body: unknown;
 
-    // 2. ¡EL PASO CLAVE! Mostrar los datos recibidos en la consola del servidor.
-    // (En Vercel, esto aparecerá en los "Logs" de la función).
+    // Intentar parsear como JSON primero; si falla, obtener como texto
+    try {
+      body = await request.json();
+    } catch (jsonErr) {
+      // No era JSON válido: leer como texto
+      const text = await request.text();
+      body = text;
+    }
+
+    // Loguear lo recibido (si es objeto, hacer stringify bonito)
     console.log("✅ Datos recibidos en /api/agent/getOrders:");
-    console.log(JSON.stringify(body, null, 2)); // Usamos stringify para un log bonito
+    if (typeof body === "string") {
+      console.log(body);
+    } else {
+      try {
+        console.log(JSON.stringify(body, null, 2));
+      } catch (err) {
+        console.log(String(body));
+      }
+    }
 
-    // 3. Responder al cliente (N8N) que todo salió bien
+    // Responder al cliente (N8N) que todo salió bien
     return NextResponse.json(
       { message: "Datos recibidos y logueados exitosamente." },
-      { status: 200 }
+      { status: 200, headers: CORS_HEADERS }
     );
   } catch (error) {
-    // 4. Manejar el error si el body no es un JSON válido
-    console.error(
-      "❌ Error: El body no es un JSON válido o hubo otro problema:",
-      error
-    );
+    console.error("❌ Error al procesar la solicitud:", error);
     return NextResponse.json(
-      {
-        error:
-          "Error al procesar la solicitud. El JSON podría estar malformado.",
-      },
-      { status: 400 } // 400 Bad Request
+      { error: "Error al procesar la solicitud." },
+      { status: 400, headers: CORS_HEADERS }
     );
   }
 }
-

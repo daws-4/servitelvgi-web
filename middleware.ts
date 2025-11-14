@@ -23,10 +23,12 @@ export function middleware(req: NextRequest) {
 
   const isLoginPath = pathname === "/" || pathname === "/"; // new login is /
   const isAuthApi = pathname.startsWith("/api/auth");
+  const isAgentApi = pathname.startsWith("/api/agent");
 
   if (!token) {
-    // No session: allow only the login page (now `/`) and auth APIs.
-    if (isLoginPath || isAuthApi) {
+    // No session: allow only the login page (now `/`), auth APIs and agent webhook API.
+    // This lets external services (N8N, webhooks) call /api/agent/* without being redirected.
+    if (isLoginPath || isAuthApi || isAgentApi) {
       return NextResponse.next();
     }
 

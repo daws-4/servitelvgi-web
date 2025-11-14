@@ -2,10 +2,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-/**
- * Maneja las solicitudes POST para recibir datos (ej. desde N8N)
- * y los muestra en la consola del servidor.
- */
+// Responde a GET con el texto "ok" en formato JSON
+export async function GET(request: NextRequest) {
+  return NextResponse.json("ok", { status: 200 });
+}
+// Responde a POST leyendo el body JSON y mostrando los datos en la consola del servidor
 export async function POST(request: NextRequest) {
   try {
     // 1. Obtener el cuerpo (body) de la solicitud POST
@@ -37,3 +38,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

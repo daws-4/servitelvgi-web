@@ -47,7 +47,9 @@ export async function POST(request: Request) {
 
     // Responder al cliente (N8N) que todo salió bien
     return NextResponse.json(
-      { message: "Datos recibidos y logueados exitosamente." },
+      { message: "Datos recibidos y logueados exitosamente.",
+        status: 200
+      },
       { status: 200, headers: CORS_HEADERS }
     );
   } catch (error) {

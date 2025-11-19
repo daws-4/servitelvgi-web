@@ -1,8 +1,8 @@
 // app/api/agent/getOrders/route.ts
 
 import { NextResponse } from "next/server";
-import { connectDB } from "../../../../lib/db";
-import OrderModel from "../../../../models/Order";
+import { connectDB } from "@/lib/db";
+import OrderModel from "@/models/Order";
 
 // Cabeceras CORS útiles para integración (p. ej. N8N). Ajusta según necesidad.
 const CORS_HEADERS = {

@@ -6,6 +6,7 @@ import * as React from "react";
 import { HeroUIProvider } from "@heroui/system";
 import { useRouter } from "next/navigation";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
+import {  ToastProvider } from "@heroui/react";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -27,6 +28,7 @@ export function Providers({ children, themeProps }: ProvidersProps) {
     <HeroUIProvider navigate={router.push}>
       {/* Force the theme to light to keep the app always in light mode */}
       <NextThemesProvider {...themeProps} forcedTheme="light">
+        <ToastProvider />
         {children}
       </NextThemesProvider>
     </HeroUIProvider>

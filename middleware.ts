@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ROUTES, LOGIN_ROUTE, DEFAULT_REDIRECT } from "@/lib/routes";
 
 // Middleware rules (swapped routes):
 // - The login page is now `/` (was `/login`). The protected home is `/dashboard` (was `/`).
@@ -17,36 +18,40 @@ export function middleware(req: NextRequest) {
   // Compatibility redirect: old login path -> new login root
   if (pathname === "/login" || pathname === "/login/") {
     const toRoot = req.nextUrl.clone();
-    toRoot.pathname = "/";
+    toRoot.pathname = LOGIN_ROUTE;
     return NextResponse.redirect(toRoot);
   }
 
-  const isLoginPath = pathname === "/" || pathname === "/"; // new login is /
-  const isAuthApi = pathname.startsWith("/api/auth");
+  const isLoginPath =
+    pathname === LOGIN_ROUTE || pathname === ROUTES.auth.legacyLogin;
+  const isAuthApi =
+    pathname.startsWith(ROUTES.api.auth.login.replace("/login", "")) ||
+    pathname.startsWith("/api/auth");
   const isAgentApi = pathname.startsWith("/api/agent");
+  const isWebApi = pathname.startsWith("/api/web");
 
   if (!token) {
-    // No session: allow only the login page (now `/`), auth APIs and agent webhook API.
-    // This lets external services (N8N, webhooks) call /api/agent/* without being redirected.
+    // No session: allow only the login page, auth APIs and the agent webhook API.
+    // External services (N8N, webhooks) can call /api/agent/* without authentication.
     if (isLoginPath || isAuthApi || isAgentApi) {
       return NextResponse.next();
     }
 
-    // Redirect other requests to the login root `/`
+    // Deny access to web API routes and protected pages when no token: redirect to login
     const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = "/";
+    loginUrl.pathname = LOGIN_ROUTE;
     return NextResponse.redirect(loginUrl);
   }
 
-  // There is a token: prevent visiting the login root `/` and send to /dashboard
-  if (pathname === "/" || pathname === "/") {
+  // If there's a token, prevent visiting the login root and redirect to dashboard
+  if (isLoginPath) {
     const dashboard = req.nextUrl.clone();
-    dashboard.pathname = "/dashboard";
+    dashboard.pathname = DEFAULT_REDIRECT;
     return NextResponse.redirect(dashboard);
   }
 
-  // Otherwise allow the request. Note: consider verifying the token server-side
-  // for stronger security (expiration, signature).
+  // With a token, allow all requests to proceed. Note: for stronger security,
+  // validate the token server-side (expiration, signature) in an API route or middleware.
   return NextResponse.next();
 }
 

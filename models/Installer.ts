@@ -1,7 +1,7 @@
 // models/Installer.js
 
 import mongoose from "mongoose";
-import IndividualInventorySchema from "@/models/IndividualInventorySchema.js"; // Importación del submodelo
+import IndividualInventorySchema from "@/models/IndividualInventorySchema.ts"; // Importación del submodelo
 
 const InstallerSchema = new mongoose.Schema(
   {

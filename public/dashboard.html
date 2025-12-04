@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servitel Dashboard</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Configuración de Colores Personalizados en Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3e78b2',    // Rich Cerulean
+                        secondary: '#004ba8',  // Cobalt Blue
+                        background: '#deefb7', // Tea Green
+                        neutral: '#bcabae',    // Lilac Ash
+                        dark: '#0f0f0f',       // Onyx
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Estilos base adicionales */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6; /* Un gris muy suave para no saturar con el verde */
+        }
+        
+        /* Sidebar transition */
+        .sidebar {
+            transition: all 0.3s ease-in-out;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #bcabae; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3e78b2; 
+        }
+    </style>
+</head>
+<body class="text-dark bg-gray-50">
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- SIDEBAR -->
+        <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-64 bg-primary text-white transform -translate-x-full md:relative md:translate-x-0 shadow-xl flex flex-col">
+            
+            <!-- Logo Area -->
+            <div class="h-16 flex items-center justify-center border-b border-secondary/30 bg-secondary/20">
+                <div class="flex items-center gap-2 font-bold text-xl tracking-wider">
+                    <i class="fa-solid fa-satellite-dish text-background"></i> 
+                    <span>SERVITEL</span>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                
+                <p class="text-xs font-semibold text-neutral uppercase tracking-wider mb-2 pl-2">Principal</p>
+                
+                <a href="#" class="flex items-center gap-3 px-4 py-3 bg-secondary/40 text-white rounded-lg transition-colors border-l-4 border-background">
+                    <i class="fa-solid fa-chart-line w-5"></i>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-secondary/30 hover:text-white rounded-lg transition-colors group">
+                    <i class="fa-solid fa-clipboard-list w-5 group-hover:text-background transition-colors"></i>
+                    <span class="font-medium">Órdenes</span>
+                </a>
+
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-secondary/30 hover:text-white rounded-lg transition-colors group">
+                    <i class="fa-solid fa-users-gear w-5 group-hover:text-background transition-colors"></i>
+                    <span class="font-medium">Instaladores</span>
+                </a>
+
+                <p class="text-xs font-semibold text-neutral uppercase tracking-wider mt-6 mb-2 pl-2">Gestión</p>
+
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-secondary/30 hover:text-white rounded-lg transition-colors group">
+                    <i class="fa-solid fa-boxes-stacked w-5 group-hover:text-background transition-colors"></i>
+                    <span class="font-medium">Inventario</span>
+                </a>
+
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-secondary/30 hover:text-white rounded-lg transition-colors group">
+                    <i class="fa-solid fa-file-invoice w-5 group-hover:text-background transition-colors"></i>
+                    <span class="font-medium">Reportes</span>
+                </a>
+            </nav>
+
+            <!-- User Profile (Bottom) -->
+            <div class="p-4 border-t border-secondary/30 bg-secondary/10">
+                <div class="flex items-center gap-3">
+                    <img src="https://ui-avatars.com/api/?name=Admin+User&background=deefb7&color=004ba8" alt="Admin" class="w-10 h-10 rounded-full border-2 border-background">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold truncate">Administrador</p>
+                        <p class="text-xs text-neutral truncate">admin@servitel.com</p>
+                    </div>
+                    <button class="text-neutral hover:text-white transition-colors">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT WRAPPER -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+            <!-- NAVBAR -->
+            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10 border-b border-neutral/20">
+                
+                <!-- Toggle Button (Mobile) & Title -->
+                <div class="flex items-center gap-4">
+                    <button id="sidebarToggle" class="md:hidden text-primary hover:text-secondary focus:outline-none">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-dark hidden sm:block">Panel de Control</h1>
+                </div>
+
+                <!-- Search & Actions -->
+                <div class="flex items-center gap-4">
+                    <!-- Search Bar -->
+                    <div class="hidden md:flex items-center bg-gray-100 rounded-full px-4 py-1.5 border border-transparent focus-within:border-primary focus-within:bg-white transition-all">
+                        <i class="fa-solid fa-magnifying-glass text-neutral"></i>
+                        <input type="text" placeholder="Buscar orden..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-48 text-dark placeholder-neutral">
+                    </div>
+
+                    <!-- Icons -->
+                    <button class="relative p-2 text-neutral hover:text-primary transition-colors">
+                        <i class="fa-regular fa-bell text-xl"></i>
+                        <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                    </button>
+                    
+                    <button class="p-2 text-neutral hover:text-primary transition-colors">
+                        <i class="fa-solid fa-gear text-xl"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- MAIN CONTENT (Scrollable) -->
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                
+                <!-- Welcome Banner -->
+                <div class="mb-8 bg-gradient-to-r from-primary to-secondary rounded-xl p-6 text-white shadow-lg relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h2 class="text-2xl font-bold mb-1">¡Hola, Administrador! 👋</h2>
+                        <p class="text-background/90">Aquí tienes el resumen de las operaciones de hoy.</p>
+                    </div>
+                    <!-- Decorative circle -->
+                    <div class="absolute -right-10 -bottom-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                </div>
+
+                <!-- KPI CARDS GRID -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    
+                    <!-- Card 1 -->
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-neutral/10 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold text-neutral uppercase">Órdenes Hoy</p>
+                                <h3 class="text-2xl font-bold text-dark mt-1">24</h3>
+                            </div>
+                            <div class="p-2 bg-background/50 rounded-lg text-primary">
+                                <i class="fa-solid fa-clipboard-check text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-xs">
+                            <span class="text-green-600 font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up"></i> +12%
+                            </span>
+                            <span class="text-neutral ml-2">vs ayer</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 2 -->
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-neutral/10 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold text-neutral uppercase">Pendientes</p>
+                                <h3 class="text-2xl font-bold text-dark mt-1">8</h3>
+                            </div>
+                            <div class="p-2 bg-yellow-100 rounded-lg text-yellow-600">
+                                <i class="fa-regular fa-clock text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-xs">
+                            <span class="text-red-500 font-bold flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-down"></i> -2
+                            </span>
+                            <span class="text-neutral ml-2">vs ayer</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 3 -->
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-neutral/10 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold text-neutral uppercase">Técnicos Activos</p>
+                                <h3 class="text-2xl font-bold text-dark mt-1">12</h3>
+                            </div>
+                            <div class="p-2 bg-blue-100 rounded-lg text-secondary">
+                                <i class="fa-solid fa-helmet-safety text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-xs">
+                            <span class="text-green-600 font-bold">100%</span>
+                            <span class="text-neutral ml-2">operatividad</span>
+                        </div>
+                    </div>
+
+                    <!-- Card 4 -->
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-neutral/10 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-semibold text-neutral uppercase">Inventario Crítico</p>
+                                <h3 class="text-2xl font-bold text-dark mt-1">3 <span class="text-sm font-normal text-neutral">items</span></h3>
+                            </div>
+                            <div class="p-2 bg-red-100 rounded-lg text-red-600">
+                                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center text-xs text-red-500 font-medium">
+                            Requiere atención
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CHARTS & TABLES SECTION -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Chart (2 cols) -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-neutral/10 lg:col-span-2">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-dark">Rendimiento Semanal</h3>
+                            <button class="text-xs text-primary hover:underline">Ver reporte completo</button>
+                        </div>
+                        <div class="relative h-64 w-full">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity List (1 col) -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-neutral/10">
+                        <h3 class="font-bold text-dark mb-4">Actividad Reciente</h3>
+                        <div class="space-y-4">
+                            
+                            <!-- Item 1 -->
+                            <div class="flex items-start gap-3">
+                                <div class="w-2 h-2 rounded-full bg-green-500 mt-2 shrink-0"></div>
+                                <div>
+                                    <p class="text-sm font-medium text-dark">Orden #NET-1029 Finalizada</p>
+                                    <p class="text-xs text-neutral">Hace 10 min • Técnico: Juan P.</p>
+                                </div>
+                            </div>
+
+                            <!-- Item 2 -->
+                            <div class="flex items-start gap-3">
+                                <div class="w-2 h-2 rounded-full bg-primary mt-2 shrink-0"></div>
+                                <div>
+                                    <p class="text-sm font-medium text-dark">Nuevo material asignado</p>
+                                    <p class="text-xs text-neutral">Hace 45 min • 50m Cable UTP</p>
+                                </div>
+                            </div>
+
+                            <!-- Item 3 -->
+                            <div class="flex items-start gap-3">
+                                <div class="w-2 h-2 rounded-full bg-yellow-500 mt-2 shrink-0"></div>
+                                <div>
+                                    <p class="text-sm font-medium text-dark">Orden #NET-1030 Recibida</p>
+                                    <p class="text-xs text-neutral">Hace 1 hora • Via WhatsApp</p>
+                                </div>
+                            </div>
+
+                            <!-- Item 4 -->
+                            <div class="flex items-start gap-3">
+                                <div class="w-2 h-2 rounded-full bg-red-500 mt-2 shrink-0"></div>
+                                <div>
+                                    <p class="text-sm font-medium text-dark">Alerta de Stock Bajo</p>
+                                    <p class="text-xs text-neutral">Hace 2 horas • Conectores RJ45</p>
+                                </div>
+                            </div>
+
+                        </div>
+                        <button class="w-full mt-6 py-2 text-sm text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
+                            Ver todo el historial
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- RECENT ORDERS TABLE -->
+                <div class="mt-8 bg-white rounded-xl shadow-sm border border-neutral/10 overflow-hidden">
+                    <div class="p-6 border-b border-neutral/10 flex justify-between items-center">
+                        <h3 class="font-bold text-dark">Órdenes Recientes</h3>
+                        <div class="flex gap-2">
+                            <button class="px-3 py-1 text-xs bg-gray-100 rounded hover:bg-gray-200 text-dark">Filtrar</button>
+                            <button class="px-3 py-1 text-xs bg-primary text-white rounded hover:bg-secondary">Exportar</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-dark">
+                            <thead class="bg-gray-50 text-neutral font-semibold uppercase text-xs">
+                                <tr>
+                                    <th class="px-6 py-4">ID Orden</th>
+                                    <th class="px-6 py-4">Cliente</th>
+                                    <th class="px-6 py-4">Tipo</th>
+                                    <th class="px-6 py-4">Estado</th>
+                                    <th class="px-6 py-4">Técnico</th>
+                                    <th class="px-6 py-4 text-right">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-neutral/10">
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium">#NET-2025</td>
+                                    <td class="px-6 py-4">Ana García</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">Instalación</span></td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-semibold">En Proceso</span></td>
+                                    <td class="px-6 py-4 flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-secondary text-white flex items-center justify-center text-xs">L</div>
+                                        Luis P.
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-neutral hover:text-secondary"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium">#NET-2024</td>
+                                    <td class="px-6 py-4">Empresa XYZ</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">Avería</span></td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold">Completada</span></td>
+                                    <td class="px-6 py-4 flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs">C</div>
+                                        Carlos M.
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-neutral hover:text-secondary"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                    </td>
+                                </tr>
+                                <tr class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 font-medium">#NET-2023</td>
+                                    <td class="px-6 py-4">Jorge Torres</td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">Instalación</span></td>
+                                    <td class="px-6 py-4"><span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs font-semibold">Pendiente</span></td>
+                                    <td class="px-6 py-4 text-neutral italic">-- Sin asignar --</td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button class="text-primary hover:text-secondary font-medium text-xs">Asignar</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <!-- Overlay for mobile sidebar -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden glass-effect"></div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // 1. Sidebar Toggle Logic
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function toggleSidebar() {
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            if (isClosed) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            }
+        }
+
+        sidebarToggle.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        // 2. Chart.js Configuration
+        const ctx = document.getElementById('performanceChart').getContext('2d');
+        
+        // Colores de la paleta para la gráfica
+        const colorPrimary = '#3e78b2';   // Rich Cerulean
+        const colorSecondary = '#004ba8'; // Cobalt Blue
+        const colorBackground = '#deefb7'; // Tea Green
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                datasets: [
+                    {
+                        label: 'Instalaciones',
+                        data: [12, 19, 15, 17, 22, 14, 8],
+                        borderColor: colorPrimary,
+                        backgroundColor: 'rgba(62, 120, 178, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Averías',
+                        data: [5, 8, 4, 6, 9, 3, 2],
+                        borderColor: colorSecondary, // Usando el azul oscuro para contraste
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 8
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: '#f3f4f6'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

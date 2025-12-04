@@ -28,12 +28,13 @@ export function middleware(req: NextRequest) {
     pathname.startsWith(ROUTES.api.auth.login.replace("/login", "")) ||
     pathname.startsWith("/api/auth");
   const isAgentApi = pathname.startsWith("/api/agent");
-  const isWebApi = pathname.startsWith("/api/web");
+  const isMobileApi = pathname.startsWith("/api/mobile");
+  const isRecoveryPath = pathname.startsWith("/recuperar-contrasena");
 
   if (!token) {
     // No session: allow only the login page, auth APIs and the agent webhook API.
     // External services (N8N, webhooks) can call /api/agent/* without authentication.
-    if (isLoginPath || isAuthApi || isAgentApi) {
+    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isRecoveryPath || isRecoveryPath) {
       return NextResponse.next();
     }
 

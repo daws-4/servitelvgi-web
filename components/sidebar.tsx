@@ -1,72 +1,189 @@
 "use client";
-import { Button } from "@heroui/react";
+import { Tooltip } from "@heroui/react";
 import React from "react";
-import { LogoutButton } from "@/components/components";
-
+import axios from "axios";
+import { useRouter, usePathname } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+    DashboardIcon,
+    OrdersIcon,
+    InstallersIcon,
+    InventoryIcon,
+    ReportsIcon,
+    SatelliteIcon,
+    LogoutIcon
+} from "@/components/dashboard-icons";
+import Link from "next/link";
+import { UserCell } from "@/components/dataView/User";
+import { useEffect, useState } from "react";
+import { IUser } from "@/models/User";
 export interface SidebarProps {
-    // Optional: supply nav Buttons as children when ready
     children?: React.ReactNode;
 }
 
+interface NavItem {
+    href: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string; size?: number }>;
+}
+
+const principalItems: NavItem[] = [
+    { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
+    { href: "/dashboard/orders", label: "Órdenes", icon: OrdersIcon },
+    { href: "/dashboard/installers", label: "Instaladores", icon: InstallersIcon },
+];
+
+const gestionItems: NavItem[] = [
+    { href: "/dashboard/inventory", label: "Inventario", icon: InventoryIcon },
+    { href: "/dashboard/reports", label: "Reportes", icon: ReportsIcon },
+];
+
 export const Sidebar: React.FC<SidebarProps> = ({ children }) => {
+    const router = useRouter();
+    const pathname = usePathname();
+    const [user, setUser] = useState<IUser | null>(null);
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const authResponse = await axios.get('/api/auth/me');
+                const userData = authResponse.data;
+                console.log('User data:', userData);
+
+                if (!userData._id) {
+                    console.error('No se pudo obtener el user');
+                    return;
+                }
+                setUser(userData);
+            } catch (error) {
+                console.error('Error fetching user:', error);
+            }
+        };
+        fetchUser();
+    }, []);
+    const logout = async () => {
+        const logout = await axios.get('/api/auth/logout')
+        if (logout.status === 200) {
+            console.log("Logout successful:", logout.data);
+            router.push('/login');
+        }
+        if (logout.status !== 200) {
+            console.error("Logout failed:", logout.data);
+        }
+    }
+
+    const isActive = (href: string) => pathname === href;
+
+
+
     return (
-        // Sidebar fijo: más ancho por defecto (w-24) y se expande más (w-72) al pasar el mouse
         <aside
-            aria-label="Sidebar"
-            className="fixed left-0 top-0 h-full z-50 w-1/12 hover:w-72 transition-all duration-300 ease-in-out bg-[#7D8CA3] text-white backdrop-blur-sm border-r border-[#004ba8] shadow-lg"
+            id="sidebar"
+            className="fixed inset-y-0 left-0 z-50 w-64 bg-primary text-white transform -translate-x-full md:relative md:translate-x-0 shadow-xl flex flex-col transition-transform duration-300 ease-in-out"
         >
-            <div className="h-full flex flex-col items-center py-6 gap-6 overflow-y-auto">
-                {/* Placeholder/logo area - Logo más grande */}
-                <div className="w-full flex items-center justify-center px-2 overflow-hidden">
-                    <div className="flex items-center gap-4">
-                        {/* Marca circular usando el color #3 (#deefb7) */}
-                        <span className="w-10 h-10 rounded-full bg-[#deefb7] inline-block shrink-0 shadow-sm" aria-hidden />
-                        {/* Texto del menú un poco más grande y legible */}
-                        <div className="text-lg font-bold tracking-wide whitespace-nowrap text-[#deefb7]">
-                            Menu
-                        </div>
-                    </div>
+            {/* Logo Area */}
+            <div className="h-16 flex items-center justify-center border-b border-secondary/30 bg-secondary/20">
+                <div className="flex items-center gap-2 font-bold text-xl tracking-wider">
+                    <SatelliteIcon className="text-background" size={24} />
+                    <span>SERVITELV</span>
                 </div>
+            </div>
 
-                {/* Área de botones de navegación */}
-                <nav className="w-full flex flex-col items-center gap-3 px-3">
-                    {children ? (
-                        children
-                    ) : (
-                        // Placeholders con estilos actualizados: más grandes y con la nueva paleta
-                        <>
-                            <Button
-                                href="/"
-                                    className="w-full bg-[#004ba8] text-left px-4 py-3 text-lg font-medium rounded-xl transition-colors duration-200 text-white hover:bg-[#deefb7] hover:text-[#004ba8] focus:outline-none focus:ring-2 focus:ring-[#deefb7]"
-                            >
-                                Inicio
-                            </Button>
-                            <Button
-                                href="/orders"
-                                className="w-full bg-[#004ba8] text-left px-4 py-3 text-lg font-medium rounded-xl transition-colors duration-200 text-white hover:bg-[#deefb7] hover:text-[#004ba8] focus:outline-none focus:ring-2 focus:ring-[#deefb7]"
-                            >
-                                Ordenes
-                            </Button>
-                            <Button
-                                href="/inventory"
-                                className="w-full bg-[#004ba8] text-left px-4 py-3 text-lg font-medium rounded-xl transition-colors duration-200 text-white hover:bg-[#deefb7] hover:text-[#004ba8] focus:outline-none focus:ring-2 focus:ring-[#deefb7]"
-                            >
-                                Inventario
-                            </Button>
-                            <Button
-                                href="/installers"
-                                className="w-full bg-[#004ba8] text-left px-4 py-3 text-lg font-medium rounded-xl transition-colors duration-200 text-white hover:bg-[#deefb7] hover:text-[#004ba8] focus:outline-none focus:ring-2 focus:ring-[#deefb7]"
-                            >
-                                Instaladores
-                            </Button>
+            {/* Navigation Links */}
+            <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                {/* Principal Section */}
+                <p className="text-xs font-semibold text-neutral uppercase tracking-wider mb-2 pl-2">Principal</p>
 
-                            {/* Asumiendo que LogoutButton acepta clases o se ajusta al contenedor */}
-                            <div className="w-full mt-auto pt-4 border-t border-[#004ba8]">
-                                <LogoutButton />
-                            </div>
-                        </>
-                    )}
-                </nav>
+                {principalItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className="relative flex items-center gap-3 px-4 py-3 text-white/80 hover:text-white rounded-lg transition-colors group"
+                        >
+                            {active && (
+                                <>
+                                    <motion.div
+                                        layoutId="activeBackground"
+                                        className="absolute inset-0 bg-secondary/40 rounded-lg"
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 350,
+                                            damping: 30
+                                        }}
+                                    />
+                                    <motion.div
+                                        layoutId="activeBorder"
+                                        className="absolute left-0 top-0 bottom-0 w-1 bg-background rounded-r"
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 350,
+                                            damping: 30
+                                        }}
+                                    />
+                                </>
+                            )}
+                            <Icon className={active ? "w-5 h-5 relative z-10 text-white" : "w-5 h-5 group-hover:text-background transition-colors relative z-10"} />
+                            <span className={active ? "font-medium relative z-10 text-white" : "font-medium relative z-10"}>{item.label}</span>
+                        </Link>
+                    );
+                })}
+
+                {/* Gestión Section */}
+                <p className="text-xs font-semibold text-neutral uppercase tracking-wider mt-6 mb-2 pl-2">Gestión</p>
+
+                {gestionItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = isActive(item.href);
+
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className="relative flex items-center gap-3 px-4 py-3 text-white/80 hover:text-white rounded-lg transition-colors group"
+                        >
+                            {active && (
+                                <>
+                                    <motion.div
+                                        layoutId="activeBackground"
+                                        className="absolute inset-0 bg-secondary/40 rounded-lg"
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 350,
+                                            damping: 30
+                                        }}
+                                    />
+                                    <motion.div
+                                        layoutId="activeBorder"
+                                        className="absolute left-0 top-0 bottom-0 w-1 bg-background rounded-r"
+                                        transition={{
+                                            type: "spring",
+                                            stiffness: 350,
+                                            damping: 30
+                                        }}
+                                    />
+                                </>
+                            )}
+                            <Icon className={active ? "w-5 h-5 relative z-10 text-white" : "w-5 h-5 group-hover:text-background transition-colors relative z-10"} />
+                            <span className={active ? "font-medium relative z-10 text-white" : "font-medium relative z-10"}>{item.label}</span>
+                        </Link>
+                    );
+                })}
+            </nav>
+
+            {/* User Profile (Bottom) */}
+            <div className="p-4 border-t border-secondary/30 bg-secondary/10">
+                <div className="flex items-center justify-center gap-3">
+                    <UserCell name={user?.name} surname={user?.surname} email={user?.email} avatarUrl={`https://ui-avatars.com/api/?name=${user?.name}+${user?.surname}&background=deefb7&color=004ba8`} role={user?.role} id={user?._id} />
+                    <Tooltip content="Cerrar Sesión">
+                        <button onClick={() => logout()} className="text-neutral hover:text-white transition-colors cursor-pointer">
+                            <LogoutIcon size={18} />
+                        </button>
+                    </Tooltip>
+                </div>
             </div>
         </aside>
     );

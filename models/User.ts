@@ -1,6 +1,21 @@
-// models/User.js
+// models/User.ts
 
 import mongoose from "mongoose";
+
+// TypeScript interface for User
+export interface IUser {
+  _id?: string;
+  username: string;
+  password: string;
+  name: string;
+  surname: string;
+  email: string;
+  role: "admin" | "installer";
+  installerRef?: mongoose.Types.ObjectId;
+  isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 const UserSchema = new mongoose.Schema(
   {
@@ -17,6 +32,14 @@ const UserSchema = new mongoose.Schema(
 
     // Información y rol del usuario
     name: {
+      type: String,
+      required: true,
+    },
+    surname: {
+      type: String,
+      required: true,
+    },
+    email: {
       type: String,
       required: true,
     },

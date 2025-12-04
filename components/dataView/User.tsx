@@ -1,42 +1,32 @@
 import React from "react";
-import { User } from "@heroui/react";
+import {Link} from "@heroui/react"
 
 export interface UserCellProps {
-    name: string;
+    name?: string;
+    surname?: string;
     role?: string;      // Cargo (ej: "Técnico Senior") o Teléfono
     avatarUrl?: string; // URL de la foto (opcional)
     email?: string;     // Email para fallback o tooltip (opcional)
+    id?: string;
 }
 
 export const UserCell: React.FC<UserCellProps> = ({
     name,
     role,
+    surname,
     avatarUrl,
-    email
+    email,
+    id
 }) => {
     return (
-        <User
-            name={name}
-            description={role || email} // Muestra el rol/teléfono como subtítulo
-            avatarProps={{
-                src: avatarUrl,
-                radius: "md",       // Bordes redondeados suaves
-                size: "sm",         // Tamaño compacto ideal para filas de tabla
-                isBordered: false,  // Sin borde para un look más limpio en la lista
-                showFallback: true, // Muestra iniciales si la imagen falla o no existe
-                name: name,         // Usa el nombre para generar las iniciales (ej: "Juan Perez" -> "JP")
-                color: "primary",   // Usa tu color azul (#3e78b2) para el fondo de las iniciales
-                classNames: {
-                    // Estilo suave para el fallback de iniciales
-                    base: "bg-primary/10 text-primary font-semibold"
-                }
-            }}
-            classNames={{
-                // Ajustes de tipografía para jerarquía visual
-                name: "text-sm font-semibold text-default-900 leading-none",
-                description: "text-xs text-default-500 mt-0.5 capitalize",
-            }}
-        />
+        <div className='flex items-center gap-3'>
+        <img src={avatarUrl} alt={name} className="w-10 h-10 rounded-full border-2 border-background" />
+                    <div className="flex-1 min-w-0">
+                        <Link href={`/users/${id}`} className="text-sm text-white font-semibold truncate">{name} {surname}</Link>
+                        <p className="text-xs text-neutral truncate">{email}</p>
+                        <p className="text-xs text-neutral truncate">{role}</p>
+                    </div>
+        </div>
     );
 };
 

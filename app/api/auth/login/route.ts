@@ -40,6 +40,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if user role is admin
+    if (user.role !== "admin") {
+      return NextResponse.json(
+        { 
+          message: "Access denied. Installer accounts cannot access this dashboard.",
+          code: "INSTALLER_ACCESS_DENIED"
+        },
+        { status: 403 }
+      );
+    }
+
     if (!process.env.JWT_SECRET) {
       console.error("Missing JWT_SECRET in environment");
       return NextResponse.json(
@@ -48,9 +59,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create token (7 days)
+    // Create token (7 days) con todos los datos del usuario
     const token = jwt.sign(
-      { sub: user._id.toString(), username: user.username, role: user.role },
+      { 
+        sub: user._id.toString(), 
+        _id: user._id.toString(),
+        username: user.username, 
+        name: user.name,
+        surname: user.surname,
+        email: user.email,
+        role: user.role 
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -62,7 +81,15 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         message: "Login successful",
-        user: { id: user._id, username: user.username, role: user.role },
+        user: { 
+          id: user._id, 
+          _id: user._id,
+          username: user.username, 
+          name: user.name,
+          surname: user.surname,
+          email: user.email,
+          role: user.role 
+        },
       },
       {
         status: 200,

@@ -1,13 +1,11 @@
 import "@/styles/globals.css";
 import { Metadata, Viewport } from "next";
-// import Link from UI libs here if needed
 import clsx from "clsx";
 
 import { Providers } from "./providers";
-
 import { siteConfig } from "@/config/site";
 import { fontSans } from "@/config/fonts";
-import Sidebar from "@/components/sidebar";
+
 export const metadata: Metadata = {
   title: {
     default: siteConfig.name,
@@ -41,11 +39,7 @@ export default function RootLayout({
         )}
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "light" }}>
-      
-            <main  className=" flex-grow">
-              {children}
-            </main>
-        
+            {children}
         </Providers>
       </body>
     </html>

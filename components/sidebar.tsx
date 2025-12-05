@@ -15,8 +15,7 @@ import {
 } from "@/components/dashboard-icons";
 import Link from "next/link";
 import { UserCell } from "@/components/dataView/User";
-import { useEffect, useState } from "react";
-import { IUser } from "@/models/User";
+import { useUser } from "@/contexts/UserContext";
 export interface SidebarProps {
     children?: React.ReactNode;
 }
@@ -41,26 +40,7 @@ const gestionItems: NavItem[] = [
 export const Sidebar: React.FC<SidebarProps> = ({ children }) => {
     const router = useRouter();
     const pathname = usePathname();
-    const [user, setUser] = useState<IUser | null>(null);
-
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const authResponse = await axios.get('/api/auth/me');
-                const userData = authResponse.data;
-                console.log('User data:', userData);
-
-                if (!userData._id) {
-                    console.error('No se pudo obtener el user');
-                    return;
-                }
-                setUser(userData);
-            } catch (error) {
-                console.error('Error fetching user:', error);
-            }
-        };
-        fetchUser();
-    }, []);
+    const { user } = useUser();
     const logout = async () => {
         const logout = await axios.get('/api/auth/logout')
         if (logout.status === 200) {
@@ -72,7 +52,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ children }) => {
         }
     }
 
-    const isActive = (href: string) => pathname === href;
+    const isActive = (href: string) => {
+        // Special case for dashboard root - only match exactly
+        if (href === "/dashboard") {
+            return pathname === "/dashboard";
+        }
+        // For other routes, match if pathname starts with href
+        return pathname.startsWith(href);
+    };
 
 
 

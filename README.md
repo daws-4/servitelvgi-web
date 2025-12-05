@@ -154,3 +154,18 @@ Spinner: Indicador de carga circular. Úsalo cuando se esté subiendo una imagen
 
 💡 Consejo Pro
 HeroUI permite personalizar los temas. Configura en tu tailwind.config.js los colores semánticos de HeroUI (primary, secondary, success, warning) con tu paleta (#3e78b2, #ffd166, etc.). Así, cuando uses <Button color="primary">, automáticamente usará tu azul corporativo.
+
+
+plantilla prompt para replicar tsx
+
+@beautifulMention
+ Necesito que logres replicar esta página, usando los componentes ya creados y modificando los que hagan falta, toma en cuenta los colores del 
+
+dashboard
+  y todos los componentes ya creados en  
+
+components, si hace falta crear más los creas, y si hace falta modificar alguno lo modificas
+
+el punto de la replica es hacerlo pero con la estructuración modular que permite react al tener todos los componentes separados por archivos y pudiendo reutilizarlos cada que haga falta
+
+el resultado final lo usas para reemplazar lo que haya en @beautifulMention

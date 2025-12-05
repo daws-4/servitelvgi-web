@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Orden - Servitel</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Configuración de colores corporativos -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3e78b2',    // Azul Claro
+                        secondary: '#004ba8',  // Azul Oscuro
+                        accent: '#deefb7',     // Verde Claro
+                        neutral: '#bcabae',    // Grisáceo
+                        dark: '#0f0f0f',       // Negro
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f3f4f6; }
+        /* Estilos personalizados para simular componentes de UI modernos */
+        .form-input {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            border-radius: 0.375rem; /* rounded-md */
+            border: 2px solid #e5e7eb;
+            background-color: white;
+            transition: all 0.2s;
+            outline: none;
+        }
+        .form-input:focus {
+            border-color: #3e78b2;
+            box-shadow: 0 0 0 1px #3e78b2;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #4b5563;
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body class="text-dark bg-gray-50 min-h-screen flex flex-col">
+
+    <!-- HEADER SIMPLIFICADO -->
+    <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-200 sticky top-0 z-10">
+        <div class="flex items-center gap-3">
+            <a href="#" class="text-gray-500 hover:text-primary transition-colors"><i class="fa-solid fa-arrow-left"></i></a>
+            <h1 class="text-xl font-bold text-primary">Nueva Orden de Servicio</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-500 hidden md:block">Usuario: Admin</span>
+            <img src="https://ui-avatars.com/api/?name=Admin&background=004ba8&color=fff" class="w-8 h-8 rounded-full">
+        </div>
+    </header>
+
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+        
+        <form id="orderForm" onsubmit="guardarOrden(event)">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- COLUMNA IZQUIERDA: DATOS PRINCIPALES (Ocupa 2 espacios) -->
+                <div class="lg:col-span-2 space-y-6">
+                    
+                    <!-- TARJETA: DATOS DEL ABONADO -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="bg-gray-50/50 border-b border-gray-100 px-6 py-4 flex items-center gap-2">
+                            <i class="fa-solid fa-user text-secondary"></i>
+                            <h3 class="font-semibold text-secondary">Datos del Abonado</h3>
+                        </div>
+                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            <!-- N. Abonado -->
+                            <div>
+                                <label class="form-label">N. Abonado (ID) <span class="text-red-500">*</span></label>
+                                <input type="text" name="subscriberNumber" class="form-input" placeholder="Ej: 368063" required>
+                            </div>
+
+                            <!-- Nombre -->
+                            <div>
+                                <label class="form-label">Nombre Completo <span class="text-red-500">*</span></label>
+                                <input type="text" name="subscriberName" class="form-input" placeholder="Ej: Daniel Hernandez" required>
+                            </div>
+
+                            <!-- Teléfonos -->
+                            <div>
+                                <label class="form-label">Teléfonos</label>
+                                <input type="text" name="phones" class="form-input" placeholder="Ej: 0424..., 0414...">
+                                <p class="text-xs text-gray-400 mt-1">Separa múltiples números con comas</p>
+                            </div>
+
+                            <!-- Email -->
+                            <div>
+                                <label class="form-label">Correo Electrónico</label>
+                                <input type="email" name="email" class="form-input" placeholder="cliente@email.com">
+                            </div>
+
+                            <!-- Dirección (Ocupa todo el ancho) -->
+                            <div class="md:col-span-2">
+                                <label class="form-label">Dirección Detallada <span class="text-red-500">*</span></label>
+                                <textarea name="address" class="form-input resize-y min-h-[80px]" placeholder="Municipio, Sector, Calle, Casa, Puntos de referencia..." required></textarea>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- TARJETA: DATOS TÉCNICOS -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div class="bg-gray-50/50 border-b border-gray-100 px-6 py-4 flex items-center gap-2">
+                            <i class="fa-solid fa-microchip text-secondary"></i>
+                            <h3 class="font-semibold text-secondary">Datos Técnicos</h3>
+                        </div>
+                        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            
+                            <!-- Nodo -->
+                            <div>
+                                <label class="form-label">Nodo / Ubicación</label>
+                                <input type="text" name="node" class="form-input" placeholder="Ej: SCRVEG20112A-GPON">
+                            </div>
+
+                            <!-- Servicios -->
+                            <div class="md:col-span-2">
+                                <label class="form-label">Servicios a Instalar / Reporte de Falla</label>
+                                <textarea name="servicesToInstall" class="form-input resize-y min-h-[80px]" placeholder="Ej: Internet, Streaming, FibraNet500..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA: GESTIÓN (Ocupa 1 espacio) -->
+                <div class="space-y-6">
+                    
+                    <!-- TARJETA: GESTIÓN DE ORDEN -->
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
+                        <div class="bg-accent/30 border-b border-accent px-6 py-4">
+                            <h3 class="font-semibold text-secondary">Gestión de la Orden</h3>
+                        </div>
+                        <div class="p-6 flex flex-col gap-6 flex-1">
+                            
+                            <!-- Tipo de Orden -->
+                            <div>
+                                <label class="form-label">Tipo de Orden <span class="text-red-500">*</span></label>
+                                <div class="relative">
+                                    <select name="type" class="form-input appearance-none cursor-pointer" required>
+                                        <option value="instalacion">Instalación</option>
+                                        <option value="averia">Avería</option>
+                                        <option value="otro">Otro</option>
+                                    </select>
+                                    <div class="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Asignación de Técnico -->
+                            <div>
+                                <label class="form-label">Asignar Técnico</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                    <input type="text" list="installersList" name="assignedToName" class="form-input pl-10" placeholder="Buscar instalador..." onchange="actualizarEstado(this.value)">
+                                    <!-- Datalist simula el autocompletado nativo -->
+                                    <datalist id="installersList">
+                                        <option value="Juan Perez (Técnico Senior)">
+                                        <option value="Maria Rodriguez (Ayudante)">
+                                        <option value="Carlos Martinez (Instalador)">
+                                    </datalist>
+                                </div>
+                            </div>
+
+                            <!-- Indicador de Estado Dinámico -->
+                            <div id="statusIndicator" class="p-3 bg-yellow-50 rounded-lg border border-yellow-200 transition-colors duration-300">
+                                <p class="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wide">Estado Inicial</p>
+                                <div class="flex items-center gap-2">
+                                    <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                                    <span id="statusText" class="text-sm font-bold text-yellow-700">Pendiente</span>
+                                </div>
+                                <p id="statusDesc" class="text-[10px] text-gray-400 mt-2">
+                                    La orden se creará como pendiente por asignar.
+                                </p>
+                            </div>
+
+                            <hr class="border-gray-100 my-2">
+
+                            <!-- Botones de Acción -->
+                            <div class="mt-auto flex flex-col gap-3">
+                                <button type="submit" class="w-full bg-primary hover:bg-secondary text-white font-medium py-2.5 px-4 rounded-lg shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-save"></i> Guardar Orden
+                                </button>
+                                <button type="button" onclick="history.back()" class="w-full bg-white hover:bg-gray-50 text-red-500 font-medium py-2.5 px-4 rounded-lg border border-transparent hover:border-red-100 transition-all">
+                                    Cancelar
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </form>
+
+    </main>
+
+    <!-- Script Simple para Interactividad -->
+    <script>
+        // Lógica simple para cambiar el estado visualmente
+        function actualizarEstado(valor) {
+            const container = document.getElementById('statusIndicator');
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const desc = document.getElementById('statusDesc');
+
+            if (valor && valor.trim() !== "") {
+                // Estado: Asignada
+                container.className = "p-3 bg-blue-50 rounded-lg border border-blue-200 transition-colors duration-300";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-blue-500";
+                text.className = "text-sm font-bold text-blue-700";
+                text.innerText = "Asignada";
+                desc.innerText = "Técnico seleccionado. La orden se enviará a su móvil.";
+            } else {
+                // Estado: Pendiente
+                container.className = "p-3 bg-yellow-50 rounded-lg border border-yellow-200 transition-colors duration-300";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse";
+                text.className = "text-sm font-bold text-yellow-700";
+                text.innerText = "Pendiente";
+                desc.innerText = "La orden se creará como pendiente por asignar.";
+            }
+        }
+
+        // Simulación de envío
+        function guardarOrden(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
+
+            // Estado de carga
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Guardando...';
+
+            // Simular petición a la API
+            setTimeout(() => {
+                alert("¡Orden creada con éxito! \n(En el sistema real, esto enviaría los datos a MongoDB)");
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+                e.target.reset(); // Limpiar formulario
+                actualizarEstado(""); // Resetear estado visual
+            }, 1500);
+        }
+    </script>
+</body>
+</html>

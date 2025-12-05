@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Órdenes - Servitel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3e78b2', secondary: '#004ba8', background: '#deefb7', neutral: '#bcabae', dark: '#0f0f0f',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f3f4f6; }
+        .checkbox:checked + div { background-color: #3e78b2; border-color: #3e78b2; }
+        .checkbox:checked + div svg { display: block; }
+    </style>
+</head>
+<body class="text-dark bg-gray-50 h-screen flex overflow-hidden">
+
+    <!-- SIDEBAR (Simplificado para el mockup) 
+    <aside class="w-64 bg-primary text-white flex flex-col shadow-xl z-20">
+        <div class="h-16 flex items-center justify-center border-b border-secondary/30 bg-secondary/20 font-bold text-xl tracking-wider gap-2">
+            <i class="fa-solid fa-satellite-dish text-background"></i> SERVITEL
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2">
+            <a href="#" class="flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-secondary/30 rounded-lg"><i class="fa-solid fa-chart-line w-5"></i> Dashboard</a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 bg-secondary/40 text-white rounded-lg border-l-4 border-background"><i class="fa-solid fa-clipboard-list w-5"></i> Órdenes</a>
+        </nav>
+    </aside> -->
+
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col min-w-0">
+        <!-- HEADER -->
+        <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-neutral/20">
+            <h1 class="text-xl font-semibold text-dark">Gestión de Órdenes</h1>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center bg-gray-100 rounded-full px-4 py-1.5 border focus-within:border-primary">
+                    <i class="fa-solid fa-magnifying-glass text-neutral"></i>
+                    <input type="text" placeholder="Buscar..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-48 text-dark">
+                </div>
+                <img src="https://ui-avatars.com/api/?name=Admin&background=deefb7&color=004ba8" class="w-8 h-8 rounded-full border border-gray-200">
+            </div>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+            
+            <!-- BARRA DE HERRAMIENTAS Y FILTROS -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                
+                <!-- Filtros -->
+                <div class="flex flex-wrap gap-3">
+                    <!-- Buscador Principal -->
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" placeholder="Buscar abonado, nombre..." class="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary w-64 shadow-sm">
+                    </div>
+
+                    <!-- Filtro Estado -->
+                    <div class="relative">
+                        <select class="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer">
+                            <option>Estado: Todos</option>
+                            <option>Pendiente</option>
+                            <option>En Progreso</option>
+                            <option>Completada</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                    </div>
+
+                    <!-- Filtro Tipo -->
+                    <div class="relative">
+                        <select class="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer">
+                            <option>Tipo: Todos</option>
+                            <option>Instalación</option>
+                            <option>Avería</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                    </div>
+                </div>
+
+                <!-- Acciones Principales -->
+                <button class="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-primary/20 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Nueva Orden
+                </button>
+            </div>
+
+            <!-- BARRA DE ACCIONES MASIVAS (Simulación: Aparece al seleccionar) -->
+            <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg mb-4 flex items-center justify-between animate-pulse">
+                <div class="flex items-center gap-3">
+                    <span class="bg-primary text-white text-xs font-bold px-2 py-1 rounded">2</span>
+                    <span class="text-sm text-primary font-medium">filas seleccionadas</span>
+                </div>
+                <div class="flex gap-2">
+                    <button class="text-xs text-yellow-700 hover:bg-yellow-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-yellow-200">
+                        <i class="fa-solid fa-box-archive mr-1"></i> Archivar
+                    </button>
+                    <button class="text-xs text-red-600 hover:bg-red-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-red-200">
+                        <i class="fa-solid fa-trash mr-1"></i> Eliminar
+                    </button>
+                </div>
+            </div>
+
+            <!-- TABLA DE DATOS -->
+            <div class="bg-white rounded-xl shadow-sm border border-neutral/10 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-neutral font-bold text-xs uppercase tracking-wider border-b border-gray-100">
+                            <tr>
+                                <th class="p-4 w-10 text-center">
+                                    <input type="checkbox" class="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer">
+                                </th>
+                                <th class="p-4">N. Abonado</th>
+                                <th class="p-4">Cliente</th>
+                                <th class="p-4">Tipo</th>
+                                <th class="p-4">Dirección</th>
+                                <th class="p-4">Estado</th>
+                                <th class="p-4">Técnico</th>
+                                <th class="p-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm divide-y divide-gray-50">
+                            <!-- Fila 1 (Seleccionada) -->
+                            <tr class="hover:bg-blue-50/30 transition-colors bg-blue-50/20">
+                                <td class="p-4 text-center">
+                                    <input type="checkbox" checked class="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer">
+                                </td>
+                                <td class="p-4 font-medium text-dark">368063</td>
+                                <td class="p-4">
+                                    <div class="font-medium text-dark">Daniel Hernandez</div>
+                                    <div class="text-xs text-gray-400">hernandez@email.com</div>
+                                </td>
+                                <td class="p-4">
+                                    <span class="inline-flex items-center gap-1.5 py-1 px-2 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                                        <i class="fa-solid fa-wrench text-[10px]"></i> Instalación
+                                    </span>
+                                </td>
+                                <td class="p-4 text-gray-500 max-w-xs truncate">Municipio Cárdenas, Sector...</td>
+                                <td class="p-4">
+                                    <span class="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        <span class="w-1.5 h-1.5 bg-yellow-500 rounded-full mr-1.5"></span> Pendiente
+                                    </span>
+                                </td>
+                                <td class="p-4 text-gray-400 italic text-xs">-- Sin Asignar --</td>
+                                <td class="p-4 text-right">
+                                    <button class="text-gray-400 hover:text-primary transition-colors"><i class="fa-solid fa-eye"></i></button>
+                                </td>
+                            </tr>
+
+                            <!-- Fila 2 (Seleccionada) -->
+                            <tr class="hover:bg-blue-50/30 transition-colors bg-blue-50/20">
+                                <td class="p-4 text-center">
+                                    <input type="checkbox" checked class="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer">
+                                </td>
+                                <td class="p-4 font-medium text-dark">368064</td>
+                                <td class="p-4">
+                                    <div class="font-medium text-dark">Maria Rodriguez</div>
+                                    <div class="text-xs text-gray-400">maria.rod@email.com</div>
+                                </td>
+                                <td class="p-4">
+                                    <span class="inline-flex items-center gap-1.5 py-1 px-2 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-100">
+                                        <i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Avería
+                                    </span>
+                                </td>
+                                <td class="p-4 text-gray-500 max-w-xs truncate">Av. Principal, Casa 22...</td>
+                                <td class="p-4">
+                                    <span class="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        <span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span> Asignada
+                                    </span>
+                                </td>
+                                <td class="p-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">JP</div>
+                                        <span class="text-xs font-medium">Juan Perez</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <button class="text-gray-400 hover:text-primary transition-colors"><i class="fa-solid fa-eye"></i></button>
+                                </td>
+                            </tr>
+
+                            <!-- Fila 3 -->
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="p-4 text-center">
+                                    <input type="checkbox" class="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer">
+                                </td>
+                                <td class="p-4 font-medium text-dark">368099</td>
+                                <td class="p-4">
+                                    <div class="font-medium text-dark">Empresa XYZ</div>
+                                    <div class="text-xs text-gray-400">contacto@xyz.com</div>
+                                </td>
+                                <td class="p-4">
+                                    <span class="inline-flex items-center gap-1.5 py-1 px-2 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                                        <i class="fa-solid fa-wrench text-[10px]"></i> Instalación
+                                    </span>
+                                </td>
+                                <td class="p-4 text-gray-500 max-w-xs truncate">Zona Industrial, Galpón 4...</td>
+                                <td class="p-4">
+                                    <span class="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span> Completada
+                                    </span>
+                                </td>
+                                <td class="p-4">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-6 h-6 rounded-full bg-secondary text-white flex items-center justify-center text-xs font-bold">CM</div>
+                                        <span class="text-xs font-medium">Carlos M.</span>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-right">
+                                    <button class="text-gray-400 hover:text-primary transition-colors"><i class="fa-solid fa-eye"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- PAGINACIÓN -->
+                <div class="p-4 border-t border-gray-100 flex items-center justify-between">
+                    <span class="text-xs text-gray-500">Mostrando 1-3 de 45 órdenes</span>
+                    <div class="flex gap-1">
+                        <button class="px-3 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-50">Anterior</button>
+                        <button class="px-3 py-1 text-xs bg-primary text-white rounded font-medium">1</button>
+                        <button class="px-3 py-1 text-xs border rounded hover:bg-gray-50 text-gray-600">2</button>
+                        <button class="px-3 py-1 text-xs border rounded hover:bg-gray-50 text-gray-600">3</button>
+                        <button class="px-3 py-1 text-xs border rounded hover:bg-gray-50">Siguiente</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+</body>
+</html>

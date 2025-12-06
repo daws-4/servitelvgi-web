@@ -1,16 +1,10 @@
-// models/Installer.js
+// models/Installer.ts
 
 import mongoose from "mongoose";
-import IndividualInventorySchema from "@/models/IndividualInventorySchema"; // Importación del submodelo
+import IndividualInventorySchema from "@/models/IndividualInventorySchema"; 
 
 const InstallerSchema = new mongoose.Schema(
   {
-    // Información personal del técnico
-    code: {
-      type: String,
-      required: true,
-      unique: true,
-    },
     name: {
       type: String,
       required: true,
@@ -19,15 +13,23 @@ const InstallerSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-
-    // Estado y disponibilidad
     status: {
       type: String,
       enum: ["active", "inactive", "on_duty", "off_duty"],
       default: "active",
     },
 
-    // Inventario personal asignado al técnico
+    // --- NUEVO CAMPO ---
+    // Referencia a la cuadrilla actual. Si es null, trabaja solo.
+    currentCrew: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Crew",
+      default: null
+    },
+    
+    // Mantenemos el inventario AQUÍ. 
+    // Esto permite "repartir" el inventario: cada miembro de la cuadrilla
+    // tendrá su propio sub-inventario en la base de datos.
     assignedInventory: [IndividualInventorySchema],
   },
   { timestamps: true }

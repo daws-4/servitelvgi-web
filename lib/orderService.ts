@@ -18,7 +18,7 @@ export async function getOrders(filters = {}) {
 // Obtener una orden por id
 export async function getOrderById(id: string) {
   await connectDB();
-  return await OrderModel.findById(id).lean();
+  return await OrderModel.findById(id).populate('assignedTo', 'name surname role').lean();
 }
 
 // Actualizar orden por id

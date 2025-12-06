@@ -11,7 +11,8 @@ import {
     InventoryIcon,
     ReportsIcon,
     SatelliteIcon,
-    LogoutIcon
+    LogoutIcon,
+    CrewsIcon
 } from "@/components/dashboard-icons";
 import Link from "next/link";
 import { UserCell } from "@/components/dataView/User";
@@ -30,6 +31,7 @@ const principalItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
     { href: "/dashboard/orders", label: "Órdenes", icon: OrdersIcon },
     { href: "/dashboard/installers", label: "Instaladores", icon: InstallersIcon },
+    { href: "/dashboard/crews", label: "Cuadrillas", icon: CrewsIcon }
 ];
 
 const gestionItems: NavItem[] = [

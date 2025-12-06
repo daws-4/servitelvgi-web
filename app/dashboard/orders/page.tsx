@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/orders/FilterToolbar";
 import { OrdersTable, OrderData } from "@/components/dashboard/OrdersTable";
 import { Pagination } from "@/components/orders/Pagination";
+import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import axios from "axios";
 
 export default function OrdersPage() {
+    const router = useRouter();
     const [searchValue, setSearchValue] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [typeFilter, setTypeFilter] = useState("all");
@@ -15,6 +18,7 @@ export default function OrdersPage() {
     const [orders, setOrders] = useState<OrderData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
 
     // Fetch orders from API
     const fetchOrders = async () => {
@@ -72,12 +76,7 @@ export default function OrdersPage() {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         return filteredOrders.slice(startIndex, endIndex);
-    }, [filteredOrders, currentPage, itemsPerPage]);
-
-    // Reset to page 1 when filters change
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchValue, statusFilter, typeFilter]);
+    }, [filteredOrders, currentPage]);
 
     const handleSelectOrder = (orderId: string) => {
         const newSelected = new Set(selectedOrders);
@@ -97,15 +96,40 @@ export default function OrdersPage() {
         }
     };
 
+    const handleSearchChange = (value: string) => {
+        setSearchValue(value);
+        setCurrentPage(1); // Reset to first page on search
+        setSelectedOrders(new Set()); // Clear selection
+    };
+
+    const handleStatusChange = (value: string) => {
+        setStatusFilter(value);
+        setCurrentPage(1); // Reset to first page on filter
+        setSelectedOrders(new Set()); // Clear selection
+    };
+
+    const handleTypeChange = (value: string) => {
+        setTypeFilter(value);
+        setCurrentPage(1); // Reset to first page on filter
+        setSelectedOrders(new Set()); // Clear selection
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        setSelectedOrders(new Set()); // Clear selection on page change
+    };
+
     const handleNewOrder = () => {
-        console.log("Nueva orden clicked");
-        // TODO: Open new order modal/form
+        setIsNewOrderModalOpen(true);
+    };
+
+    const handleNewOrderSuccess = () => {
+        setIsNewOrderModalOpen(false);
+        fetchOrders(); // Refresh orders list
     };
 
     const handleViewOrder = (orderId: string) => {
-        console.log("View order:", orderId);
-        // TODO: Navigate to order details
-        // Example: router.push(`/dashboard/orders/${orderId}`)
+        router.push(`/dashboard/orders/${orderId}`);
     };
 
     return (
@@ -118,11 +142,11 @@ export default function OrdersPage() {
             {/* Filter Toolbar */}
             <FilterToolbar
                 searchValue={searchValue}
-                onSearchChange={setSearchValue}
+                onSearchChange={handleSearchChange}
                 statusFilter={statusFilter}
-                onStatusChange={setStatusFilter}
+                onStatusChange={handleStatusChange}
                 typeFilter={typeFilter}
-                onTypeChange={setTypeFilter}
+                onTypeChange={handleTypeChange}
                 onNewOrder={handleNewOrder}
             />
 
@@ -174,19 +198,26 @@ export default function OrdersPage() {
                     />
 
                     {/* Pagination */}
-                    {totalPages > 1 && (
+                    {filteredOrders.length > 0 && (
                         <div className="mt-4">
                             <Pagination
                                 currentPage={currentPage}
                                 totalPages={totalPages}
                                 totalItems={totalItems}
                                 itemsPerPage={itemsPerPage}
-                                onPageChange={setCurrentPage}
+                                onPageChange={handlePageChange}
                             />
                         </div>
                     )}
                 </>
             )}
+
+            {/* New Order Modal */}
+            <NewOrderModal
+                isOpen={isNewOrderModalOpen}
+                onClose={() => setIsNewOrderModalOpen(false)}
+                onSuccess={handleNewOrderSuccess}
+            />
         </main>
     );
 }

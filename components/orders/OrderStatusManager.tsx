@@ -1,0 +1,254 @@
+"use client";
+
+import React, { useState, useEffect } from 'react';
+
+export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
+export type OrderType = "instalacion" | "averia" | "otro";
+
+interface Technician {
+    _id: string;
+    name: string;
+    surname: string;
+}
+
+interface OrderStatusManagerProps {
+    initialStatus?: OrderStatus;
+    initialType?: OrderType;
+    initialAssignedTo?: string;
+    onStatusChange?: (status: OrderStatus) => void;
+    onTypeChange?: (type: OrderType) => void;
+    onAssignedToChange?: (technicianId: string) => void;
+    onSave?: (data: { status: OrderStatus; type: OrderType; assignedTo: string; reportDetails?: string }) => void;
+    onCancel?: () => void;
+    isSaving?: boolean;
+}
+
+export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
+    initialStatus = "pending",
+    initialType = "instalacion",
+    initialAssignedTo = "",
+    onStatusChange,
+    onTypeChange,
+    onAssignedToChange,
+    onSave,
+    onCancel,
+    isSaving = false
+}) => {
+    const [status, setStatus] = useState<OrderStatus>(initialStatus);
+    const [type, setType] = useState<OrderType>(initialType);
+    const [assignedTo, setAssignedTo] = useState(initialAssignedTo);
+    const [reportDetails, setReportDetails] = useState("");
+    const [technicians, setTechnicians] = useState<Technician[]>([]);
+    const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
+
+    // Load technicians
+    useEffect(() => {
+        const loadTechnicians = async () => {
+            setIsLoadingTechnicians(true);
+            try {
+                const res = await fetch('/api/installers');
+                if (res.ok) {
+                    const data = await res.json();
+                    setTechnicians(data);
+                }
+            } catch (error) {
+                console.error('Error loading technicians:', error);
+            } finally {
+                setIsLoadingTechnicians(false);
+            }
+        };
+
+        loadTechnicians();
+    }, []);
+
+    const handleStatusChange = (newStatus: OrderStatus) => {
+        setStatus(newStatus);
+        if (onStatusChange) onStatusChange(newStatus);
+    };
+
+    const handleTypeChange = (newType: OrderType) => {
+        setType(newType);
+        if (onTypeChange) onTypeChange(newType);
+    };
+
+    const handleAssignedToChange = (techId: string) => {
+        setAssignedTo(techId);
+        if (onAssignedToChange) onAssignedToChange(techId);
+    };
+
+    const handleSave = () => {
+        if (onSave) {
+            onSave({
+                status,
+                type,
+                assignedTo,
+                ...(status === "completed" && { reportDetails })
+            });
+        }
+    };
+
+    const getStatusConfig = (currentStatus: OrderStatus) => {
+        switch (currentStatus) {
+            case 'pending':
+                return {
+                    colorClass: "text-yellow-500",
+                    badgeClass: "bg-yellow-100 text-yellow-800 border-yellow-200",
+                    description: "Orden creada, pendiente de asignación."
+                };
+            case 'assigned':
+                return {
+                    colorClass: "text-blue-500",
+                    badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
+                    description: "Técnico notificado. En espera de inicio."
+                };
+            case 'in_progress':
+                return {
+                    colorClass: "text-purple-500",
+                    badgeClass: "bg-purple-100 text-purple-800 border-purple-200",
+                    description: "El técnico está trabajando en el sitio."
+                };
+            case 'completed':
+                return {
+                    colorClass: "text-green-500",
+                    badgeClass: "bg-green-100 text-green-800 border-green-200",
+                    description: "Trabajo finalizado y reportado."
+                };
+            case 'cancelled':
+                return {
+                    colorClass: "text-red-500",
+                    badgeClass: "bg-red-100 text-red-800 border-red-200",
+                    description: "Orden cancelada por el operador."
+                };
+        }
+    };
+
+    const statusConfig = getStatusConfig(status);
+
+    return (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-fit lg:sticky lg:top-24">
+            <div className="bg-accent/30 border-b border-accent px-6 py-4">
+                <h3 className="font-semibold text-secondary">Estado y Asignación</h3>
+            </div>
+            <div className="p-6 space-y-6">
+
+                {/* Status Selection */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+                        Estado Actual
+                    </label>
+                    <div className="relative">
+                        <select
+                            value={status}
+                            onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}
+                            className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-md bg-white font-semibold text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer"
+                        >
+                            <option value="pending">Pendiente</option>
+                            <option value="assigned">Asignada</option>
+                            <option value="in_progress">En Progreso</option>
+                            <option value="completed">Completada</option>
+                            <option value="cancelled">Cancelada</option>
+                        </select>
+                        {/* Status Icon */}
+                        <div className="absolute inset-y-0 left-0 flex items-center px-3 pointer-events-none">
+                            <i className={`fa-solid fa-circle ${statusConfig.colorClass}`}></i>
+                        </div>
+                        {/* Chevron */}
+                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                            <i className="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">
+                        {statusConfig.description}
+                    </p>
+                </div>
+
+                <hr className="border-gray-100" />
+
+                {/* Technician Assignment */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+                        Técnico Asignado
+                    </label>
+                    <div className="relative">
+                        <i className="fa-solid fa-user-gear absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <select
+                            value={assignedTo}
+                            onChange={(e) => handleAssignedToChange(e.target.value)}
+                            disabled={isLoadingTechnicians}
+                            className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-md bg-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer disabled:opacity-50"
+                        >
+                            <option value="">-- Sin Asignar --</option>
+                            {technicians.map(tech => (
+                                <option key={tech._id} value={tech._id}>
+                                    {tech.name} {tech.surname}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
+                            <i className="fa-solid fa-chevron-down text-xs"></i>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Order Type */}
+                <div>
+                    <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+                        Tipo de Orden
+                    </label>
+                    <select
+                        value={type}
+                        onChange={(e) => handleTypeChange(e.target.value as OrderType)}
+                        className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer"
+                    >
+                        <option value="instalacion">Instalación</option>
+                        <option value="averia">Avería</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+
+                {/* Closure Details - Only visible when completed */}
+                {status === "completed" && (
+                    <div className="animate-pulse bg-green-50 p-3 rounded border border-green-100">
+                        <label className="block text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">
+                            Detalles de Cierre
+                        </label>
+                        <textarea
+                            value={reportDetails}
+                            onChange={(e) => setReportDetails(e.target.value)}
+                            placeholder="Comentarios finales del técnico..."
+                            className="w-full px-3 py-2 border-2 border-green-200 rounded-md bg-white text-sm focus:border-green-400 focus:outline-none resize-y min-h-[80px]"
+                        />
+                    </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="pt-4 flex flex-col gap-3">
+                    <button
+                        type="button"
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="w-full bg-primary hover:bg-secondary text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSaving ? (
+                            <>
+                                <i className="fa-solid fa-circle-notch fa-spin"></i> Guardando...
+                            </>
+                        ) : (
+                            <>
+                                <i className="fa-solid fa-save"></i> Guardar Cambios
+                            </>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        disabled={isSaving}
+                        className="w-full bg-white hover:bg-gray-50 text-gray-600 font-medium py-3 px-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all disabled:opacity-50"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};

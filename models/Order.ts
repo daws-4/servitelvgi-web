@@ -64,7 +64,6 @@ const OrderSchema = new mongoose.Schema(
     servicesToInstall: {
       type: [String], // "Servicios a instalar: Internet, Streaming, FibraNet500_500Mb N°20469486, TelefoníaPon 2767400990, NetUnoGO Plus 3 N°20469487"
     },
-    // Nota: 'failureReported' no está presente en la imagen
     // Nota: 'assignedTechnicianText' no está presente en la imagen
 
     // --- Datos de Gestión y Cierre (Técnico, no se extraen de esta imagen) ---

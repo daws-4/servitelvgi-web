@@ -31,20 +31,20 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 {onAssignInstaller && (
                     <button
                         onClick={onAssignInstaller}
-                        className="text-xs text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-blue-200"
+                        className="text-xs text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-blue-200 cursor-pointer"
                     >
                         <i className="fa-solid fa-user-plus mr-1"></i> Asignar Instalador
                     </button>
                 )}
                 <button
                     onClick={onArchive}
-                    className="text-xs text-yellow-700 hover:bg-yellow-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-yellow-200"
+                    className="text-xs text-yellow-700 hover:bg-yellow-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-yellow-200 cursor-pointer"
                 >
                     <i className="fa-solid fa-box-archive mr-1"></i> Archivar
                 </button>
                 <button
                     onClick={onDelete}
-                    className="text-xs text-red-600 hover:bg-red-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-red-200"
+                    className="text-xs text-red-600 hover:bg-red-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-red-200 cursor-pointer"
                 >
                     <i className="fa-solid fa-trash mr-1"></i> Eliminar
                 </button>

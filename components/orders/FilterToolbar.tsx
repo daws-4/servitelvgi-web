@@ -92,9 +92,9 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
             {/* Acciones Principales */}
             <button
                 onClick={onNewOrder}
-                className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-primary/20 transition-all flex items-center gap-2"
+                className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-primary/20 transition-all flex items-center gap-2 cursor-pointer"
             >
-                <i className="fa-solid fa-plus"></i> Nueva Orden
+                <i className="fa-solid fa-plus "></i> Nueva Orden
             </button>
         </div>
     );

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { BulkActionBar } from "@/components/orders/BulkActionBar";
 import { AssignInstallerModal } from "@/components/orders/AssignInstallerModal";
+import { useRouter } from "next/navigation";
 
 export interface OrderData {
     _id: string;
@@ -51,7 +52,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
 }) => {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-
+    const router = useRouter();
     const allSelected = orders?.length > 0 && orders.every((order) => selectedOrders.has(order._id));
     const someSelected = orders?.some((order) => selectedOrders.has(order._id)) && !allSelected;
 
@@ -175,14 +176,35 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
         }
     };
 
+    const handleEditRedirect = (orderId: string) => {
+        router.push(`/dashboard/orders/${orderId}`);
+    };  
+
+    const deleteOrder = async (orderId: string) => {
+       const response = await axios.delete(`/api/web/orders`, {
+           data: { id: orderId },
+       });
+       return response.data
+    };
+
+    const handleDeleteOrder = (orderId: string) => {
+        deleteOrder(orderId);
+    };
+
     const getTypeBadge = (type: OrderData["type"]) => {
-        if (type === "instalacion") {
+        // Normalize: remove accents and convert to lowercase
+        const normalizedType = type
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+
+        if (normalizedType === "instalacion") {
             return (
                 <span className="inline-flex items-center gap-1.5 py-1 px-2 rounded text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
                     <i className="fa-solid fa-wrench text-[10px]"></i> Instalación
                 </span>
             );
-        } else if (type === "averia") {
+        } else if (normalizedType === "averia") {
             return (
                 <span className="inline-flex items-center gap-1.5 py-1 px-2 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-100">
                     <i className="fa-solid fa-triangle-exclamation text-[10px]"></i> Avería
@@ -305,10 +327,10 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                                 className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
                                             />
                                         </td>
-                                        <td className="p-4 font-medium text-dark">{order.subscriberNumber}</td>
+                                        <td className="p-4 font-medium text-dark cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.subscriberNumber}</td>
                                         <td className="p-4">
-                                            <div className="font-medium text-dark">{order.subscriberName}</div>
-                                            {order.email && <div className="text-xs text-gray-400">{order.email}</div>}
+                                            <div className="font-medium text-dark cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.subscriberName}</div>
+                                            {order.email && <div className="text-xs text-gray-400 cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.email}</div>}
                                         </td>
                                         <td className="p-4">{getTypeBadge(order.type)}</td>
                                         <td className="p-4 text-gray-500 max-w-xs truncate">{order.address}</td>

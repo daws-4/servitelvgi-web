@@ -9,7 +9,7 @@ import { ROUTES, LOGIN_ROUTE, DEFAULT_REDIRECT } from "@/lib/routes";
 // - For compatibility, requests to the old `/login` path are redirected to `/`.
 // - Static assets and Next internals are excluded by the matcher below.
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Read session token cookie. Adjust the cookie name if you use a different one.

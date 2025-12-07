@@ -6,18 +6,18 @@ import { InstallerCrewBadge } from "./InstallerCrewBadge";
 import { EditIcon, EyeCloseIcon, TrashIcon } from "@/components/icons";
 
 export interface Installer {
-    id: number;
+    id: string;
     name: string;
     phone: string;
-    status: "active" | "on_duty" | "off_duty" | "inactive";
+    status: "active" | "inactive";
     currentCrew: string | null;
 }
 
 interface InstallersTableProps {
     installers: Installer[];
-    selectedIds: number[];
+    selectedIds: string[];
     onSelectAll?: (selected: boolean) => void;
-    onSelectRow?: (id: number, selected: boolean) => void;
+    onSelectRow?: (id: string, selected: boolean) => void;
     onEdit?: (installer: Installer) => void;
     onViewDetails?: (installer: Installer) => void;
     onDelete?: (installer: Installer) => void;
@@ -39,7 +39,7 @@ export const InstallersTable: React.FC<InstallersTableProps> = ({
         onSelectAll?.(e.target.checked);
     };
 
-    const handleSelectRow = (id: number, checked: boolean) => {
+    const handleSelectRow = (id: string, checked: boolean) => {
         onSelectRow?.(id, checked);
     };
 

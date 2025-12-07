@@ -2,7 +2,7 @@ import React from "react";
 import { Button, ButtonProps } from "@heroui/react";
 
 interface FormButtonProps extends ButtonProps {
-    label: string; // Texto del botón
+    label?: string; // Texto del botón (opcional si se usan children)
     classNames?: {
         base?: string;
         [key: string]: string | undefined;

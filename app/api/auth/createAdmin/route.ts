@@ -7,8 +7,12 @@ export async function GET() {
   try {
     await connectDB();
 
-    const username = "admin";
+    const username = "aleuwu";
     const plainPassword = "123456";
+    const name = 'Alexandra';
+    const surname = 'Álvarez';
+    const email = 'aleuwu@gmail.com';
+    const role = 'admin';
 
     // Check if admin user already exists
     const existing = await User.findOne({ username }).exec();
@@ -27,8 +31,10 @@ export async function GET() {
     const created = await User.create({
       username,
       password: hashed,
-      name: "Administrador",
-      role: "admin",
+      name,
+      surname,
+      email,
+      role,
       isActive: true,
     });
 

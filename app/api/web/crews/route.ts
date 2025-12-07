@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import {
-  createInstaller,
-  getInstallers,
-  getInstallerById,
-  updateInstaller,
-  deleteInstaller,
-} from "@/lib/installerService";
+  createCrew,
+  getCrews,
+  getCrewById,
+  updateCrew,
+  deleteCrew,
+} from "@/lib/crewService";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
     if (id) {
-      const item = await getInstallerById(id);
+      const item = await getCrewById(id);
       if (!item)
         return NextResponse.json(
           { error: "Not found" },
@@ -30,10 +30,10 @@ export async function GET(request: Request) {
         );
       return NextResponse.json(item, { status: 200, headers: CORS_HEADERS });
     }
-    const items = await getInstallers();
+    const items = await getCrews();
     return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
-    console.error('Error in GET /api/web/installers:', err);
+    console.error('Error in GET /api/web/crews:', err);
     return NextResponse.json(
       { error: String(err) },
       { status: 500, headers: CORS_HEADERS }
@@ -44,9 +44,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const created = await createInstaller(body);
+    const created = await createCrew(body);
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err) {
+    console.error('Error in POST /api/web/crews:', err);
     return NextResponse.json(
       { error: String(err) },
       { status: 500, headers: CORS_HEADERS }
@@ -66,7 +67,7 @@ export async function PUT(request: Request) {
     const data = { ...body };
     delete data.id;
     delete data._id;
-    const updated = await updateInstaller(id, data);
+    const updated = await updateCrew(id, data);
     if (!updated)
       return NextResponse.json(
         { error: "Not found" },
@@ -74,6 +75,7 @@ export async function PUT(request: Request) {
       );
     return NextResponse.json(updated, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
+    console.error('Error in PUT /api/web/crews:', err);
     return NextResponse.json(
       { error: String(err) },
       { status: 500, headers: CORS_HEADERS }
@@ -98,7 +100,7 @@ export async function DELETE(request: Request) {
         { error: "id is required" },
         { status: 400, headers: CORS_HEADERS }
       );
-    const deleted = await deleteInstaller(finalId);
+    const deleted = await deleteCrew(finalId);
     if (!deleted)
       return NextResponse.json(
         { error: "Not found" },
@@ -109,6 +111,7 @@ export async function DELETE(request: Request) {
       { status: 200, headers: CORS_HEADERS }
     );
   } catch (err) {
+    console.error('Error in DELETE /api/web/crews:', err);
     return NextResponse.json(
       { error: String(err) },
       { status: 500, headers: CORS_HEADERS }

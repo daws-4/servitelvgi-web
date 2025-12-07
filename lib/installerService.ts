@@ -8,7 +8,12 @@ export async function createInstaller(data: any) {
 
 export async function getInstallers(filters = {}) {
   await connectDB();
-  return await InstallerModel.find(filters).sort({ createdAt: -1 });
+  const installers = await InstallerModel.find(filters).sort({ createdAt: -1 }).lean();
+  // Transform _id to id for frontend compatibility
+  return installers.map((installer: any) => ({
+    ...installer,
+    id: installer._id.toString(),
+  }));
 }
 
 export async function getInstallerById(id: string) {

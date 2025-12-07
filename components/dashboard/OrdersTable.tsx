@@ -323,9 +323,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                         <tbody className="text-sm divide-y divide-gray-50">
                             {orders?.map((order) => {
                                 const isSelected = selectedOrders.has(order._id);
-                                const technicianName = order.assignedTo
-                                    ? (order.assignedTo.name || `${order.assignedTo.firstName || ''} ${order.assignedTo.lastName || ''}`.trim())
-                                    : null;
+                                const technicianName = order.assignedTo?.name || null;
                                 const technicianInitials = technicianName
                                     ? technicianName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
                                     : '';

@@ -155,7 +155,7 @@ export const AssignInstallerModal: React.FC<AssignInstallerModalProps> = ({
                                     <button
                                         key={installer._id}
                                         onClick={() => setSelectedInstaller(installer._id)}
-                                        className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${isSelected
+                                        className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer ${isSelected
                                                 ? "border-primary bg-blue-50"
                                                 : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                                             }`}
@@ -187,7 +187,7 @@ export const AssignInstallerModal: React.FC<AssignInstallerModalProps> = ({
                 <div className="p-4 border-t border-gray-100 flex gap-3">
                     <button
                         onClick={handleClose}
-                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                        className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium cursor-pointer"
                     >
                         Cancelar
                     </button>
@@ -195,8 +195,8 @@ export const AssignInstallerModal: React.FC<AssignInstallerModalProps> = ({
                         onClick={handleConfirm}
                         disabled={!selectedInstaller}
                         className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${selectedInstaller
-                                ? "bg-primary text-white hover:bg-secondary"
-                                : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                ? "bg-primary text-white hover:bg-secondary cursor-pointer"
+                                : "bg-gray-200 text-gray-400 cursor-not-allowed "
                             }`}
                     >
                         Asignar

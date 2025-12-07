@@ -16,7 +16,10 @@ export async function createOrder(data: any) {
 // Función reutilizable para LISTAR ordenes
 export async function getOrders(filters = {}) {
   await connectDB();
-  return await OrderModel.find(filters).sort({ createdAt: -1 });
+  return await OrderModel.find(filters)
+    .populate('assignedTo', 'name phone')
+    .sort({ createdAt: -1 })
+    .lean();
 }
 
 // Obtener una orden por id

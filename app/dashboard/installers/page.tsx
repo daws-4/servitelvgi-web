@@ -5,37 +5,55 @@ import { InstallersFilterToolbar } from '@/components/installers/InstallersFilte
 import { InstallersTable, Installer } from '@/components/installers/InstallersTable';
 import { BulkActionBar } from '@/components/orders/BulkActionBar';
 import { Pagination } from '@/components/orders/Pagination';
+import { NewInstallerModal } from '@/components/installers/NewInstallerModal';
 
 export default function InstallersPage() {
-  // State management
   const [installers, setInstallers] = useState<Installer[]>([]);
+  const [crews, setCrews] = useState<any[]>([]);
   const [searchValue, setSearchValue] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [crewFilter, setCrewFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isNewInstallerModalOpen, setIsNewInstallerModalOpen] = useState(false);
   const itemsPerPage = 10;
 
-  // Mock data - Replace with actual API call
+  // Fetch installers and crews from API
   useEffect(() => {
-    const mockData: Installer[] = [
-      { id: 1, name: "Juan Perez", phone: "0424-1234567", status: "active", currentCrew: null },
-      { id: 2, name: "Maria Rodriguez", phone: "0412-9876543", status: "on_duty", currentCrew: "Cuadrilla Alfa" },
-      { id: 3, name: "Carlos Martinez", phone: "0414-5556677", status: "off_duty", currentCrew: null },
-      { id: 4, name: "Ana Lopez", phone: "0416-1112233", status: "inactive", currentCrew: null },
-      { id: 5, name: "Roberto Gomez", phone: "0424-9998877", status: "active", currentCrew: "Cuadrilla Beta" },
-      { id: 6, name: "Sofia Garcia", phone: "0426-5554321", status: "on_duty", currentCrew: "Cuadrilla Alfa" },
-      { id: 7, name: "Luis Torres", phone: "0424-7778899", status: "active", currentCrew: null },
-      { id: 8, name: "Carmen Vega", phone: "0412-3334455", status: "off_duty", currentCrew: "Cuadrilla Beta" },
-      { id: 9, name: "Pedro Sanchez", phone: "0414-6667788", status: "active", currentCrew: null },
-      { id: 10, name: "Isabel Morales", phone: "0416-9990011", status: "inactive", currentCrew: null },
-    ];
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-    // Simulate API call
-    setTimeout(() => {
-      setInstallers(mockData);
-      setLoading(false);
-    }, 500);
+        // Fetch installers and crews in parallel
+        const [installersResponse, crewsResponse] = await Promise.all([
+          fetch('/api/web/installers'),
+          fetch('/api/web/crews')
+        ]);
+
+        if (!installersResponse.ok) {
+          throw new Error('Error al cargar los instaladores');
+        }
+
+        const installersData = await installersResponse.json();
+        setInstallers(installersData);
+
+        // Crews might not exist yet, so don't throw error
+        if (crewsResponse.ok) {
+          const crewsData = await crewsResponse.json();
+          setCrews(crewsData);
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        setError(err instanceof Error ? err.message : 'Error al cargar los datos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Filtered data
@@ -47,9 +65,11 @@ export default function InstallersPage() {
 
       const matchesStatus = statusFilter === 'all' || installer.status === statusFilter;
 
-      return matchesSearch && matchesStatus;
+      const matchesCrew = crewFilter === 'all' || installer.currentCrew === crewFilter;
+
+      return matchesSearch && matchesStatus && matchesCrew;
     });
-  }, [installers, searchValue, statusFilter]);
+  }, [installers, searchValue, statusFilter, crewFilter]);
 
   // Paginated data
   const paginatedInstallers = useMemo(() => {
@@ -73,6 +93,12 @@ export default function InstallersPage() {
     setSelectedIds([]); // Clear selection
   };
 
+  const handleCrewChange = (value: string) => {
+    setCrewFilter(value);
+    setCurrentPage(1); // Reset to first page on filter
+    setSelectedIds([]); // Clear selection
+  };
+
   const handleSelectAll = (selected: boolean) => {
     if (selected) {
       setSelectedIds(paginatedInstallers.map(i => i.id));
@@ -81,7 +107,7 @@ export default function InstallersPage() {
     }
   };
 
-  const handleSelectRow = (id: number, selected: boolean) => {
+  const handleSelectRow = (id: string, selected: boolean) => {
     if (selected) {
       setSelectedIds([...selectedIds, id]);
     } else {
@@ -134,8 +160,23 @@ export default function InstallersPage() {
   };
 
   const handleNewInstaller = () => {
-    // TODO: Implement new installer modal/form
-    alert('Abrir modal de creación de instalador');
+    setIsNewInstallerModalOpen(true);
+  };
+
+  const handleNewInstallerSuccess = async () => {
+    // Close the modal
+    setIsNewInstallerModalOpen(false);
+
+    // Refresh the installers list
+    try {
+      const response = await fetch('/api/web/installers');
+      if (response.ok) {
+        const data = await response.json();
+        setInstallers(data);
+      }
+    } catch (err) {
+      console.error('Error refreshing installers:', err);
+    }
   };
 
   if (loading) {
@@ -144,6 +185,24 @@ export default function InstallersPage() {
         <div className="text-center">
           <i className="fa-solid fa-spinner fa-spin text-4xl text-primary mb-4"></i>
           <p className="text-gray-600">Cargando instaladores...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <i className="fa-solid fa-triangle-exclamation text-4xl text-red-500 mb-4"></i>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">Error al cargar instaladores</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary transition-colors"
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );
@@ -175,6 +234,9 @@ export default function InstallersPage() {
           onSearchChange={handleSearchChange}
           statusFilter={statusFilter}
           onStatusChange={handleStatusChange}
+          crewFilter={crewFilter}
+          onCrewChange={handleCrewChange}
+          crews={crews}
           totalCount={filteredInstallers.length}
         />
 
@@ -185,30 +247,52 @@ export default function InstallersPage() {
           onDelete={handleDelete}
         />
 
-        {/* Installers Table */}
-        <InstallersTable
-          installers={paginatedInstallers}
-          selectedIds={selectedIds}
-          onSelectAll={handleSelectAll}
-          onSelectRow={handleSelectRow}
-          onEdit={handleEdit}
-          onViewDetails={handleViewDetails}
-          onDelete={handleDeleteSingle}
-        />
-
-        {/* Pagination */}
-        {filteredInstallers.length > 0 && (
-          <div className="mt-4">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filteredInstallers.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={handlePageChange}
-            />
+        {/* Empty State */}
+        {filteredInstallers.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-neutral/10 p-12 text-center">
+            <i className="fa-solid fa-inbox text-gray-300 text-5xl mb-4"></i>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">No se encontraron instaladores</h3>
+            <p className="text-gray-500">
+              {searchValue || statusFilter !== 'all'
+                ? 'Intenta ajustar los filtros de búsqueda'
+                : 'No hay instaladores registrados en el sistema'}
+            </p>
           </div>
+        ) : (
+          <>
+            {/* Installers Table */}
+            <InstallersTable
+              installers={paginatedInstallers}
+              selectedIds={selectedIds}
+              onSelectAll={handleSelectAll}
+              onSelectRow={handleSelectRow}
+              onEdit={handleEdit}
+              onViewDetails={handleViewDetails}
+              onDelete={handleDeleteSingle}
+            />
+
+            {/* Pagination */}
+            {filteredInstallers.length > 0 && (
+              <div className="mt-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredInstallers.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </>
         )}
       </main>
+
+      {/* New Installer Modal */}
+      <NewInstallerModal
+        isOpen={isNewInstallerModalOpen}
+        onClose={() => setIsNewInstallerModalOpen(false)}
+        onSuccess={handleNewInstallerSuccess}
+      />
     </div>
   );
 }

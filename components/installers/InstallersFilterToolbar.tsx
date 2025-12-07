@@ -7,6 +7,9 @@ interface InstallersFilterToolbarProps {
     onSearchChange?: (value: string) => void;
     statusFilter?: string;
     onStatusChange?: (value: string) => void;
+    crewFilter?: string;
+    onCrewChange?: (value: string) => void;
+    crews?: any[];
     totalCount?: number;
 }
 
@@ -15,6 +18,9 @@ export const InstallersFilterToolbar: React.FC<InstallersFilterToolbarProps> = (
     onSearchChange,
     statusFilter = "all",
     onStatusChange,
+    crewFilter = "all",
+    onCrewChange,
+    crews = [],
     totalCount = 0,
 }) => {
     return (
@@ -49,9 +55,29 @@ export const InstallersFilterToolbar: React.FC<InstallersFilterToolbarProps> = (
                     >
                         <option value="all">Todos</option>
                         <option value="active">Activo</option>
-                        <option value="on_duty">En Guardia</option>
-                        <option value="off_duty">Fuera de Guardia</option>
                         <option value="inactive">Inactivo</option>
+                    </select>
+                    <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                </div>
+            </div>
+
+            {/* Crew Filter */}
+            <div className="w-full md:w-1/4">
+                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">
+                    Cuadrilla
+                </label>
+                <div className="relative">
+                    <select
+                        value={crewFilter}
+                        onChange={(e) => onCrewChange?.(e.target.value)}
+                        className="w-full appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary cursor-pointer"
+                    >
+                        <option value="all">Todas</option>
+                        {crews.map((crew) => (
+                            <option key={crew._id} value={crew.name}>
+                                {crew.name}
+                            </option>
+                        ))}
                     </select>
                     <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
                 </div>

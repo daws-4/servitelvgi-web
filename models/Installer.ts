@@ -15,10 +15,13 @@ const InstallerSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["active", "inactive", "on_duty", "off_duty"],
+      enum: ["active", "inactive"],
       default: "active",
     },
-
+    onDuty:{
+      type:Boolean,
+      default:false
+    },
     // --- NUEVO CAMPO ---
     // Referencia a la cuadrilla actual. Si es null, trabaja solo.
     currentCrew: {

@@ -12,6 +12,10 @@ interface FilterToolbarProps {
     onStatusChange?: (value: string) => void;
     typeFilter?: string;
     onTypeChange?: (value: string) => void;
+    startDate?: string;
+    onStartDateChange?: (value: string) => void;
+    endDate?: string;
+    onEndDateChange?: (value: string) => void;
     onNewOrder?: () => void;
 }
 
@@ -38,6 +42,10 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     onStatusChange,
     typeFilter = "all",
     onTypeChange,
+    startDate = "",
+    onStartDateChange,
+    endDate = "",
+    onEndDateChange,
     onNewOrder,
 }) => {
     return (
@@ -86,6 +94,30 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                         ))}
                     </select>
                     <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                </div>
+
+                {/* Filtro Fecha Inicio */}
+                <div className="relative">
+                    <i className="fa-solid fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => onStartDateChange?.(e.target.value)}
+                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer"
+                        placeholder="Desde"
+                    />
+                </div>
+
+                {/* Filtro Fecha Fin */}
+                <div className="relative">
+                    <i className="fa-solid fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
+                    <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => onEndDateChange?.(e.target.value)}
+                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer"
+                        placeholder="Hasta"
+                    />
                 </div>
             </div>
 

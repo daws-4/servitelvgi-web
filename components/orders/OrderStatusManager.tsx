@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type OrderType = "instalacion" | "averia" | "otro";
@@ -15,11 +16,14 @@ interface OrderStatusManagerProps {
     initialStatus?: OrderStatus;
     initialType?: OrderType;
     initialAssignedTo?: string;
+    orderId?: string;
+    orderName?: string;
     onStatusChange?: (status: OrderStatus) => void;
     onTypeChange?: (type: OrderType) => void;
     onAssignedToChange?: (technicianId: string) => void;
     onSave?: (data: { status: OrderStatus; type: OrderType; assignedTo: string; reportDetails?: string }) => void;
     onCancel?: () => void;
+    onDelete?: () => void | Promise<void>;
     isSaving?: boolean;
 }
 
@@ -27,11 +31,14 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
     initialStatus = "pending",
     initialType = "instalacion",
     initialAssignedTo = "",
+    orderId,
+    orderName,
     onStatusChange,
     onTypeChange,
     onAssignedToChange,
     onSave,
     onCancel,
+    onDelete,
     isSaving = false
 }) => {
     const [status, setStatus] = useState<OrderStatus>(initialStatus);
@@ -84,6 +91,18 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                 assignedTo,
                 ...(status === "completed" && { reportDetails })
             });
+        }
+    };
+
+    const handleDelete = async () => {
+        const displayName = orderName || 'esta orden';
+
+        if (!confirm(`¿Estás seguro de eliminar ${displayName}? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+
+        if (onDelete) {
+            await onDelete();
         }
     };
 
@@ -227,7 +246,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                         type="button"
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="w-full bg-primary hover:bg-secondary text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-primary hover:bg-secondary text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                         {isSaving ? (
                             <>
@@ -241,9 +260,17 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                     </button>
                     <button
                         type="button"
+                        onClick={handleDelete}
+                        disabled={isSaving || !orderId}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-4 rounded-lg shadow-lg shadow-red-600/20 transition-all flex items-center justify-center gap-2 transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                        <i className="fa-solid fa-trash"></i> Eliminar Orden
+                    </button>
+                    <button
+                        type="button"
                         onClick={onCancel}
                         disabled={isSaving}
-                        className="w-full bg-white hover:bg-gray-50 text-gray-600 font-medium py-3 px-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all disabled:opacity-50"
+                        className="w-full bg-white hover:bg-gray-50 text-gray-600 font-medium py-3 px-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-all disabled:opacity-50 cursor-pointer"
                     >
                         Cancelar
                     </button>

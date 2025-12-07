@@ -13,6 +13,8 @@ export default function OrdersPage() {
     const [searchValue, setSearchValue] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [typeFilter, setTypeFilter] = useState("all");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
     const [orders, setOrders] = useState<OrderData[]>([]);
@@ -63,8 +65,31 @@ export default function OrdersPage() {
             filtered = filtered.filter(order => order.type === typeFilter);
         }
 
+        // Apply date range filter
+        if (startDate || endDate) {
+            filtered = filtered.filter(order => {
+                const orderDate = new Date(order.createdAt || order.updatedAt || Date.now());
+                const start = startDate ? new Date(startDate) : null;
+                const end = endDate ? new Date(endDate) : null;
+
+                // Set end date to end of day for inclusive filtering
+                if (end) {
+                    end.setHours(23, 59, 59, 999);
+                }
+
+                if (start && end) {
+                    return orderDate >= start && orderDate <= end;
+                } else if (start) {
+                    return orderDate >= start;
+                } else if (end) {
+                    return orderDate <= end;
+                }
+                return true;
+            });
+        }
+
         return filtered;
-    }, [orders, searchValue, statusFilter, typeFilter]);
+    }, [orders, searchValue, statusFilter, typeFilter, startDate, endDate]);
 
     // Pagination logic
     const itemsPerPage = 10;
@@ -114,6 +139,18 @@ export default function OrdersPage() {
         setSelectedOrders(new Set()); // Clear selection
     };
 
+    const handleStartDateChange = (value: string) => {
+        setStartDate(value);
+        setCurrentPage(1);
+        setSelectedOrders(new Set());
+    };
+
+    const handleEndDateChange = (value: string) => {
+        setEndDate(value);
+        setCurrentPage(1);
+        setSelectedOrders(new Set());
+    };
+
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
         setSelectedOrders(new Set()); // Clear selection on page change
@@ -147,6 +184,10 @@ export default function OrdersPage() {
                 onStatusChange={handleStatusChange}
                 typeFilter={typeFilter}
                 onTypeChange={handleTypeChange}
+                startDate={startDate}
+                onStartDateChange={handleStartDateChange}
+                endDate={endDate}
+                onEndDateChange={handleEndDateChange}
                 onNewOrder={handleNewOrder}
             />
 

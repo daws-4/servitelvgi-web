@@ -33,6 +33,7 @@ export async function GET(request: Request) {
     const items = await getOrders();
     return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
+    console.error("Error fetching orders:", err);
     return NextResponse.json(
       { error: String(err) },
       { status: 500, headers: CORS_HEADERS }

@@ -86,6 +86,25 @@ export default function OrderEditPage() {
         router.push('/dashboard/orders');
     };
 
+    const handleDelete = async () => {
+        if (!orderId) {
+            alert('Error: ID de orden no disponible');
+            return;
+        }
+
+        try {
+            await axios.delete('/api/web/orders', {
+                data: { id: orderId }
+            });
+
+            alert('Orden eliminada exitosamente');
+            router.push('/dashboard/orders');
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            alert('Error al eliminar la orden. Por favor, intenta de nuevo.');
+        }
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'pending':
@@ -197,6 +216,7 @@ export default function OrderEditPage() {
                     initialData={orderData}
                     onSave={handleSave}
                     onCancel={handleCancel}
+                    onDelete={handleDelete}
                 />
             </main>
         </div>

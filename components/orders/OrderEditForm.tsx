@@ -38,13 +38,15 @@ interface OrderEditFormProps {
     initialData: OrderEditData;
     onSave?: (data: OrderEditData) => Promise<void>;
     onCancel?: () => void;
+    onDelete?: () => Promise<void>;
 }
 
 export const OrderEditForm: React.FC<OrderEditFormProps> = ({
     orderId,
     initialData,
     onSave,
-    onCancel
+    onCancel,
+    onDelete
 }) => {
     const [formData, setFormData] = useState<OrderEditData>(initialData);
     const [materials, setMaterials] = useState<Material[]>(initialData.materialsUsed || []);
@@ -196,6 +198,8 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
             {/* RIGHT COLUMN (1/3) - Status & Assignment */}
             <div className="space-y-6">
                 <OrderStatusManager
+                    orderId={orderId}
+                    orderName={formData.subscriberName}
                     initialStatus={formData.status}
                     initialType={formData.type}
                     initialAssignedTo={formData.assignedTo}
@@ -204,6 +208,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     onAssignedToChange={(assignedTo) => setFormData(prev => ({ ...prev, assignedTo }))}
                     onSave={handleStatusManagerSave}
                     onCancel={handleCancel}
+                    onDelete={onDelete}
                     isSaving={isSaving}
                 />
             </div>

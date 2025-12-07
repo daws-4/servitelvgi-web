@@ -125,6 +125,14 @@ export default function InstallersPage() {
     alert(`Ver detalles de: ${installer.name}`);
   };
 
+  const handleDeleteSingle = (installer: Installer) => {
+    if (confirm(`¿Estás seguro de eliminar a ${installer.name}? Esta acción no se puede deshacer.`)) {
+      // TODO: Implement delete API call
+      console.log('Deleting installer:', installer.id);
+      setInstallers(installers.filter(i => i.id !== installer.id));
+    }
+  };
+
   const handleNewInstaller = () => {
     // TODO: Implement new installer modal/form
     alert('Abrir modal de creación de instalador');
@@ -185,6 +193,7 @@ export default function InstallersPage() {
           onSelectRow={handleSelectRow}
           onEdit={handleEdit}
           onViewDetails={handleViewDetails}
+          onDelete={handleDeleteSingle}
         />
 
         {/* Pagination */}

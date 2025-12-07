@@ -3,6 +3,7 @@
 import React from "react";
 import { InstallerStatusBadge } from "./InstallerStatusBadge";
 import { InstallerCrewBadge } from "./InstallerCrewBadge";
+import { EditIcon, EyeCloseIcon, TrashIcon } from "@/components/icons";
 
 export interface Installer {
     id: number;
@@ -19,6 +20,7 @@ interface InstallersTableProps {
     onSelectRow?: (id: number, selected: boolean) => void;
     onEdit?: (installer: Installer) => void;
     onViewDetails?: (installer: Installer) => void;
+    onDelete?: (installer: Installer) => void;
 }
 
 export const InstallersTable: React.FC<InstallersTableProps> = ({
@@ -28,6 +30,7 @@ export const InstallersTable: React.FC<InstallersTableProps> = ({
     onSelectRow,
     onEdit,
     onViewDetails,
+    onDelete,
 }) => {
     const allSelected = installers.length > 0 && selectedIds.length === installers.length;
     const someSelected = selectedIds.length > 0 && !allSelected;
@@ -114,20 +117,20 @@ export const InstallersTable: React.FC<InstallersTableProps> = ({
                                     <InstallerCrewBadge crewName={installer.currentCrew} />
                                 </td>
                                 <td className="p-4 text-right">
-                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex justify-end gap-2 transition-opacity">
                                         <button
                                             onClick={() => onEdit?.(installer)}
-                                            className="text-gray-400 hover:text-primary p-1"
+                                            className="text-gray-400 hover:text-primary p-1 cursor-pointer"
                                             title="Editar"
                                         >
-                                            <i className="fa-solid fa-pen-to-square"></i>
+                                            <EditIcon className="w-4 h-4" />
                                         </button>
                                         <button
-                                            onClick={() => onViewDetails?.(installer)}
-                                            className="text-gray-400 hover:text-secondary p-1"
-                                            title="Ver Detalles"
+                                            onClick={() => onDelete?.(installer)}
+                                            className="text-gray-400 hover:text-red-600 p-1 cursor-pointer"
+                                            title="Eliminar"
                                         >
-                                            <i className="fa-solid fa-eye"></i>
+                                            <TrashIcon className="w-4 h-4" />
                                         </button>
                                     </div>
                                 </td>

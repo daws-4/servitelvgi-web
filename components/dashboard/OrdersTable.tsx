@@ -5,6 +5,7 @@ import axios from "axios";
 import { BulkActionBar } from "@/components/orders/BulkActionBar";
 import { AssignInstallerModal } from "@/components/orders/AssignInstallerModal";
 import { useRouter } from "next/navigation";
+import { EditIcon, EyeCloseIcon, TrashIcon } from "@/components/icons";
 
 export interface OrderData {
     _id: string;
@@ -178,17 +179,35 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
 
     const handleEditRedirect = (orderId: string) => {
         router.push(`/dashboard/orders/${orderId}`);
-    };  
-
-    const deleteOrder = async (orderId: string) => {
-       const response = await axios.delete(`/api/web/orders`, {
-           data: { id: orderId },
-       });
-       return response.data
     };
 
-    const handleDeleteOrder = (orderId: string) => {
-        deleteOrder(orderId);
+
+    const handleDeleteOrder = async (orderId: string) => {
+        const order = orders?.find(o => o._id === orderId);
+        const orderName = order?.subscriberName || 'esta orden';
+
+        if (!confirm(`¿Estás seguro de eliminar ${orderName}? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+
+        try {
+            setIsProcessing(true);
+            await axios.delete(`/api/web/orders`, {
+                data: { id: orderId },
+            });
+
+            // Refresh orders list
+            if (onRefresh) {
+                await onRefresh();
+            }
+
+            alert('Orden eliminada exitosamente');
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            alert('Error al eliminar la orden. Por favor, intenta de nuevo.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const getTypeBadge = (type: OrderData["type"]) => {
@@ -348,12 +367,22 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                             )}
                                         </td>
                                         <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => onViewOrder?.(order._id)}
-                                                className="text-gray-400 hover:text-primary transition-colors"
-                                            >
-                                                <i className="fa-solid fa-eye"></i>
-                                            </button>
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => handleEditRedirect(order._id)}
+                                                    className="text-gray-400 hover:text-primary transition-colors p-1 cursor-pointer"
+                                                    title="Editar"
+                                                >
+                                                    <EditIcon className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteOrder(order._id)}
+                                                    className="text-gray-400 hover:text-red-600 transition-colors p-1 cursor-pointer"
+                                                    title="Eliminar"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );

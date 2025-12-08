@@ -45,8 +45,8 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "installer"],
-      default: "installer",
+      enum: ["admin"],
+      default: "admin",
     },
 
     // Vínculo con el modelo Installer (si el rol es 'installer')

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { InstallersFilterToolbar } from '@/components/installers/InstallersFilterToolbar';
 import { InstallersTable, Installer } from '@/components/installers/InstallersTable';
 import { BulkActionBar } from '@/components/orders/BulkActionBar';
@@ -8,6 +9,7 @@ import { Pagination } from '@/components/orders/Pagination';
 import { NewInstallerModal } from '@/components/installers/NewInstallerModal';
 
 export default function InstallersPage() {
+  const router = useRouter();
   const [installers, setInstallers] = useState<Installer[]>([]);
   const [crews, setCrews] = useState<any[]>([]);
   const [searchValue, setSearchValue] = useState('');
@@ -61,7 +63,8 @@ export default function InstallersPage() {
     return installers.filter((installer) => {
       const matchesSearch =
         installer.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-        installer.phone.toLowerCase().includes(searchValue.toLowerCase());
+        installer.phone.toLowerCase().includes(searchValue.toLowerCase()) ||
+        installer.surname.toLowerCase().includes(searchValue.toLowerCase());
 
       const matchesStatus = statusFilter === 'all' || installer.status === statusFilter;
 
@@ -140,9 +143,8 @@ export default function InstallersPage() {
   };
 
   const handleEdit = (installer: Installer) => {
-    // TODO: Implement edit functionality
-    console.log('Editing installer:', installer);
-    alert(`Editar instalador: ${installer.name}`);
+    // Navigate to the dynamic edit route
+    router.push(`/dashboard/installers/${installer.id}`);
   };
 
   const handleViewDetails = (installer: Installer) => {
@@ -218,10 +220,10 @@ export default function InstallersPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={handleNewInstaller}
-            className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-primary/20 transition-all flex items-center gap-2"
+            className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-primary/20 transition-all flex items-center gap-2 cursor-pointer"
           >
             <i className="fa-solid fa-user-plus"></i>
-            <span className="hidden sm:inline">Nuevo Instalador</span>
+            <span className="hidden sm:inline ">Nuevo Instalador</span>
           </button>
         </div>
       </div>

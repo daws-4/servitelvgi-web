@@ -87,11 +87,11 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                         <select
                             value={selectedMaterial}
                             onChange={(e) => setSelectedMaterial(e.target.value)}
-                            className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                            className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all cursor-pointer"
                         >
                             <option value="">-- Seleccionar Material --</option>
                             {MATERIAL_OPTIONS.map(option => (
-                                <option key={option.value} value={option.value}>
+                                <option className="cursor-pointer" key={option.value} value={option.value}>
                                     {option.label}
                                 </option>
                             ))}
@@ -112,7 +112,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                     <button
                         type="button"
                         onClick={handleAddMaterial}
-                        className="bg-secondary hover:bg-primary text-white px-4 py-2.5 rounded-md font-medium text-sm transition-colors flex items-center gap-2"
+                        className="bg-secondary hover:bg-primary text-white px-4 py-2.5 rounded-md font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
                     >
                         <i className="fa-solid fa-plus"></i> Agregar
                     </button>
@@ -157,7 +157,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveMaterial(index)}
-                                                className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors"
+                                                className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
                                             >
                                                 <i className="fa-solid fa-trash-can"></i>
                                             </button>

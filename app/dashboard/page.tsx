@@ -12,6 +12,7 @@ import {
 } from "@/components/dashboard-icons";
 import axios from "axios";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 
 // Icons for StatCards (using FontAwesome classes or SVGs if available, here using SVGs)
 // Note: The original HTML used FontAwesome. I'm using my SVG components where possible or placeholders if I missed some.
@@ -23,7 +24,122 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
-  // Fetch orders from API
+  // StatCard data states
+  const [todayOrdersCount, setTodayOrdersCount] = useState<number>(0);
+  const [todayOrdersTrend, setTodayOrdersTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
+  const [pendingOrdersTrend, setPendingOrdersTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
+  const [activeTechniciansCount, setActiveTechniciansCount] = useState<number>(0);
+  const [activeTechniciansTrend, setActiveTechniciansTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Check for 404 redirect
+  useEffect(() => {
+    const notFound = searchParams.get('notFound');
+    const attempted = searchParams.get('attempted');
+
+    if (notFound === 'true' && attempted) {
+      alert(`⚠️ Página no encontrada\n\nLa ruta "${attempted}" no existe.\n\nFuiste redirigido al dashboard.`);
+      // Clean URL
+      router.replace('/dashboard');
+    }
+  }, [searchParams, router]);
+
+  // Helper function to check if a date is today
+  const isToday = (date: Date | string) => {
+    const d = new Date(date);
+    const today = new Date();
+    return d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+  };
+
+  // Helper function to check if a date is yesterday
+  const isYesterday = (date: Date | string) => {
+    const d = new Date(date);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return d.getDate() === yesterday.getDate() &&
+      d.getMonth() === yesterday.getMonth() &&
+      d.getFullYear() === yesterday.getFullYear();
+  };
+
+  // Fetch statCard data
+  const fetchStatCardData = async () => {
+    try {
+      // Fetch all orders
+      const ordersResponse = await axios.get('/api/web/orders');
+      const allOrders = ordersResponse.data;
+
+      // Calculate today's orders
+      const todayOrders = allOrders.filter((order: any) =>
+        isToday(order.receptionDate || order.createdAt)
+      );
+      const yesterdayOrders = allOrders.filter((order: any) =>
+        isYesterday(order.receptionDate || order.createdAt)
+      );
+
+      setTodayOrdersCount(todayOrders.length);
+
+      // Calculate trend for today's orders
+      if (yesterdayOrders.length > 0) {
+        const change = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length) * 100;
+        setTodayOrdersTrend({
+          value: `${Math.abs(Math.round(change))}%`,
+          isPositive: change >= 0
+        });
+      } else if (todayOrders.length > 0) {
+        setTodayOrdersTrend({ value: "100%", isPositive: true });
+      }
+
+      // Calculate pending orders
+      const todayPending = allOrders.filter((order: any) =>
+        order.status === "pending" && isToday(order.receptionDate || order.createdAt)
+      );
+      const yesterdayPending = allOrders.filter((order: any) =>
+        order.status === "pending" && isYesterday(order.receptionDate || order.createdAt)
+      );
+
+      setPendingOrdersCount(todayPending.length);
+
+      // Calculate trend for pending orders
+      if (yesterdayPending.length > 0) {
+        const change = todayPending.length - yesterdayPending.length;
+        setPendingOrdersTrend({
+          value: `${Math.abs(change)}`,
+          isPositive: change <= 0 // For pending, less is better
+        });
+      } else if (todayPending.length > 0) {
+        setPendingOrdersTrend({ value: `${todayPending.length}`, isPositive: false });
+      }
+
+      // Fetch active technicians
+      const installersResponse = await axios.get('/api/web/installers');
+      const allInstallers = installersResponse.data;
+
+      const activeTechnicians = allInstallers.filter((installer: any) =>
+        installer.status === "active"
+      );
+
+      setActiveTechniciansCount(activeTechnicians.length);
+
+      // For technicians, we calculate percentage of active vs total
+      if (allInstallers.length > 0) {
+        const percentage = (activeTechnicians.length / allInstallers.length) * 100;
+        setActiveTechniciansTrend({
+          value: `${Math.round(percentage)}%`,
+          isPositive: true
+        });
+      }
+
+    } catch (err) {
+      console.error("Error fetching statCard data:", err);
+    }
+  };
+
+  // Fetch orders from API (for table)
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -42,6 +158,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchOrders();
+    fetchStatCardData();
   }, []);
 
   const handleSelectOrder = (orderId: string) => {
@@ -79,29 +196,29 @@ export default function DashboardPage() {
 
           <StatCard
             title="Órdenes Hoy"
-            value="24"
+            value={todayOrdersCount.toString()}
             icon={<OrdersIcon className="text-lg" size={24} />}
             iconBgColor="bg-background/50"
             iconColor="text-primary"
-            trend={{ value: "12%", isPositive: true, label: "vs ayer" }}
+            trend={todayOrdersTrend ? { ...todayOrdersTrend, label: "vs ayer" } : undefined}
           />
 
           <StatCard
             title="Pendientes"
-            value="8"
+            value={pendingOrdersCount.toString()}
             icon={<div className="text-lg font-bold">🕒</div>} // Placeholder for Clock icon if not created
             iconBgColor="bg-yellow-100"
             iconColor="text-yellow-600"
-            trend={{ value: "2", isPositive: false, label: "vs ayer" }}
+            trend={pendingOrdersTrend ? { ...pendingOrdersTrend, label: "vs ayer" } : undefined}
           />
 
           <StatCard
             title="Técnicos Activos"
-            value="12"
+            value={activeTechniciansCount.toString()}
             icon={<InstallersIcon className="text-lg" size={24} />}
             iconBgColor="bg-blue-100"
             iconColor="text-secondary"
-            trend={{ value: "100%", isPositive: true, label: "operatividad" }}
+            trend={activeTechniciansTrend ? { ...activeTechniciansTrend, label: "operatividad" } : undefined}
           />
 
           <StatCard

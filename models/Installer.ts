@@ -5,7 +5,27 @@ import IndividualInventorySchema from "@/models/IndividualInventorySchema";
 
 const InstallerSchema = new mongoose.Schema(
   {
-    name: {
+        // Credenciales de acceso
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+
+    // Información y rol del usuario
+     name: {
+      type: String,
+      required: true,
+    },
+    surname: {
+      type: String,
+      required: true,
+    },
+    email: {
       type: String,
       required: true,
     },

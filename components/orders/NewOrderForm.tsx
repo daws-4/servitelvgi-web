@@ -74,7 +74,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
         const loadInstallers = async () => {
             setIsLoadingInstallers(true);
             try {
-                const res = await fetch('/api/installers');
+                const res = await fetch('/api/web/installers');
                 if (res.ok) {
                     const json = await res.json();
                     const mappedData: Item[] = json.map((user: any) => ({
@@ -332,7 +332,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
                                 <button
                                     type="button"
                                     onClick={handleCancel}
-                                    className="w-full bg-white hover:bg-gray-50 text-red-500 font-medium py-2.5 px-4 rounded-lg border border-transparent hover:border-red-100 transition-all"
+                                    className="w-full bg-white hover:bg-gray-50 text-red-500 font-medium py-2.5 px-4 rounded-lg border border-transparent hover:border-red-100 transition-all cursor-pointer"
                                 >
                                     Cancelar
                                 </button>

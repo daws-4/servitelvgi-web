@@ -51,6 +51,59 @@ export function proxy(req: NextRequest) {
     return NextResponse.redirect(dashboard);
   }
 
+  // Check if the route exists - redirect to appropriate page if not found
+  // Valid route patterns for authenticated users
+  const validRoutes = [
+    '/api/',
+    '/recuperar-contrasena',
+  ];
+
+  // Valid dashboard subroutes
+  const validDashboardRoutes = [
+    '/dashboard',
+    '/dashboard/orders',
+    '/dashboard/installers',
+    '/dashboard/crews',
+    '/dashboard/inventory',
+  ];
+
+  // Check if it's a valid route (non-dashboard)
+  const isValidNonDashboardRoute = validRoutes.some((route) => pathname.startsWith(route));
+  
+  // Check if it's a valid dashboard route
+  const isValidDashboardRoute = validDashboardRoutes.some((route) => {
+    // Exact match or dynamic route match (e.g., /dashboard/orders/[id])
+    return pathname === route || 
+           pathname.startsWith(route + '/') ||
+           pathname === route + '/';
+  });
+
+  const isValidRoute = 
+    isValidNonDashboardRoute || 
+    isValidDashboardRoute ||
+    pathname === '/'; // Root is valid (will redirect based on auth)
+
+  // If route doesn't match any valid pattern, redirect based on auth status
+  if (!isValidRoute) {
+    const redirectUrl = req.nextUrl.clone();
+    
+    // Check if it's an invalid dashboard subroute
+    const isInvalidDashboardSubroute = pathname.startsWith('/dashboard/');
+    
+    if (token) {
+      // Logged in: redirect to dashboard with 404 indicator
+      redirectUrl.pathname = DEFAULT_REDIRECT;
+      if (isInvalidDashboardSubroute) {
+        redirectUrl.searchParams.set('notFound', 'true');
+        redirectUrl.searchParams.set('attempted', pathname);
+      }
+    } else {
+      // Not logged in: redirect to login
+      redirectUrl.pathname = LOGIN_ROUTE;
+    }
+    return NextResponse.redirect(redirectUrl);
+  }
+
   // With a token, allow all requests to proceed. Note: for stronger security,
   // validate the token server-side (expiration, signature) in an API route or middleware.
   return NextResponse.next();

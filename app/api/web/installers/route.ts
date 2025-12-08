@@ -44,11 +44,39 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    
+    // Validate required user fields
+    const { username, password, email, surname, name, phone, status, currentCrew } = body;
+    if (!username || !password || !email || !surname || !name || !phone || !status ) {
+      return NextResponse.json(
+        { error: "Todos los campos son requeridos" },
+        { status: 400, headers: CORS_HEADERS }
+      );
+    }
+    
+    // Validate password length
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "La contraseña debe tener al menos 6 caracteres" },
+        { status: 400, headers: CORS_HEADERS }
+      );
+    }
+    
     const created = await createInstaller(body);
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
-  } catch (err) {
+  } catch (err: any) {
+    console.error('Error in POST /api/web/installers:', err);
+    
+    // Handle duplicate username/email error
+    if (err.code === 11000 || err.message?.includes('ya existe')) {
+      return NextResponse.json(
+        { error: err.message || "El nombre de usuario o email ya existe" },
+        { status: 409, headers: CORS_HEADERS }
+      );
+    }
+    
     return NextResponse.json(
-      { error: String(err) },
+      { error: err.message || String(err) },
       { status: 500, headers: CORS_HEADERS }
     );
   }
@@ -98,19 +126,22 @@ export async function DELETE(request: Request) {
         { error: "id is required" },
         { status: 400, headers: CORS_HEADERS }
       );
+    
     const deleted = await deleteInstaller(finalId);
     if (!deleted)
       return NextResponse.json(
         { error: "Not found" },
         { status: 404, headers: CORS_HEADERS }
       );
+    
     return NextResponse.json(
-      { message: "Deleted" },
+      { message: "Installer deleted successfully" },
       { status: 200, headers: CORS_HEADERS }
     );
-  } catch (err) {
+  } catch (err: any) {
+    console.error('Error in DELETE /api/web/installers:', err);
     return NextResponse.json(
-      { error: String(err) },
+      { error: err.message || String(err) },
       { status: 500, headers: CORS_HEADERS }
     );
   }

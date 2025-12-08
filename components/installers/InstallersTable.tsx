@@ -9,6 +9,7 @@ export interface Installer {
     id: string;
     name: string;
     phone: string;
+    surname: string;
     status: "active" | "inactive";
     currentCrew: string | null;
 }
@@ -100,11 +101,12 @@ export const InstallersTable: React.FC<InstallersTableProps> = ({
                                 <td className="p-4">
                                     <div className="flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold uppercase shrink-0">
-                                            {installer.name.substring(0, 2)}
+                                            {installer.name.substring(0, 1)}
+                                            {installer.surname.substring(0, 1)}
                                         </div>
                                         <div>
                                             <div className="font-medium text-dark text-sm">
-                                                {installer.name}
+                                                {installer.name} {installer.surname}
                                             </div>
                                         </div>
                                     </div>

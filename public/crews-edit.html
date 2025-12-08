@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Cuadrilla - Servitel</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Configuración de Colores -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3e78b2',
+                        secondary: '#004ba8',
+                        background: '#deefb7',
+                        neutral: '#bcabae',
+                        dark: '#0f0f0f',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; }
+        .sidebar { transition: all 0.3s ease-in-out; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #bcabae; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3e78b2; }
+    </style>
+</head>
+<body class="text-dark bg-gray-50">
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- SIDEBAR 
+        <aside id="sidebar" class="sidebar fixed inset-y-0 left-0 z-50 w-64 bg-primary text-white transform -translate-x-full md:relative md:translate-x-0 shadow-xl flex flex-col">
+            <div class="h-16 flex items-center justify-center border-b border-secondary/30 bg-secondary/20">
+                <div class="flex items-center gap-2 font-bold text-xl tracking-wider">
+                    <i class="fa-solid fa-satellite-dish text-background"></i> 
+                    <span>SERVITEL</span>
+                </div>
+            </div>
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+                <p class="text-xs font-semibold text-neutral uppercase tracking-wider mb-2 pl-2">Principal</p>
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-secondary/30 hover:text-white rounded-lg transition-colors group">
+                    <i class="fa-solid fa-chart-line w-5 group-hover:text-background transition-colors"></i>
+                    <span class="font-medium">Dashboard</span>
+                </a>
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-secondary/30 hover:text-white rounded-lg transition-colors group">
+                    <i class="fa-solid fa-clipboard-list w-5 group-hover:text-background transition-colors"></i>
+                    <span class="font-medium">Órdenes</span>
+                </a>
+                <a href="#" class="flex items-center gap-3 px-4 py-3 bg-secondary/40 text-white rounded-lg transition-colors border-l-4 border-background">
+                    <i class="fa-solid fa-users-gear w-5"></i>
+                    <span class="font-medium">Cuadrillas</span>
+                </a>
+                <p class="text-xs font-semibold text-neutral uppercase tracking-wider mt-6 mb-2 pl-2">Gestión</p>
+                <a href="#" class="flex items-center gap-3 px-4 py-3 text-white/80 hover:bg-secondary/30 hover:text-white rounded-lg transition-colors group">
+                    <i class="fa-solid fa-boxes-stacked w-5 group-hover:text-background transition-colors"></i>
+                    <span class="font-medium">Inventario</span>
+                </a>
+            </nav>
+        </aside>
+-->
+        <!-- MAIN CONTENT WRAPPER -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+            <!-- NAVBAR -->
+            <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10 border-b border-neutral/20">
+                <div class="flex items-center gap-4">
+                    <button id="sidebarToggle" class="md:hidden text-primary hover:text-secondary focus:outline-none">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <div class="flex items-center gap-2 text-sm text-neutral">
+                        <span>Cuadrillas</span>
+                        <i class="fa-solid fa-chevron-right text-xs"></i>
+                        <span class="font-semibold text-dark">Editar Cuadrilla</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <button class="relative p-2 text-neutral hover:text-primary transition-colors">
+                        <i class="fa-regular fa-bell text-xl"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- MAIN CONTENT -->
+            <main class="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+
+                <div class="max-w-5xl mx-auto">
+                    
+                    <!-- Form Header -->
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-dark">Editar Cuadrilla Norte 1</h2>
+                        <div class="flex gap-3">
+                            <button type="button" class="px-4 py-2 text-sm font-medium text-dark bg-white border border-neutral/30 rounded-lg hover:bg-gray-50 transition-colors">
+                                Cancelar
+                            </button>
+                            <button type="button" class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-secondary transition-colors shadow-sm">
+                                Guardar Cambios
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Form Content -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                        <!-- Left Column: General Info & Leader -->
+                        <div class="lg:col-span-2 space-y-6">
+                            
+                            <!-- Tarjeta: Información General -->
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-neutral/10">
+                                <h3 class="text-lg font-semibold text-dark mb-4 border-b border-neutral/10 pb-2">Información General</h3>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Nombre -->
+                                    <div class="col-span-1 md:col-span-2">
+                                        <label class="block text-sm font-medium text-dark mb-1">Nombre de la Cuadrilla <span class="text-red-500">*</span></label>
+                                        <input type="text" value="Cuadrilla Norte 1" class="w-full px-4 py-2 rounded-lg border border-neutral/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm">
+                                    </div>
+
+                                    <!-- Estado (isActive) -->
+                                    <div class="col-span-1">
+                                        <label class="block text-sm font-medium text-dark mb-2">Estado</label>
+                                        <label class="inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" checked class="sr-only peer">
+                                            <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                            <span class="ms-3 text-sm font-medium text-gray-700">Activa</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tarjeta: Composición del Equipo -->
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-neutral/10">
+                                <h3 class="text-lg font-semibold text-dark mb-4 border-b border-neutral/10 pb-2">Personal</h3>
+                                
+                                <!-- Líder -->
+                                <div class="mb-6">
+                                    <label class="block text-sm font-medium text-dark mb-1">Líder de Cuadrilla <span class="text-red-500">*</span></label>
+                                    <p class="text-xs text-neutral mb-2">Responsable principal de las órdenes.</p>
+                                    <div class="relative">
+                                        <select class="w-full pl-10 pr-4 py-2 rounded-lg border border-neutral/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none appearance-none text-sm bg-white">
+                                            <option value="">Seleccionar instalador...</option>
+                                            <option value="1" selected>Pedro Méndez (Téc. Senior)</option>
+                                            <option value="2">Juan Pérez</option>
+                                            <option value="3">Luis Ramírez</option>
+                                        </select>
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-primary">
+                                            <i class="fa-solid fa-user-shield"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Miembros -->
+                                <div>
+                                    <label class="block text-sm font-medium text-dark mb-2">Técnicos Miembros</label>
+                                    
+                                    <!-- Lista de miembros actuales -->
+                                    <div class="bg-gray-50 rounded-lg border border-neutral/20 p-1 mb-3 space-y-1" id="membersList">
+                                        <!-- Item 1 -->
+                                        <div class="flex items-center justify-between bg-white p-2 rounded border border-neutral/10 shadow-sm">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center text-xs font-bold">JP</div>
+                                                <div>
+                                                    <p class="text-sm font-medium text-dark">Juan Pérez</p>
+                                                    <p class="text-xs text-neutral">Técnico Nivel 2</p>
+                                                </div>
+                                            </div>
+                                            <button class="text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors text-xs">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                        <!-- Item 2 -->
+                                        <div class="flex items-center justify-between bg-white p-2 rounded border border-neutral/10 shadow-sm">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center text-xs font-bold">LR</div>
+                                                <div>
+                                                    <p class="text-sm font-medium text-dark">Luis Ramírez</p>
+                                                    <p class="text-xs text-neutral">Ayudante</p>
+                                                </div>
+                                            </div>
+                                            <button class="text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors text-xs">
+                                                <i class="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Añadir miembro -->
+                                    <div class="flex gap-2">
+                                        <select class="flex-1 px-3 py-2 rounded-lg border border-neutral/30 text-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+                                            <option value="">Seleccionar técnico para agregar...</option>
+                                            <option value="4">Carlos Silva</option>
+                                            <option value="5">Ana García</option>
+                                        </select>
+                                        <button class="px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-sm font-medium transition-colors">
+                                            <i class="fa-solid fa-plus mr-1"></i> Agregar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Vehicles & Metadata -->
+                        <div class="space-y-6">
+                            
+                            <!-- Tarjeta: Vehículos -->
+                            <div class="bg-white p-6 rounded-xl shadow-sm border border-neutral/10">
+                                <h3 class="text-lg font-semibold text-dark mb-4 border-b border-neutral/10 pb-2">Vehículos Asignados</h3>
+                                <p class="text-xs text-neutral mb-4">Vehículos vinculados para logística.</p>
+
+                                <!-- Lista Vehículos -->
+                                <div class="space-y-3 mb-4" id="vehiclesList">
+                                    <div class="flex items-center justify-between p-3 border border-neutral/20 rounded-lg bg-gray-50">
+                                        <div class="flex items-center gap-3">
+                                            <div class="p-2 bg-white rounded border border-neutral/10 text-primary">
+                                                <i class="fa-solid fa-truck-pickup"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-bold text-dark">Hilux Blanca</p>
+                                                <p class="text-xs text-neutral font-mono">ID: V-204</p>
+                                            </div>
+                                        </div>
+                                        <button class="text-neutral hover:text-red-500 transition-colors">
+                                            <i class="fa-solid fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Añadir Vehículo Inputs -->
+                                <div class="bg-primary/5 p-3 rounded-lg border border-primary/10">
+                                    <p class="text-xs font-semibold text-primary mb-2">Vincular nuevo vehículo</p>
+                                    <div class="space-y-2">
+                                        <input type="text" placeholder="ID (Placa/Ficha)" class="w-full px-3 py-1.5 rounded border border-neutral/30 text-sm">
+                                        <input type="text" placeholder="Descripción (Ej: Van Ford)" class="w-full px-3 py-1.5 rounded border border-neutral/30 text-sm">
+                                        <button class="w-full py-1.5 bg-primary text-white rounded text-sm hover:bg-secondary transition-colors">Vincular</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Meta Info (Read Only) -->
+                            <div class="p-4 rounded-xl border border-neutral/20 text-xs text-neutral space-y-2">
+                                <div class="flex justify-between">
+                                    <span>Creado:</span>
+                                    <span class="text-dark">12 Ene 2025</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Última act:</span>
+                                    <span class="text-dark">Hace 2 horas</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>ID Sistema:</span>
+                                    <span class="font-mono text-dark">65a9f...3b2</span>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <!-- Overlay for mobile sidebar -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden glass-effect"></div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Sidebar Logic
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function toggleSidebar() {
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            if (isClosed) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            }
+        }
+
+        sidebarToggle.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar);
+
+        // Simple interaction logic mockup
+        // En una app real (React/Next.js) esto se maneja con estado (useState)
+        
+        // Mockup: Delete vehicle animation
+        document.querySelectorAll('#vehiclesList button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if(confirm('¿Desvincular este vehículo?')) {
+                    this.parentElement.remove();
+                }
+            });
+        });
+
+        // Mockup: Remove member animation
+        document.querySelectorAll('#membersList button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if(confirm('¿Remover técnico de la cuadrilla?')) {
+                    this.parentElement.remove();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

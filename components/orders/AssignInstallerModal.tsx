@@ -85,7 +85,7 @@ export const AssignInstallerModal: React.FC<AssignInstallerModalProps> = ({
                         <h2 className="text-xl font-semibold text-dark">Asignar Instalador</h2>
                         <button
                             onClick={handleClose}
-                            className="text-gray-400 hover:text-gray-600 transition-colors"
+                            className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                         >
                             <i className="fa-solid fa-times text-xl"></i>
                         </button>
@@ -124,7 +124,7 @@ export const AssignInstallerModal: React.FC<AssignInstallerModalProps> = ({
                             <p className="text-sm text-red-700">{error}</p>
                             <button
                                 onClick={fetchInstallers}
-                                className="mt-3 text-sm text-primary hover:underline"
+                                className="mt-3 text-sm text-primary hover:underline cursor-pointer"
                             >
                                 Reintentar
                             </button>
@@ -156,8 +156,8 @@ export const AssignInstallerModal: React.FC<AssignInstallerModalProps> = ({
                                         key={installer._id}
                                         onClick={() => setSelectedInstaller(installer._id)}
                                         className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer ${isSelected
-                                                ? "border-primary bg-blue-50"
-                                                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                                            ? "border-primary bg-blue-50"
+                                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                                             }`}
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${isSelected ? "bg-primary text-white" : "bg-gray-200 text-gray-600"
@@ -195,8 +195,8 @@ export const AssignInstallerModal: React.FC<AssignInstallerModalProps> = ({
                         onClick={handleConfirm}
                         disabled={!selectedInstaller}
                         className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${selectedInstaller
-                                ? "bg-primary text-white hover:bg-secondary cursor-pointer"
-                                : "bg-gray-200 text-gray-400 cursor-not-allowed "
+                            ? "bg-primary text-white hover:bg-secondary cursor-pointer"
+                            : "bg-gray-200 text-gray-400 cursor-not-allowed "
                             }`}
                     >
                         Asignar

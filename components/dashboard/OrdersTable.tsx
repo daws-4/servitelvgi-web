@@ -6,6 +6,7 @@ import { BulkActionBar } from "@/components/orders/BulkActionBar";
 import { AssignInstallerModal } from "@/components/orders/AssignInstallerModal";
 import { useRouter } from "next/navigation";
 import { EditIcon, EyeCloseIcon, TrashIcon } from "@/components/icons";
+import { Link } from "@heroui/link";
 
 export interface OrderData {
     _id: string;
@@ -355,10 +356,12 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                         <td className="p-4">
                                             {order.assignedTo && technicianName ? (
                                                 <div className="flex items-center gap-2">
+                                                    <Link href={`/dashboard/installers/${order.assignedTo._id}`}>
                                                     <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
                                                         {technicianInitials}
                                                     </div>
                                                     <span className="text-xs font-medium">{technicianName}</span>
+                                                    </Link>
                                                 </div>
                                             ) : (
                                                 <span className="text-gray-400 italic text-xs">-- Sin Asignar --</span>

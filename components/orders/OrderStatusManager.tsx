@@ -53,7 +53,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
         const loadTechnicians = async () => {
             setIsLoadingTechnicians(true);
             try {
-                const res = await fetch('/api/installers');
+                const res = await fetch('/api/web/installers');
                 if (res.ok) {
                     const data = await res.json();
                     setTechnicians(data);
@@ -80,6 +80,13 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
 
     const handleAssignedToChange = (techId: string) => {
         setAssignedTo(techId);
+
+        // If a technician is assigned, automatically change status to 'assigned'
+        if (techId && status === 'pending') {
+            setStatus('assigned');
+            if (onStatusChange) onStatusChange('assigned');
+        }
+
         if (onAssignedToChange) onAssignedToChange(techId);
     };
 

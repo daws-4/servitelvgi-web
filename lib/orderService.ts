@@ -1,9 +1,11 @@
 import OrderModel from "@/models/Order";
 import InstallerModel from "@/models/Installer"; // Registers Installer schema
+import CrewModel from "@/models/Crew"; // Registers Crew schema
 import { connectDB } from "@/lib/db";
 
-// Ensure Installer model is registered for populate
+// Ensure Installer and Crew models are registered for populate
 void InstallerModel;
+void CrewModel;
 
 // Función reutilizable para CREAR ordenes
 export async function createOrder(data: any) {

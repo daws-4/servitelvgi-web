@@ -6,6 +6,7 @@ import {
   updateOrder,
   deleteOrder,
 } from "@/lib/orderService";
+import { processOrderUsage } from "@/lib/inventoryService";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -66,6 +67,50 @@ export async function PUT(request: Request) {
     const data = { ...body };
     delete data.id;
     delete data._id;
+    
+    // INTEGRACIÓN DE INVENTARIO: Si la orden se está completando con materiales usados
+    // procesar el consumo automáticamente
+    if (
+      data.status === 'completed' && 
+      data.materialsUsed && 
+      Array.isArray(data.materialsUsed) && 
+      data.materialsUsed.length > 0
+    ) {
+      // Obtener la orden actual para verificar que tiene cuadrilla asignada
+      const currentOrder = await getOrderById(id);
+      
+      if (!currentOrder) {
+        return NextResponse.json(
+          { error: "Orden no encontrada" },
+          { status: 404, headers: CORS_HEADERS }
+        );
+      }
+      
+      if (!currentOrder.assignedTo) {
+        return NextResponse.json(
+          { error: "La orden debe tener una cuadrilla asignada para consumir materiales" },
+          { status: 400, headers: CORS_HEADERS }
+        );
+      }
+      
+      // Procesar consumo de materiales del inventario de la cuadrilla
+      try {
+        await processOrderUsage(
+          id,
+          currentOrder.assignedTo.toString(),
+          data.materialsUsed.map((m: any) => ({
+            inventoryId: m.item || m.inventoryId,
+            quantity: m.quantity
+          }))
+        );
+      } catch (materialError: any) {
+        return NextResponse.json(
+          { error: `Error al procesar materiales: ${materialError.message}` },
+          { status: 400, headers: CORS_HEADERS }
+        );
+      }
+    }
+    
     const updated = await updateOrder(id, data);
     if (!updated)
       return NextResponse.json(

@@ -152,6 +152,20 @@ export default function CrewsPage() {
     setSelectedIds([]);
   };
 
+  const handleDeleteCrew = async (id: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar esta cuadrilla?")) {
+      return;
+    }
+
+    try {
+      await axios.delete(`/api/web/crews?id=${id}`);
+      await fetchCrews();
+    } catch (error) {
+      console.error("Error deleting crew:", error);
+      alert("Error al eliminar cuadrilla");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -192,6 +206,7 @@ export default function CrewsPage() {
         onSelectAll={handleSelectAll}
         onSelectRow={handleSelectRow}
         onEditCrew={handleEditCrew}
+        onDeleteCrew={handleDeleteCrew}
       />
 
       {/* Pagination */}

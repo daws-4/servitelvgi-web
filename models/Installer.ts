@@ -1,7 +1,6 @@
 // models/Installer.ts
 
 import mongoose from "mongoose";
-import IndividualInventorySchema from "@/models/IndividualInventorySchema"; 
 
 const InstallerSchema = new mongoose.Schema(
   {
@@ -28,6 +27,7 @@ const InstallerSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
+      unique: true,
     },
     phone: {
       type: String,
@@ -42,18 +42,12 @@ const InstallerSchema = new mongoose.Schema(
       type:Boolean,
       default:false
     },
-    // --- NUEVO CAMPO ---
     // Referencia a la cuadrilla actual. Si es null, trabaja solo.
     currentCrew: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Crew",
       default: null
     },
-    
-    // Mantenemos el inventario AQUÍ. 
-    // Esto permite "repartir" el inventario: cada miembro de la cuadrilla
-    // tendrá su propio sub-inventario en la base de datos.
-    assignedInventory: [IndividualInventorySchema],
   },
   { timestamps: true }
 );

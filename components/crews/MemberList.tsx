@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { TrashIcon } from "../icons";
 
 interface Installer {
     _id: string;
@@ -98,9 +99,9 @@ export const MemberList: React.FC<MemberListProps> = ({
                             <button
                                 type="button"
                                 onClick={() => handleRemoveMember(member._id)}
-                                className="text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors text-xs"
+                                className=" text-neutral hover:bg-red-50 p-1.5 rounded transition-colors hover:text-red-500 text-lg cursor-pointer"
                             >
-                                <i className="fa-solid fa-xmark"></i>
+                                <TrashIcon />
                             </button>
                         </div>
                     ))

@@ -15,6 +15,7 @@ export default function OrdersPage() {
     const [typeFilter, setTypeFilter] = useState("all");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [crewFilter, setCrewFilter] = useState("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
     const [orders, setOrders] = useState<OrderData[]>([]);
@@ -65,6 +66,11 @@ export default function OrdersPage() {
             filtered = filtered.filter(order => order.type === typeFilter);
         }
 
+        // Apply crew filter
+        if (crewFilter !== "all") {
+            filtered = filtered.filter(order => order.assignedTo?._id === crewFilter);
+        }
+
         // Apply date range filter
         if (startDate || endDate) {
             filtered = filtered.filter(order => {
@@ -89,7 +95,7 @@ export default function OrdersPage() {
         }
 
         return filtered;
-    }, [orders, searchValue, statusFilter, typeFilter, startDate, endDate]);
+    }, [orders, searchValue, statusFilter, typeFilter, startDate, endDate, crewFilter]);
 
     // Pagination logic
     const itemsPerPage = 10;
@@ -151,6 +157,12 @@ export default function OrdersPage() {
         setSelectedOrders(new Set());
     };
 
+    const handleCrewChange = (value: string) => {
+        setCrewFilter(value);
+        setCurrentPage(1);
+        setSelectedOrders(new Set());
+    };
+
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
         setSelectedOrders(new Set()); // Clear selection on page change
@@ -188,6 +200,8 @@ export default function OrdersPage() {
                 onStartDateChange={handleStartDateChange}
                 endDate={endDate}
                 onEndDateChange={handleEndDateChange}
+                crewFilter={crewFilter}
+                onCrewChange={handleCrewChange}
                 onNewOrder={handleNewOrder}
             />
 

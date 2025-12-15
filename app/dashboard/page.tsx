@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -12,7 +12,7 @@ import {
 } from "@/components/dashboard-icons";
 import axios from "axios";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { NotFoundHandler } from "@/components/dashboard/NotFoundHandler";
 
 // Icons for StatCards (using FontAwesome classes or SVGs if available, here using SVGs)
 // Note: The original HTML used FontAwesome. I'm using my SVG components where possible or placeholders if I missed some.
@@ -29,23 +29,9 @@ export default function DashboardPage() {
   const [todayOrdersTrend, setTodayOrdersTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
   const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
   const [pendingOrdersTrend, setPendingOrdersTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
-  const [activeTechniciansCount, setActiveTechniciansCount] = useState<number>(0);
-  const [activeTechniciansTrend, setActiveTechniciansTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
+  const [activeCrewsCount, setActiveCrewsCount] = useState<number>(0);
+  const [activeCrewsTrend, setActiveCrewsTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
 
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  // Check for 404 redirect
-  useEffect(() => {
-    const notFound = searchParams.get('notFound');
-    const attempted = searchParams.get('attempted');
-
-    if (notFound === 'true' && attempted) {
-      alert(`⚠️ Página no encontrada\n\nLa ruta "${attempted}" no existe.\n\nFuiste redirigido al dashboard.`);
-      // Clean URL
-      router.replace('/dashboard');
-    }
-  }, [searchParams, router]);
 
   // Helper function to check if a date is today
   const isToday = (date: Date | string) => {
@@ -115,21 +101,17 @@ export default function DashboardPage() {
         setPendingOrdersTrend({ value: `${todayPending.length}`, isPositive: false });
       }
 
-      // Fetch active technicians
-      const installersResponse = await axios.get('/api/web/installers');
-      const allInstallers = installersResponse.data;
+      // Fetch active crews
+      const crewsResponse = await axios.get('/api/web/crews');
+      const allCrews = crewsResponse.data;
 
-      const activeTechnicians = allInstallers.filter((installer: any) =>
-        installer.status === "active"
-      );
+      // Count crews (all crews are considered active by default)
+      setActiveCrewsCount(allCrews.length);
 
-      setActiveTechniciansCount(activeTechnicians.length);
-
-      // For technicians, we calculate percentage of active vs total
-      if (allInstallers.length > 0) {
-        const percentage = (activeTechnicians.length / allInstallers.length) * 100;
-        setActiveTechniciansTrend({
-          value: `${Math.round(percentage)}%`,
+      // For crews, we could show total count or calculate based on members
+      if (allCrews.length > 0) {
+        setActiveCrewsTrend({
+          value: `${allCrews.length}`,
           isPositive: true
         });
       }
@@ -186,108 +168,115 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
-      <main className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+    <>
+      {/* Suspense boundary for useSearchParams */}
+      <Suspense fallback={null}>
+        <NotFoundHandler />
+      </Suspense>
 
-        <WelcomeBanner />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-full">
+        <main className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
 
-        {/* KPI CARDS GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <WelcomeBanner />
 
-          <StatCard
-            title="Órdenes Hoy"
-            value={todayOrdersCount.toString()}
-            icon={<OrdersIcon className="text-lg" size={24} />}
-            iconBgColor="bg-background/50"
-            iconColor="text-primary"
-            trend={todayOrdersTrend ? { ...todayOrdersTrend, label: "vs ayer" } : undefined}
-          />
+          {/* KPI CARDS GRID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
-          <StatCard
-            title="Pendientes"
-            value={pendingOrdersCount.toString()}
-            icon={<div className="text-lg font-bold">🕒</div>} // Placeholder for Clock icon if not created
-            iconBgColor="bg-yellow-100"
-            iconColor="text-yellow-600"
-            trend={pendingOrdersTrend ? { ...pendingOrdersTrend, label: "vs ayer" } : undefined}
-          />
+            <StatCard
+              title="Órdenes Hoy"
+              value={todayOrdersCount.toString()}
+              icon={<OrdersIcon className="text-lg" size={24} />}
+              iconBgColor="bg-background/50"
+              iconColor="text-primary"
+              trend={todayOrdersTrend ? { ...todayOrdersTrend, label: "vs ayer" } : undefined}
+            />
 
-          <StatCard
-            title="Técnicos Activos"
-            value={activeTechniciansCount.toString()}
-            icon={<InstallersIcon className="text-lg" size={24} />}
-            iconBgColor="bg-blue-100"
-            iconColor="text-secondary"
-            trend={activeTechniciansTrend ? { ...activeTechniciansTrend, label: "operatividad" } : undefined}
-          />
+            <StatCard
+              title="Pendientes"
+              value={pendingOrdersCount.toString()}
+              icon={<div className="text-lg font-bold">🕒</div>} // Placeholder for Clock icon if not created
+              iconBgColor="bg-yellow-100"
+              iconColor="text-yellow-600"
+              trend={pendingOrdersTrend ? { ...pendingOrdersTrend, label: "vs ayer" } : undefined}
+            />
 
-          <StatCard
-            title="Inventario Crítico"
-            value="3"
-            subValue="items"
-            icon={<InventoryIcon className="text-lg" size={24} />}
-            iconBgColor="bg-red-100"
-            iconColor="text-red-600"
-            alertMessage="Requiere atención"
-          />
-        </div>
+            <StatCard
+              title="Cuadrillas Activas"
+              value={activeCrewsCount.toString()}
+              icon={<div className="text-lg font-bold text-secondary"><i className="fa-solid fa-users"></i></div>}
+              iconBgColor="bg-blue-100"
+              iconColor="text-secondary"
+              trend={activeCrewsTrend ? { ...activeCrewsTrend, label: "total" } : undefined}
+            />
 
-        {/* CHARTS & TABLES SECTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <PerformanceChart />
-          <RecentActivity />
-        </div>
-
-        {/* RECENT ORDERS TABLE */}
-        <div className="mt-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold text-dark">Órdenes Recientes</h2>
-            <Link
-              href="/dashboard/orders"
-              className="text-sm text-primary hover:text-secondary transition-colors font-medium"
-            >
-              Ver todas →
-            </Link>
+            <StatCard
+              title="Inventario Crítico"
+              value="3"
+              subValue="items"
+              icon={<InventoryIcon className="text-lg" size={24} />}
+              iconBgColor="bg-red-100"
+              iconColor="text-red-600"
+              alertMessage="Requiere atención"
+            />
           </div>
 
-          {/* Loading State */}
-          {loading && (
-            <div className="bg-white rounded-xl shadow-sm border border-neutral/10 p-8 text-center">
-              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              <p className="mt-3 text-sm text-gray-500">Cargando órdenes...</p>
+          {/* CHARTS & TABLES SECTION */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <PerformanceChart />
+            <RecentActivity />
+          </div>
+
+          {/* RECENT ORDERS TABLE */}
+          <div className="mt-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-dark">Órdenes Recientes</h2>
+              <Link
+                href="/dashboard/orders"
+                className="text-sm text-primary hover:text-secondary transition-colors font-medium"
+              >
+                Ver todas →
+              </Link>
             </div>
-          )}
 
-          {/* Error State */}
-          {error && !loading && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-              <i className="fa-solid fa-triangle-exclamation text-red-500 text-xl mb-2"></i>
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
+            {/* Loading State */}
+            {loading && (
+              <div className="bg-white rounded-xl shadow-sm border border-neutral/10 p-8 text-center">
+                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                <p className="mt-3 text-sm text-gray-500">Cargando órdenes...</p>
+              </div>
+            )}
 
-          {/* Empty State */}
-          {!loading && !error && orders.length === 0 && (
-            <div className="bg-white rounded-xl shadow-sm border border-neutral/10 p-8 text-center">
-              <i className="fa-solid fa-inbox text-gray-300 text-4xl mb-3"></i>
-              <p className="text-sm text-gray-500">No hay órdenes registradas</p>
-            </div>
-          )}
+            {/* Error State */}
+            {error && !loading && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+                <i className="fa-solid fa-triangle-exclamation text-red-500 text-xl mb-2"></i>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
 
-          {/* Orders Table */}
-          {!loading && !error && orders.length > 0 && (
-            <OrdersTable
-              orders={orders}
-              selectedOrders={selectedOrders}
-              onSelectOrder={handleSelectOrder}
-              onSelectAll={handleSelectAll}
-              onViewOrder={handleViewOrder}
-              onRefresh={fetchOrders}
-            />
-          )}
-        </div>
+            {/* Empty State */}
+            {!loading && !error && orders.length === 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-neutral/10 p-8 text-center">
+                <i className="fa-solid fa-inbox text-gray-300 text-4xl mb-3"></i>
+                <p className="text-sm text-gray-500">No hay órdenes registradas</p>
+              </div>
+            )}
 
-      </main>
-    </div>
+            {/* Orders Table */}
+            {!loading && !error && orders.length > 0 && (
+              <OrdersTable
+                orders={orders}
+                selectedOrders={selectedOrders}
+                onSelectOrder={handleSelectOrder}
+                onSelectAll={handleSelectAll}
+                onViewOrder={handleViewOrder}
+                onRefresh={fetchOrders}
+              />
+            )}
+          </div>
+
+        </main>
+      </div>
+    </>
   );
 }

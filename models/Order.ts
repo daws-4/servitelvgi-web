@@ -69,7 +69,7 @@ const OrderSchema = new mongoose.Schema(
     // --- Datos de Gestión y Cierre (Técnico, no se extraen de esta imagen) ---
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Installer",
+      ref: "Crew",
     },
     receptionDate: {
       type: Date,

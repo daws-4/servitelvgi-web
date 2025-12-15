@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { BulkActionBar } from "@/components/orders/BulkActionBar";
-import { AssignInstallerModal } from "@/components/orders/AssignInstallerModal";
+import { AssignCrewModal } from "@/components/orders/AssignCrewModal";
 import { useRouter } from "next/navigation";
 import { EditIcon, EyeCloseIcon, TrashIcon } from "@/components/icons";
 import { Link } from "@heroui/link";
@@ -18,8 +18,6 @@ export interface OrderData {
     status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
     assignedTo?: {
         _id: string;
-        firstName?: string;
-        lastName?: string;
         name?: string;
     };
     phones?: string[];
@@ -38,7 +36,7 @@ interface OrdersTableProps {
     onRefresh?: () => void | Promise<void>;
     onDelete?: (orderIds: string[]) => void | Promise<void>;
     onArchive?: (orderIds: string[]) => void | Promise<void>;
-    onAssignInstaller?: (orderIds: string[], installerId: string) => void | Promise<void>;
+    onAssignCrew?: (orderIds: string[], crewId: string) => void | Promise<void>;
 }
 
 export const OrdersTable: React.FC<OrdersTableProps> = ({
@@ -50,7 +48,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
     onRefresh,
     onDelete,
     onArchive,
-    onAssignInstaller,
+    onAssignCrew,
 }) => {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -132,27 +130,27 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
         }
     };
 
-    // Handler to open assign installer modal
+    // Handler to open assign crew modal
     const handleOpenAssignModal = () => {
         setIsAssignModalOpen(true);
     };
 
-    // Handler to confirm installer assignment
-    const handleConfirmAssignment = async (installerId: string) => {
+    // Handler to confirm crew assignment
+    const handleConfirmAssignment = async (crewId: string) => {
         const orderIds = Array.from(selectedOrders);
 
         try {
             setIsProcessing(true);
 
-            if (onAssignInstaller) {
+            if (onAssignCrew) {
                 // Use custom assign handler if provided
-                await onAssignInstaller(orderIds, installerId);
+                await onAssignCrew(orderIds, crewId);
             } else {
                 // Default assignment implementation
                 const assignPromises = orderIds.map(orderId =>
                     axios.put(`/api/web/orders`, {
                         id: orderId,
-                        assignedTo: installerId,
+                        assignedTo: crewId,
                         status: "assigned" // Optionally update status
                     })
                 );
@@ -169,10 +167,10 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                 onSelectAll(false);
             }
 
-            alert(`Instalador asignado exitosamente a ${orderIds.length} orden(es)`);
+            alert(`Cuadrilla asignada exitosamente a ${orderIds.length} orden(es)`);
         } catch (err) {
-            console.error("Error assigning installer:", err);
-            alert("Error al asignar el instalador. Por favor, intenta de nuevo.");
+            console.error("Error assigning crew:", err);
+            alert("Error al asignar la cuadrilla. Por favor, intenta de nuevo.");
         } finally {
             setIsProcessing(false);
         }
@@ -280,7 +278,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                 selectedCount={selectedOrders.size}
                 onArchive={handleArchive}
                 onDelete={handleDelete}
-                onAssignInstaller={handleOpenAssignModal}
+                onAssignCrew={handleOpenAssignModal}
             />
 
             {/* Processing Overlay */}
@@ -317,17 +315,14 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                 <th className="p-4">Tipo</th>
                                 <th className="p-4">Dirección</th>
                                 <th className="p-4">Estado</th>
-                                <th className="p-4">Técnico</th>
+                                <th className="p-4">Cuadrilla</th>
                                 <th className="p-4 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="text-sm divide-y divide-gray-50">
                             {orders?.map((order) => {
                                 const isSelected = selectedOrders.has(order._id);
-                                const technicianName = order.assignedTo?.name || null;
-                                const technicianInitials = technicianName
-                                    ? technicianName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-                                    : '';
+                                const crewName = order.assignedTo?.name || null;
 
                                 return (
                                     <tr
@@ -354,13 +349,13 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                         <td className="p-4 text-gray-500 max-w-xs truncate">{order.address}</td>
                                         <td className="p-4">{getStatusBadge(order.status)}</td>
                                         <td className="p-4">
-                                            {order.assignedTo && technicianName ? (
+                                            {order.assignedTo && crewName ? (
                                                 <div className="flex items-center gap-2">
-                                                    <Link href={`/dashboard/installers/${order.assignedTo._id}`}>
-                                                    <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
-                                                        {technicianInitials}
-                                                    </div>
-                                                    <span className="text-xs font-medium">{technicianName}</span>
+                                                    <Link href={`/dashboard/crews/${order.assignedTo._id}`}>
+                                                        <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs">
+                                                            <i className="fa-solid fa-users text-[10px]"></i>
+                                                        </div>
+                                                        <span className="text-xs font-medium">{crewName}</span>
                                                     </Link>
                                                 </div>
                                             ) : (
@@ -393,8 +388,8 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                 </div>
             </div>
 
-            {/* Assign Installer Modal */}
-            <AssignInstallerModal
+            {/* Assign Crew Modal */}
+            <AssignCrewModal
                 isOpen={isAssignModalOpen}
                 onClose={() => setIsAssignModalOpen(false)}
                 onConfirm={handleConfirmAssignment}

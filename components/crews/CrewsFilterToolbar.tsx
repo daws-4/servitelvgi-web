@@ -55,7 +55,7 @@ export const CrewsFilterToolbar: React.FC<CrewsFilterToolbarProps> = ({
             {/* Add Button */}
             <button
                 onClick={onNewCrew}
-                className="bg-primary hover:bg-secondary text-white px-5 py-2 rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-2 text-sm font-medium whitespace-nowrap"
+                className="bg-primary hover:bg-secondary text-white px-5 py-2 rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-2 text-sm font-medium whitespace-nowrap cursor-pointer"
             >
                 <i className="fa-solid fa-plus"></i>
                 Nueva Cuadrilla

@@ -21,14 +21,30 @@ export async function createInstaller(data: any) {
       name,
       phone,
       status,
-      currentCrew: currentCrew || null,
+      currentCrew: currentCrew
     });
     
     return installer;
   } catch (error: any) {
+    // Handle MongoDB duplicate key error
     if (error.code === 11000) {
-      throw new Error('El nombre de usuario o email ya existe');
+      const field = Object.keys(error.keyPattern || {})[0];
+      if (field === 'username') {
+        throw new Error('El nombre de usuario ya está en uso');
+      } else if (field === 'email') {
+        throw new Error('El email ya está registrado');
+      } else {
+        throw new Error('Ya existe un registro con estos datos');
+      }
     }
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err: any) => err.message);
+      throw new Error(messages.join(', '));
+    }
+    
+    // Re-throw any other errors
     throw error;
   }
 }
@@ -48,39 +64,70 @@ export async function getInstallerById(id: string) {
   await connectDB();
   const installer = await InstallerModel.findById(id).lean();
   if (!installer) return null;
+  
+  // Cast to ensure TypeScript knows this is a single document, not an array
+  const installerDoc = installer as any;
+  
   // Transform _id to id for frontend compatibility
   return {
-    ...installer,
-    id: installer._id.toString(),
+    ...installerDoc,
+    _id: installerDoc._id.toString(),
+    id: installerDoc._id.toString(),
   };
 }
 
 export async function updateInstaller(id: string, data: any) {
   await connectDB();
   
-  const updateData = { ...data };
-  
-  // Hash password if it's being updated
-  if (updateData.password) {
-    updateData.password = await bcrypt.hash(updateData.password, 10);
-  } else {
-    // Remove password from update if not provided
-    delete updateData.password;
+  try {
+    const updateData = { ...data };
+    
+    // Hash password if it's being updated
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    } else {
+      // Remove password from update if not provided
+      delete updateData.password;
+    }
+    
+    const updatedInstaller = await InstallerModel.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true } // Added runValidators to catch validation errors
+    ).lean();
+    
+    if (!updatedInstaller) return null;
+    
+    // Cast to ensure TypeScript knows this is a single document, not an array
+    const installerDoc = updatedInstaller as any;
+    
+    // Transform _id to id for frontend compatibility
+    return {
+      ...installerDoc,
+      id: installerDoc._id.toString(),
+    };
+  } catch (error: any) {
+    // Handle MongoDB duplicate key error
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0];
+      if (field === 'username') {
+        throw new Error('El nombre de usuario ya está en uso');
+      } else if (field === 'email') {
+        throw new Error('El email ya está registrado');
+      } else {
+        throw new Error('Ya existe un registro con estos datos');
+      }
+    }
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map((err: any) => err.message);
+      throw new Error(messages.join(', '));
+    }
+    
+    // Re-throw any other errors
+    throw error;
   }
-  
-  const updatedInstaller = await InstallerModel.findByIdAndUpdate(
-    id,
-    { $set: updateData },
-    { new: true }
-  ).lean();
-  
-  if (!updatedInstaller) return null;
-  
-  // Transform _id to id for frontend compatibility
-  return {
-    ...updatedInstaller,
-    id: updatedInstaller._id.toString(),
-  };
 }
 
 export async function deleteInstaller(id: string) {

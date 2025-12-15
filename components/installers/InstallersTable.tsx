@@ -100,12 +100,12 @@ export const InstallersTable: React.FC<InstallersTableProps> = ({
                                 </td>
                                 <td className="p-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold uppercase shrink-0">
+                                        <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs font-bold uppercase shrink-0 cursor-pointer" onClick={() => onEdit?.(installer)}>
                                             {installer.name.substring(0, 1)}
                                             {installer.surname.substring(0, 1)}
                                         </div>
                                         <div>
-                                            <div className="font-medium text-dark text-sm">
+                                            <div className="font-medium text-dark text-sm cursor-pointer" onClick={() => onEdit?.(installer)}>
                                                 {installer.name} {installer.surname}
                                             </div>
                                         </div>

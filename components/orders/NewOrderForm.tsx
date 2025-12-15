@@ -65,33 +65,33 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
         assignedToName: '',
     });
 
-    const [installers, setInstallers] = useState<Item[]>([]);
-    const [isLoadingInstallers, setIsLoadingInstallers] = useState(false);
+    const [crews, setCrews] = useState<Item[]>([]);
+    const [isLoadingCrews, setIsLoadingCrews] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
-    // Load installers from API
+    // Load crews from API
     useEffect(() => {
-        const loadInstallers = async () => {
-            setIsLoadingInstallers(true);
+        const loadCrews = async () => {
+            setIsLoadingCrews(true);
             try {
-                const res = await fetch('/api/web/installers');
+                const res = await fetch('/api/web/crews');
                 if (res.ok) {
                     const json = await res.json();
-                    const mappedData: Item[] = json.map((user: any) => ({
-                        id: user._id,
-                        name: `${user.name} ${user.surname}`,
-                        description: user.role === 'admin' ? 'Administrador' : 'Instalador'
+                    const mappedData: Item[] = json.map((crew: any) => ({
+                        id: crew._id,
+                        name: crew.name,
+                        description: crew.leader ? `Líder: ${crew.leader.name} ${crew.leader.surname}` : 'Sin líder'
                     }));
-                    setInstallers(mappedData);
+                    setCrews(mappedData);
                 }
             } catch (error) {
-                console.error('Error cargando instaladores:', error);
+                console.error('Error cargando cuadrillas:', error);
             } finally {
-                setIsLoadingInstallers(false);
+                setIsLoadingCrews(false);
             }
         };
 
-        loadInstallers();
+        loadCrews();
     }, []);
 
     const orderTypeOptions: SelectOption[] = [
@@ -104,13 +104,13 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleInstallerChange = (key: React.Key | null) => {
+    const handleCrewChange = (key: React.Key | null) => {
         if (key) {
-            const selectedInstaller = installers.find(i => i.id === key);
+            const selectedCrew = crews.find(c => c.id === key);
             setFormData(prev => ({
                 ...prev,
                 assignedToId: key.toString(),
-                assignedToName: selectedInstaller?.name || '',
+                assignedToName: selectedCrew?.name || '',
             }));
         } else {
             setFormData(prev => ({
@@ -303,13 +303,13 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
                                 isRequired
                             />
 
-                            {/* Installer Assignment */}
+                            {/* Crew Assignment */}
                             <CustomAutocomplete
-                                label="Asignar Técnico"
-                                items={installers}
-                                isLoading={isLoadingInstallers}
-                                placeholder="Buscar instalador..."
-                                onSelectionChange={handleInstallerChange}
+                                label="Asignar Cuadrilla"
+                                items={crews}
+                                isLoading={isLoadingCrews}
+                                placeholder="Buscar cuadrilla..."
+                                onSelectionChange={handleCrewChange}
                             />
 
                             {/* Status Indicator */}

@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     
     // Validate required user fields
     const { username, password, email, surname, name, phone, status, currentCrew } = body;
-    if (!username || !password || !email || !surname || !name || !phone || !status ) {
+    if (!username || !password || !email || !surname || !name || !phone || !status || !currentCrew ) {
       return NextResponse.json(
         { error: "Todos los campos son requeridos" },
         { status: 400, headers: CORS_HEADERS }

@@ -31,6 +31,16 @@ export async function getOrderById(id: string) {
 // Actualizar orden por id
 export async function updateOrder(id: string, data: any) {
   await connectDB();
+  
+  // Automatically set dates based on status changes
+  if (data.status === 'assigned' && !data.assignmentDate) {
+    data.assignmentDate = new Date();
+  }
+  
+  if (data.status === 'completed' && !data.completionDate) {
+    data.completionDate = new Date();
+  }
+  
   return await OrderModel.findByIdAndUpdate(
     id,
     { $set: data },

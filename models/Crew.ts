@@ -1,5 +1,6 @@
 // models/Crew.ts
 import mongoose from "mongoose";
+import IndividualInventorySchema from "@/models/IndividualInventorySchema";
 
 const CrewSchema = new mongoose.Schema(
   {
@@ -38,6 +39,10 @@ const CrewSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    
+    // Inventario asignado a la cuadrilla completa
+    // Todos los miembros de la cuadrilla comparten este inventario
+    assignedInventory: [IndividualInventorySchema],
   },
   { timestamps: true }
 );

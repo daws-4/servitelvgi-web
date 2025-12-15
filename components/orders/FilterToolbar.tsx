@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FormInput } from "@/components/interactiveForms/Input";
 import { FormSelect, SelectOption } from "@/components/interactiveForms/Select";
 import { FormButton } from "@/components/interactiveForms/Button";
@@ -16,6 +16,8 @@ interface FilterToolbarProps {
     onStartDateChange?: (value: string) => void;
     endDate?: string;
     onEndDateChange?: (value: string) => void;
+    crewFilter?: string;
+    onCrewChange?: (value: string) => void;
     onNewOrder?: () => void;
 }
 
@@ -46,8 +48,29 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     onStartDateChange,
     endDate = "",
     onEndDateChange,
+    crewFilter = "all",
+    onCrewChange,
     onNewOrder,
 }) => {
+    const [crews, setCrews] = useState<{ _id: string; name: string }[]>([]);
+
+    // Load crews on mount
+    useEffect(() => {
+        const loadCrews = async () => {
+            try {
+                const res = await fetch('/api/web/crews');
+                if (res.ok) {
+                    const data = await res.json();
+                    setCrews(data);
+                }
+            } catch (error) {
+                console.error('Error loading crews:', error);
+            }
+        };
+
+        loadCrews();
+    }, []);
+
     return (
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             {/* Filtros */}
@@ -96,6 +119,23 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
                 </div>
 
+                {/* Filtro Cuadrilla */}
+                <div className="relative">
+                    <select
+                        value={crewFilter}
+                        onChange={(e) => onCrewChange?.(e.target.value)}
+                        className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer"
+                    >
+                        <option value="all">Cuadrilla: Todas</option>
+                        {crews.map(crew => (
+                            <option key={crew._id} value={crew._id}>
+                                {crew.name}
+                            </option>
+                        ))}
+                    </select>
+                    <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                </div>
+
                 {/* Filtro Fecha Inicio */}
                 <div className="relative">
                     <i className="fa-solid fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
@@ -131,3 +171,4 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
         </div>
     );
 };
+

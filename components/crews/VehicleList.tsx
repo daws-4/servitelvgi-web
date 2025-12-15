@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { TrashIcon } from "../icons";
 
 interface Vehicle {
     id: string;
@@ -75,9 +76,9 @@ export const VehicleList: React.FC<VehicleListProps> = ({ vehicles, onChange }) 
                             <button
                                 type="button"
                                 onClick={() => handleRemoveVehicle(vehicle.id)}
-                                className="text-neutral hover:text-red-500 transition-colors"
+                                className="text-neutral hover:text-red-500 transition-colors text-lg cursor-pointer"
                             >
-                                <i className="fa-solid fa-trash-can"></i>
+                                <TrashIcon />
                             </button>
                         </div>
                     ))

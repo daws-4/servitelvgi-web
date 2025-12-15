@@ -6,14 +6,14 @@ interface BulkActionBarProps {
     selectedCount: number;
     onArchive?: () => void;
     onDelete?: () => void;
-    onAssignInstaller?: () => void;
+    onAssignCrew?: () => void;
 }
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
     selectedCount,
     onArchive,
     onDelete,
-    onAssignInstaller,
+    onAssignCrew,
 }) => {
     if (selectedCount === 0) return null;
 
@@ -28,12 +28,12 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
                 </span>
             </div>
             <div className="flex gap-2">
-                {onAssignInstaller && (
+                {onAssignCrew && (
                     <button
-                        onClick={onAssignInstaller}
+                        onClick={onAssignCrew}
                         className="text-xs text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded transition-colors font-medium border border-transparent hover:border-blue-200 cursor-pointer"
                     >
-                        <i className="fa-solid fa-user-plus mr-1"></i> Asignar Instalador
+                        <i className="fa-solid fa-users mr-1"></i> Asignar Cuadrilla
                     </button>
                 )}
                 <button

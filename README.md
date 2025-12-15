@@ -169,3 +169,15 @@ components, si hace falta crear más los creas, y si hace falta modificar alguno
 el punto de la replica es hacerlo pero con la estructuración modular que permite react al tener todos los componentes separados por archivos y pudiendo reutilizarlos cada que haga falta
 
 el resultado final lo usas para reemplazar lo que haya en @beautifulMention
+
+
+
+
+# REPORTES
+
+- dia a dia de instalaciones/Averias finalizadas y asignadas
+- mensual de instalaciones/Averias finalizadas y asignadas el última día del mes
+- primer día hábil del mes y a la segunda semana del mes reporte de inventario de instalaciones, averías, material averiado y material recuperado
+- reporte de ordenes hacia netuno de instalaciones y averías
+- cantidad de instalaciones/averias realizadas por cuadrilla
+- reporte hacia servitel de inventario por cuadrilla

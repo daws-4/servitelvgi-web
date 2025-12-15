@@ -4,6 +4,7 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { CrewStatusBadge } from "./CrewStatusBadge";
 import { CrewMemberAvatars } from "./CrewMemberAvatars";
+import { EditIcon, TrashIcon } from "@/components/icons";
 
 interface CrewMember {
     _id: string;
@@ -26,6 +27,7 @@ interface CrewsTableProps {
     onSelectAll: (checked: boolean) => void;
     onSelectRow: (id: string, checked: boolean) => void;
     onEditCrew?: (id: string) => void;
+    onDeleteCrew?: (id: string) => void;
 }
 
 export const CrewsTable: React.FC<CrewsTableProps> = ({
@@ -34,6 +36,7 @@ export const CrewsTable: React.FC<CrewsTableProps> = ({
     onSelectAll,
     onSelectRow,
     onEditCrew,
+    onDeleteCrew,
 }) => {
     const router = useRouter();
     const allSelected = crews.length > 0 && selectedIds.length === crews.length;
@@ -61,7 +64,6 @@ export const CrewsTable: React.FC<CrewsTableProps> = ({
                             </th>
                             <th className="px-6 py-4">Cuadrilla</th>
                             <th className="px-6 py-4">Líder</th>
-                            <th className="px-6 py-4">Miembros</th>
                             <th className="px-6 py-4">Estado</th>
                             <th className="px-6 py-4 text-right">Acciones</th>
                         </tr>
@@ -69,7 +71,7 @@ export const CrewsTable: React.FC<CrewsTableProps> = ({
                     <tbody className="divide-y divide-neutral/10">
                         {crews.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-8 text-center text-neutral">
+                                <td colSpan={5} className="px-6 py-8 text-center text-neutral">
                                     No se encontraron cuadrillas
                                 </td>
                             </tr>
@@ -87,13 +89,13 @@ export const CrewsTable: React.FC<CrewsTableProps> = ({
                                             className="rounded border-neutral text-primary focus:ring-primary cursor-pointer w-4 h-4"
                                         />
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-dark">
+                                    <td className="px-6 py-4 font-medium text-dark cursor-pointer" onClick={() => router.push(`/dashboard/crews/${crew._id}`)}>
                                         {crew.name}
-                                        {crew.zone && (
+                                        {/* {crew.zone && (
                                             <span className="block text-xs text-neutral font-normal mt-0.5">
                                                 Zona: {crew.zone}
                                             </span>
-                                        )}
+                                        )} */}
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
@@ -110,19 +112,27 @@ export const CrewsTable: React.FC<CrewsTableProps> = ({
                                         </div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <CrewMemberAvatars members={crew.members} />
-                                    </td>
-                                    <td className="px-6 py-4">
                                         <CrewStatusBadge isActive={crew.isActive} />
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => router.push(`/dashboard/crews/${crew._id}`)}
-                                            className="text-neutral hover:text-secondary p-1 rounded transition-colors"
-                                            title="Editar cuadrilla"
-                                        >
-                                            <i className="fa-solid fa-pen-to-square"></i>
-                                        </button>
+                                        <div className="flex justify-end gap-2 transition-opacity">
+                                            <button
+                                                onClick={() => router.push(`/dashboard/crews/${crew._id}`)}
+                                                className="text-gray-400 hover:text-primary p-1 cursor-pointer"
+                                                title="Editar"
+                                            >
+                                                <EditIcon className="w-4 h-4" />
+                                            </button>
+                                            {onDeleteCrew && (
+                                                <button
+                                                    onClick={() => onDeleteCrew(crew._id)}
+                                                    className="text-gray-400 hover:text-red-600 p-1 cursor-pointer"
+                                                    title="Eliminar"
+                                                >
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))

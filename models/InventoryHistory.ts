@@ -20,10 +20,6 @@ const InventoryHistorySchema = new mongoose.Schema(
     },
     reason: { type: String },
     
-    installer: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Installer",
-    },
     
     // --- NUEVO CAMPO ---
     // Permite filtrar movimientos por cuadrilla en los reportes

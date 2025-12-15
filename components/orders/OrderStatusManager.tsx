@@ -6,10 +6,9 @@ import axios from 'axios';
 export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
 export type OrderType = "instalacion" | "averia" | "otro";
 
-interface Technician {
+interface Crew {
     _id: string;
     name: string;
-    surname: string;
 }
 
 interface OrderStatusManagerProps {
@@ -20,7 +19,7 @@ interface OrderStatusManagerProps {
     orderName?: string;
     onStatusChange?: (status: OrderStatus) => void;
     onTypeChange?: (type: OrderType) => void;
-    onAssignedToChange?: (technicianId: string) => void;
+    onAssignedToChange?: (crewId: string) => void;
     onSave?: (data: { status: OrderStatus; type: OrderType; assignedTo: string; reportDetails?: string }) => void;
     onCancel?: () => void;
     onDelete?: () => void | Promise<void>;
@@ -45,27 +44,27 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
     const [type, setType] = useState<OrderType>(initialType);
     const [assignedTo, setAssignedTo] = useState(initialAssignedTo);
     const [reportDetails, setReportDetails] = useState("");
-    const [technicians, setTechnicians] = useState<Technician[]>([]);
-    const [isLoadingTechnicians, setIsLoadingTechnicians] = useState(false);
+    const [crews, setCrews] = useState<Crew[]>([]);
+    const [isLoadingCrews, setIsLoadingCrews] = useState(false);
 
-    // Load technicians
+    // Load crews
     useEffect(() => {
-        const loadTechnicians = async () => {
-            setIsLoadingTechnicians(true);
+        const loadCrews = async () => {
+            setIsLoadingCrews(true);
             try {
-                const res = await fetch('/api/web/installers');
+                const res = await fetch('/api/web/crews');
                 if (res.ok) {
                     const data = await res.json();
-                    setTechnicians(data);
+                    setCrews(data);
                 }
             } catch (error) {
-                console.error('Error loading technicians:', error);
+                console.error('Error loading crews:', error);
             } finally {
-                setIsLoadingTechnicians(false);
+                setIsLoadingCrews(false);
             }
         };
 
-        loadTechnicians();
+        loadCrews();
     }, []);
 
     const handleStatusChange = (newStatus: OrderStatus) => {
@@ -78,16 +77,16 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
         if (onTypeChange) onTypeChange(newType);
     };
 
-    const handleAssignedToChange = (techId: string) => {
-        setAssignedTo(techId);
+    const handleAssignedToChange = (crewId: string) => {
+        setAssignedTo(crewId);
 
-        // If a technician is assigned, automatically change status to 'assigned'
-        if (techId && status === 'pending') {
+        // If a crew is assigned, automatically change status to 'assigned'
+        if (crewId && status === 'pending') {
             setStatus('assigned');
             if (onStatusChange) onStatusChange('assigned');
         }
 
-        if (onAssignedToChange) onAssignedToChange(techId);
+        if (onAssignedToChange) onAssignedToChange(crewId);
     };
 
     const handleSave = () => {
@@ -125,13 +124,13 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                 return {
                     colorClass: "text-blue-500",
                     badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
-                    description: "Técnico notificado. En espera de inicio."
+                    description: "Cuadrilla notificada. En espera de inicio."
                 };
             case 'in_progress':
                 return {
                     colorClass: "text-purple-500",
                     badgeClass: "bg-purple-100 text-purple-800 border-purple-200",
-                    description: "El técnico está trabajando en el sitio."
+                    description: "La cuadrilla está trabajando en el sitio."
                 };
             case 'completed':
                 return {
@@ -190,23 +189,24 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
 
                 <hr className="border-gray-100" />
 
+
                 {/* Technician Assignment */}
                 <div>
                     <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                        Técnico Asignado
+                        Cuadrilla Asignada
                     </label>
                     <div className="relative">
-                        <i className="fa-solid fa-user-gear absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <i className="fa-solid fa-users absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
                         <select
                             value={assignedTo}
                             onChange={(e) => handleAssignedToChange(e.target.value)}
-                            disabled={isLoadingTechnicians}
+                            disabled={isLoadingCrews}
                             className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-md bg-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer disabled:opacity-50"
                         >
                             <option value="">-- Sin Asignar --</option>
-                            {technicians.map(tech => (
-                                <option key={tech._id} value={tech._id}>
-                                    {tech.name} {tech.surname}
+                            {crews.map(crew => (
+                                <option key={crew._id} value={crew._id}>
+                                    {crew.name}
                                 </option>
                             ))}
                         </select>
@@ -215,6 +215,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                         </div>
                     </div>
                 </div>
+
 
                 {/* Order Type */}
                 <div>

@@ -294,7 +294,7 @@ export async function getCrewInventory(crewId: string) {
     .populate("assignedInventory.item", "code description unit")
     .lean();
 
-  if (!crew) {
+  if (!crew || Array.isArray(crew)) {
     throw new Error(`Cuadrilla no encontrada: ${crewId}`);
   }
 
@@ -376,7 +376,7 @@ export async function createDailySnapshot() {
 
     // 3. Calcular metadatos
     const totalItems = new Set([
-      ...warehouseItems.map((i) => i._id.toString()),
+      ...warehouseItems.map((i: any) => i._id.toString()),
       ...crews.flatMap((c: any) =>
         (c.assignedInventory || []).map((i: any) => i.item.toString())
       ),
@@ -487,4 +487,58 @@ export async function getInventoryStatistics(
     console.error("Error al calcular estadísticas:", error);
     throw error;
   }
+}
+
+/**
+ * Crea un nuevo ítem de inventario
+ * @param data - Datos del ítem a crear
+ * @returns Ítem creado
+ */
+export async function createInventory(data: any) {
+  await connectDB();
+  const item = await InventoryModel.create(data);
+  return item;
+}
+
+/**
+ * Obtiene todos los ítems de inventario
+ * @returns Array de ítems de inventario
+ */
+export async function getInventories() {
+  await connectDB();
+  return await InventoryModel.find().sort({ code: 1 }).lean();
+}
+
+/**
+ * Obtiene un ítem de inventario por su ID
+ * @param id - ID del ítem
+ * @returns Ítem encontrado o null
+ */
+export async function getInventoryById(id: string) {
+  await connectDB();
+  return await InventoryModel.findById(id).lean();
+}
+
+/**
+ * Actualiza un ítem de inventario
+ * @param id - ID del ítem a actualizar
+ * @param data - Datos a actualizar
+ * @returns Ítem actualizado o null
+ */
+export async function updateInventory(id: string, data: any) {
+  await connectDB();
+  return await InventoryModel.findByIdAndUpdate(id, data, {
+    new: true,
+    runValidators: true,
+  }).lean();
+}
+
+/**
+ * Elimina un ítem de inventario
+ * @param id - ID del ítem a eliminar
+ * @returns Ítem eliminado o null
+ */
+export async function deleteInventory(id: string) {
+  await connectDB();
+  return await InventoryModel.findByIdAndDelete(id).lean();
 }

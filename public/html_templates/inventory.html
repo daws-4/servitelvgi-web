@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Inventario - Servitel</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Configuración de Colores Personalizados -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3e78b2',    // Rich Cerulean
+                        secondary: '#004ba8',  // Cobalt Blue
+                        background: '#deefb7', // Tea Green
+                        neutral: '#bcabae',    // Lilac Ash
+                        dark: '#0f0f0f',       // Onyx
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #bcabae; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3e78b2; }
+
+        /* Clases para transiciones de modales */
+        .modal { opacity: 0; visibility: hidden; transition: all 0.3s ease-in-out; }
+        .modal.active { opacity: 1; visibility: visible; }
+        .modal-content { transform: scale(0.95); transition: all 0.3s ease-in-out; }
+        .modal.active .modal-content { transform: scale(1); }
+    </style>
+</head>
+<body class="text-dark bg-gray-50 min-h-screen flex flex-col">
+
+    <!-- NAVBAR (Header) -->
+    <header class="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10 border-b border-neutral/20 sticky top-0">
+        
+        <!-- Title & Breadcrumb -->
+        <div class="flex items-center gap-4">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-semibold text-dark">Gestión de Inventario</h1>
+                <span class="text-xs text-neutral">Dashboard > Inventario</span>
+            </div>
+        </div>
+
+        <!-- User & Actions -->
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex items-center bg-gray-100 rounded-full px-4 py-1.5 border border-transparent focus-within:border-primary focus-within:bg-white transition-all">
+                <i class="fa-solid fa-magnifying-glass text-neutral"></i>
+                <input type="text" placeholder="Buscar en sistema..." class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-48 text-dark placeholder-neutral">
+            </div>
+
+            <button class="relative p-2 text-neutral hover:text-primary transition-colors">
+                <i class="fa-regular fa-bell text-xl"></i>
+                <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+            </button>
+            
+            <div class="h-8 w-8 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-sm">
+                AD
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+        
+        <!-- PAGE HEADER & ACTIONS -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-dark">Catálogo de Materiales</h2>
+                <p class="text-sm text-neutral mt-1">Administra el stock central, equipos y herramientas.</p>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <button class="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Historial
+                </button>
+                <button class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-truck"></i> Asignar a Cuadrilla
+                </button>
+                <button onclick="openModal('restockModal')" class="px-4 py-2 bg-background text-secondary font-semibold rounded-lg hover:bg-background/80 transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-box-open"></i> Ingreso Manual
+                </button>
+                <button onclick="openModal('newItemModal')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg shadow-primary/20">
+                    <i class="fa-solid fa-plus"></i> Nuevo Ítem
+                </button>
+            </div>
+        </div>
+
+        <!-- KPI CARDS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Card 1 -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-neutral/10">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-neutral uppercase">Total Referencias</p>
+                        <h3 class="text-2xl font-bold text-dark mt-1">1,240</h3>
+                    </div>
+                    <div class="p-2 bg-blue-100 rounded-lg text-primary">
+                        <i class="fa-solid fa-list-ul text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-neutral">En catálogo activo</div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-neutral/10">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-neutral uppercase">Stock Crítico</p>
+                        <h3 class="text-2xl font-bold text-dark mt-1">5 <span class="text-sm font-normal text-neutral">ítems</span></h3>
+                    </div>
+                    <div class="p-2 bg-red-100 rounded-lg text-red-600">
+                        <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-red-500 font-bold">Requiere reposición urgente</div>
+            </div>
+
+            <!-- Card 3: REEMPLAZADO (Antes Valor Bodega) -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-neutral/10">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-neutral uppercase">Unidades Totales</p>
+                        <h3 class="text-2xl font-bold text-dark mt-1">15,450</h3>
+                    </div>
+                    <div class="p-2 bg-purple-100 rounded-lg text-purple-600">
+                        <i class="fa-solid fa-cubes-stacked text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 text-xs text-neutral">Volumen físico en almacén</div>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-neutral/10">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-neutral uppercase">Movimientos Hoy</p>
+                        <h3 class="text-2xl font-bold text-dark mt-1">28</h3>
+                    </div>
+                    <div class="p-2 bg-green-100 rounded-lg text-green-600">
+                        <i class="fa-solid fa-arrow-right-arrow-left text-lg"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-center text-xs text-green-600 font-bold">
+                    <i class="fa-solid fa-arrow-up mr-1"></i> 12 ingresos
+                </div>
+            </div>
+        </div>
+
+        <!-- FILTER TOOLBAR -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-neutral/10 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+            
+            <div class="flex gap-4 w-full md:w-auto">
+                <!-- Search -->
+                <div class="relative w-full md:w-64">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral"></i>
+                    <input type="text" placeholder="Buscar por código o nombre..." class="w-full pl-10 pr-4 py-2 border border-neutral/30 rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm">
+                </div>
+                
+                <!-- Category Select -->
+                <select class="border border-neutral/30 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary bg-white text-dark">
+                    <option value="">Todos los Tipos</option>
+                    <option value="material">Materiales</option>
+                    <option value="equipment">Equipos</option>
+                    <option value="tool">Herramientas</option>
+                </select>
+            </div>
+
+            <!-- Toggles -->
+            <div class="flex items-center gap-4">
+                <label class="flex items-center cursor-pointer gap-2">
+                    <div class="relative">
+                        <input type="checkbox" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                    </div>
+                    <span class="text-sm font-medium text-dark">Solo Stock Bajo</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- INVENTORY TABLE -->
+        <div class="bg-white rounded-xl shadow-sm border border-neutral/10 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-dark">
+                    <thead class="bg-gray-50 text-neutral font-semibold uppercase text-xs border-b border-neutral/10">
+                        <tr>
+                            <th class="px-6 py-4 w-10">
+                                <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary">
+                            </th>
+                            <th class="px-6 py-4">Código</th>
+                            <th class="px-6 py-4">Descripción</th>
+                            <th class="px-6 py-4">Tipo</th>
+                            <th class="px-6 py-4 text-center">Unidad</th>
+                            <th class="px-6 py-4 text-right">Stock Físico</th>
+                            <th class="px-6 py-4 text-center">Estado</th>
+                            <th class="px-6 py-4 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-neutral/10">
+                        <!-- Item 1: Material (Normal) -->
+                        <tr class="hover:bg-gray-50 transition-colors group">
+                            <td class="px-6 py-4">
+                                <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary">
+                            </td>
+                            <td class="px-6 py-4 font-medium font-mono text-neutral">MAT-001</td>
+                            <td class="px-6 py-4">
+                                <div class="font-medium text-dark">Cable UTP Cat6 Exterior</div>
+                                <div class="text-xs text-neutral">Bobina negra</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                    <i class="fa-solid fa-reel"></i> Material
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-center text-neutral">Metros</td>
+                            <td class="px-6 py-4 text-right font-bold text-dark">2,500</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
+                                    Normal
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button class="text-neutral hover:text-secondary p-1"><i class="fa-solid fa-pen"></i></button>
+                                <button class="text-neutral hover:text-red-500 p-1 ml-2"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+
+                        <!-- Item 2: Equipo (Low Stock) -->
+                        <tr class="hover:bg-gray-50 transition-colors bg-red-50/30">
+                            <td class="px-6 py-4">
+                                <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary">
+                            </td>
+                            <td class="px-6 py-4 font-medium font-mono text-neutral">EQP-204</td>
+                            <td class="px-6 py-4">
+                                <div class="font-medium text-dark">Router ONU GPON Huawei</div>
+                                <div class="text-xs text-neutral">Modelo HG8245H</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
+                                    <i class="fa-solid fa-server"></i> Equipo
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-center text-neutral">Unidad</td>
+                            <td class="px-6 py-4 text-right font-bold text-red-600">3</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-700">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> Crítico (Min: 10)
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button class="text-neutral hover:text-secondary p-1"><i class="fa-solid fa-pen"></i></button>
+                                <button class="text-neutral hover:text-red-500 p-1 ml-2"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+
+                        <!-- Item 3: Tool -->
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4">
+                                <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary">
+                            </td>
+                            <td class="px-6 py-4 font-medium font-mono text-neutral">HER-055</td>
+                            <td class="px-6 py-4">
+                                <div class="font-medium text-dark">Crimpadora RJ45</div>
+                                <div class="text-xs text-neutral">Marca ProKit</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                                    <i class="fa-solid fa-screwdriver-wrench"></i> Herramienta
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-center text-neutral">Unidad</td>
+                            <td class="px-6 py-4 text-right font-bold text-dark">12</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
+                                    Normal
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button class="text-neutral hover:text-secondary p-1"><i class="fa-solid fa-pen"></i></button>
+                                <button class="text-neutral hover:text-red-500 p-1 ml-2"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+                        
+                         <!-- Item 4: Material (Warning) -->
+                         <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4">
+                                <input type="checkbox" class="rounded border-gray-300 text-primary focus:ring-primary">
+                            </td>
+                            <td class="px-6 py-4 font-medium font-mono text-neutral">CON-012</td>
+                            <td class="px-6 py-4">
+                                <div class="font-medium text-dark">Conectores RJ45</div>
+                                <div class="text-xs text-neutral">Bolsa x100</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                                    <i class="fa-solid fa-reel"></i> Material
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-center text-neutral">Unidad</td>
+                            <td class="px-6 py-4 text-right font-bold text-dark">25</td>
+                            <td class="px-6 py-4 text-center">
+                                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-700">
+                                    Bajo (Min: 20)
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button class="text-neutral hover:text-secondary p-1"><i class="fa-solid fa-pen"></i></button>
+                                <button class="text-neutral hover:text-red-500 p-1 ml-2"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="px-6 py-4 border-t border-neutral/10 flex items-center justify-between">
+                <p class="text-sm text-neutral">Mostrando <span class="font-bold text-dark">1-4</span> de <span class="font-bold text-dark">1,240</span> resultados</p>
+                <div class="flex gap-2">
+                    <button class="px-3 py-1 text-sm border border-neutral/30 rounded text-neutral hover:bg-gray-50 disabled:opacity-50" disabled>Anterior</button>
+                    <button class="px-3 py-1 text-sm border border-neutral/30 rounded text-neutral hover:bg-gray-50">Siguiente</button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- === MODALS === -->
+
+    <!-- Modal: Nuevo Ítem -->
+    <div id="newItemModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-dark/50 backdrop-blur-sm">
+        <div class="modal-content bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden m-4">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-neutral/10 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold text-dark">Crear Nuevo Ítem</h3>
+                <button onclick="closeModal('newItemModal')" class="text-neutral hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Body -->
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-neutral uppercase mb-1">Código</label>
+                        <input type="text" placeholder="Ej: MAT-001" class="w-full px-3 py-2 border border-neutral/30 rounded-lg focus:outline-none focus:border-primary">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-neutral uppercase mb-1">Tipo</label>
+                        <select class="w-full px-3 py-2 border border-neutral/30 rounded-lg focus:outline-none focus:border-primary bg-white">
+                            <option value="material">Material</option>
+                            <option value="equipment">Equipo</option>
+                            <option value="tool">Herramienta</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-neutral uppercase mb-1">Descripción</label>
+                    <input type="text" placeholder="Ej: Cable UTP Cat6 Exterior" class="w-full px-3 py-2 border border-neutral/30 rounded-lg focus:outline-none focus:border-primary">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-neutral uppercase mb-1">Unidad de Medida</label>
+                        <select class="w-full px-3 py-2 border border-neutral/30 rounded-lg focus:outline-none focus:border-primary bg-white">
+                            <option value="units">Unidades</option>
+                            <option value="meters">Metros</option>
+                            <option value="kgs">Kilogramos</option>
+                            <option value="boxes">Cajas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-neutral uppercase mb-1">Stock Mínimo</label>
+                        <input type="number" value="5" class="w-full px-3 py-2 border border-neutral/30 rounded-lg focus:outline-none focus:border-primary">
+                    </div>
+                </div>
+                
+                <div>
+                     <label class="block text-xs font-semibold text-neutral uppercase mb-1">Stock Inicial</label>
+                     <input type="number" placeholder="0" class="w-full px-3 py-2 border border-neutral/30 rounded-lg focus:outline-none focus:border-primary">
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-neutral/10 flex justify-end gap-3">
+                <button onclick="closeModal('newItemModal')" class="px-4 py-2 text-neutral hover:text-dark font-medium transition-colors">Cancelar</button>
+                <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-secondary transition-colors font-medium shadow-md">Crear Ítem</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Ingreso Manual (Restock) -->
+    <div id="restockModal" class="modal fixed inset-0 z-50 flex items-center justify-center bg-dark/50 backdrop-blur-sm">
+        <div class="modal-content bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden m-4 h-[80vh] flex flex-col">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-neutral/10 flex justify-between items-center bg-background/30">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-background rounded-lg text-secondary">
+                        <i class="fa-solid fa-box-open"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-dark">Ingreso de Mercancía</h3>
+                </div>
+                <button onclick="closeModal('restockModal')" class="text-neutral hover:text-red-500 transition-colors">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <!-- Body Scrollable -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                <!-- Document Reference -->
+                <div>
+                    <label class="block text-xs font-semibold text-neutral uppercase mb-1">Referencia / Documento de Transporte</label>
+                    <input type="text" placeholder="Ej: Orden de Entrega Netuno #9088" class="w-full px-3 py-2 border border-neutral/30 rounded-lg focus:outline-none focus:border-primary">
+                </div>
+
+                <!-- Add Item Line -->
+                <div class="bg-gray-50 p-4 rounded-lg border border-neutral/10">
+                    <p class="text-sm font-bold text-secondary mb-3">Agregar Ítem a la Lista</p>
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <div class="flex-1 relative">
+                             <i class="fa-solid fa-search absolute left-3 top-3 text-neutral text-xs"></i>
+                             <input type="text" placeholder="Buscar ítem..." class="w-full pl-8 pr-3 py-2 border border-neutral/30 rounded-lg text-sm focus:border-primary focus:outline-none">
+                        </div>
+                        <div class="w-24">
+                            <input type="number" placeholder="Cant." class="w-full px-3 py-2 border border-neutral/30 rounded-lg text-sm focus:border-primary focus:outline-none">
+                        </div>
+                        <button class="px-3 py-2 bg-white border border-primary text-primary rounded-lg hover:bg-primary hover:text-white transition-colors">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Items List -->
+                <div>
+                    <h4 class="text-sm font-bold text-dark mb-2">Ítems a Ingresar</h4>
+                    <div class="border border-neutral/20 rounded-lg overflow-hidden">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 text-neutral text-xs uppercase">
+                                <tr>
+                                    <th class="px-4 py-2">Ítem</th>
+                                    <th class="px-4 py-2 text-right">Cantidad</th>
+                                    <th class="px-4 py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-neutral/10">
+                                <tr>
+                                    <td class="px-4 py-3">Cable UTP Cat6 Exterior</td>
+                                    <td class="px-4 py-3 text-right font-bold text-green-600">+500</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button class="text-neutral hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-3">Conectores RJ45</td>
+                                    <td class="px-4 py-3 text-right font-bold text-green-600">+100</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button class="text-neutral hover:text-red-500"><i class="fa-solid fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-gray-50 border-t border-neutral/10 flex justify-between items-center">
+                <div class="text-xs text-neutral">Total ítems: 2</div>
+                <div class="flex gap-3">
+                    <button onclick="closeModal('restockModal')" class="px-4 py-2 text-neutral hover:text-dark font-medium transition-colors">Cancelar</button>
+                    <button class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-primary transition-colors font-medium shadow-md">Confirmar Recepción</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logic Script -->
+    <script>
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // Close modal on click outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.classList.remove('active');
+            }
+        }
+    </script>
+</body>
+</html>

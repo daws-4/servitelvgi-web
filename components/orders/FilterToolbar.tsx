@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { FormInput } from "@/components/interactiveForms/Input";
 import { FormSelect, SelectOption } from "@/components/interactiveForms/Select";
 import { FormButton } from "@/components/interactiveForms/Button";
+import FormDatePicker from "@/components/interactiveForms/DatePicker";
+import { parseDate } from "@internationalized/date";
 
 interface FilterToolbarProps {
     searchValue?: string;
@@ -137,26 +139,28 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                 </div>
 
                 {/* Filtro Fecha Inicio */}
-                <div className="relative">
-                    <i className="fa-solid fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
-                    <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => onStartDateChange?.(e.target.value)}
-                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer"
-                        placeholder="Desde"
+                <div className="w-48">
+                    <FormDatePicker
+                        label="Desde"
+                        value={startDate ? parseDate(startDate) : null}
+                        onDateChange={(date) => onStartDateChange?.(date || "")}
+                        classNames={{
+                            base: "w-full",
+                            inputWrapper: "h-10",
+                        }}
                     />
                 </div>
 
                 {/* Filtro Fecha Fin */}
-                <div className="relative">
-                    <i className="fa-solid fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
-                    <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => onEndDateChange?.(e.target.value)}
-                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer"
-                        placeholder="Hasta"
+                <div className="w-48">
+                    <FormDatePicker
+                        label="Hasta"
+                        value={endDate ? parseDate(endDate) : null}
+                        onDateChange={(date) => onEndDateChange?.(date || "")}
+                        classNames={{
+                            base: "w-full",
+                            inputWrapper: "h-10",
+                        }}
                     />
                 </div>
             </div>

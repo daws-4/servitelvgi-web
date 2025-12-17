@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import { BulkActionBar } from "@/components/orders/BulkActionBar";
 import { AssignCrewModal } from "@/components/orders/AssignCrewModal";
+import { OrderHistoryModal } from "@/components/orders/OrderHistoryModal";
 import { useRouter } from "next/navigation";
 import { EditIcon, EyeCloseIcon, TrashIcon } from "@/components/icons";
 import { Link } from "@heroui/link";
@@ -51,6 +52,8 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
     onAssignCrew,
 }) => {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [selectedOrderIdForHistory, setSelectedOrderIdForHistory] = useState<string | undefined>(undefined);
     const [isProcessing, setIsProcessing] = useState(false);
     const router = useRouter();
     const allSelected = orders?.length > 0 && orders.every((order) => selectedOrders.has(order._id));
@@ -209,6 +212,16 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
         }
     };
 
+    const handleViewHistory = (orderId?: string) => {
+        setSelectedOrderIdForHistory(orderId);
+        setIsHistoryModalOpen(true);
+    };
+
+    const handleCloseHistoryModal = () => {
+        setIsHistoryModalOpen(false);
+        setSelectedOrderIdForHistory(undefined);
+    };
+
     const getTypeBadge = (type: OrderData["type"]) => {
         // Normalize: remove accents and convert to lowercase
         const normalizedType = type
@@ -365,6 +378,13 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                         <td className="p-4 text-right">
                                             <div className="flex justify-end gap-2">
                                                 <button
+                                                    onClick={() => handleViewHistory(order._id)}
+                                                    className="text-gray-400 hover:text-primary transition-colors p-1 cursor-pointer"
+                                                    title="Ver Historial"
+                                                >
+                                                    <i className="fa-solid fa-clock-rotate-left w-4 h-4"></i>
+                                                </button>
+                                                <button
                                                     onClick={() => handleEditRedirect(order._id)}
                                                     className="text-gray-400 hover:text-primary transition-colors p-1 cursor-pointer"
                                                     title="Editar"
@@ -394,6 +414,13 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                 onClose={() => setIsAssignModalOpen(false)}
                 onConfirm={handleConfirmAssignment}
                 selectedCount={selectedOrders.size}
+            />
+
+            {/* Order History Modal */}
+            <OrderHistoryModal
+                isOpen={isHistoryModalOpen}
+                onClose={handleCloseHistoryModal}
+                orderId={selectedOrderIdForHistory}
             />
         </>
     );

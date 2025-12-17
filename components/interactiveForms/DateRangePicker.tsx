@@ -1,7 +1,7 @@
 import React from "react";
 import { DateRangePicker, DateRangePickerProps } from "@heroui/react";
 import { parseDate, getLocalTimeZone, today } from "@internationalized/date";
-import { useDateFormatter } from "@react-aria/i18n";
+import { I18nProvider } from "@react-aria/i18n";
 
 interface DateFilterProps extends Omit<DateRangePickerProps, "children"> {
     onDateChange?: (range: { start: string; end: string } | null) => void;
@@ -12,9 +12,6 @@ export const DateFilter: React.FC<DateFilterProps> = ({
     label = "Filtrar por Fecha",
     ...props
 }) => {
-
-    // Formateador para mostrar las fechas de forma amigable (ej: "1 ene - 31 ene")
-    const formatter = useDateFormatter({ dateStyle: "short" });
 
     // Manejador de cambio: convierte el objeto Date de HeroUI a strings ISO (YYYY-MM-DD)
     // para que sean fáciles de enviar a tu API o filtrar en MongoDB
@@ -32,24 +29,26 @@ export const DateFilter: React.FC<DateFilterProps> = ({
     };
 
     return (
-        <DateRangePicker
-            label={label}
-            variant="bordered"
-            radius="sm"
-            labelPlacement="outside"
-            visibleMonths={2} // Muestra 2 meses al abrir el calendario para rangos largos
-            pageBehavior="single" // Navegación más intuitiva
-            classNames={{
-                base: "max-w-xs",
-                label: "font-medium text-default-600",
-                inputWrapper: "border-default-300 hover:border-primary focus-within:border-primary bg-white dark:bg-transparent",
-            }}
-            // Traducciones y accesibilidad
-            errorMessage="Selecciona un rango válido"
-            onChange={handleChange}
-            // Props adicionales que quieras pasar
-            {...props}
-        />
+        <I18nProvider locale="es-ES">
+            <DateRangePicker
+                label={label}
+                variant="bordered"
+                radius="sm"
+                labelPlacement="outside"
+                visibleMonths={2} // Muestra 2 meses al abrir el calendario para rangos largos
+                pageBehavior="single" // Navegación más intuitiva
+                classNames={{
+                    base: "max-w-xs",
+                    label: "font-medium text-default-600",
+                    inputWrapper: "border-default-300 hover:border-primary focus-within:border-primary bg-white dark:bg-transparent",
+                }}
+                // Traducciones y accesibilidad
+                errorMessage="Selecciona un rango válido"
+                onChange={handleChange}
+                // Props adicionales que quieras pasar
+                {...props}
+            />
+        </I18nProvider>
     );
 };
 

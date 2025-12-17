@@ -163,6 +163,101 @@ export async function assignMaterialToCrew(
 }
 
 /**
+ * Devuelve materiales de una cuadrilla al almacén central
+ * @param crewId - ID de la cuadrilla
+ * @param items - Array de ítems con inventoryId y quantity
+ * @param reason - Motivo de la devolución
+ * @param userId - ID del usuario que realiza la devolución (opcional)
+ * @returns Cuadrilla actualizada con inventario reducido
+ */
+export async function returnMaterialFromCrew(
+  crewId: string,
+  items: { inventoryId: string; quantity: number }[],
+  reason: string,
+  userId?: string
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // 1. Obtener la cuadrilla
+    const crew = await CrewModel.findById(crewId).session(session);
+    if (!crew) {
+      throw new Error(`Cuadrilla no encontrada: ${crewId}`);
+    }
+
+    // 2. Validar y procesar cada ítem
+    for (const item of items) {
+      // Buscar el ítem en el inventario de la cuadrilla
+      const itemIndex = crew.assignedInventory.findIndex(
+        (inv: any) => inv.item.toString() === item.inventoryId
+      );
+
+      if (itemIndex < 0) {
+        const inventoryItem = await InventoryModel.findById(item.inventoryId);
+        throw new Error(
+          `La cuadrilla no tiene asignado el material: ${
+            inventoryItem?.description || item.inventoryId
+          }`
+        );
+      }
+
+      // Verificar que tenga suficiente cantidad
+      if (crew.assignedInventory[itemIndex].quantity < item.quantity) {
+        const inventoryItem = await InventoryModel.findById(item.inventoryId);
+        throw new Error(
+          `Cantidad insuficiente de ${inventoryItem?.description || "material"}. ` +
+            `Disponible: ${crew.assignedInventory[itemIndex].quantity}, ` +
+            `Solicitado: ${item.quantity}`
+        );
+      }
+
+      // 3. Restar del inventario de la cuadrilla
+      crew.assignedInventory[itemIndex].quantity -= item.quantity;
+      crew.assignedInventory[itemIndex].lastUpdate = new Date();
+
+      // Si la cantidad llega a 0, eliminar el ítem del array
+      if (crew.assignedInventory[itemIndex].quantity === 0) {
+        crew.assignedInventory.splice(itemIndex, 1);
+      }
+
+      // 4. Incrementar en el inventario de bodega
+      await InventoryModel.findByIdAndUpdate(
+        item.inventoryId,
+        { $inc: { currentStock: item.quantity } },
+        { session }
+      );
+
+      // 5. Crear registro en historial
+      await InventoryHistoryModel.create(
+        [
+          {
+            item: item.inventoryId,
+            type: "return",
+            quantityChange: item.quantity, // Positivo porque regresa al almacén
+            reason: reason,
+            crew: crewId,
+          },
+        ],
+        { session }
+      );
+    }
+
+    await crew.save({ session });
+    await session.commitTransaction();
+
+    return crew;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+/**
  * Procesa el consumo de materiales al completar una orden
  * @param orderId - ID de la orden completada
  * @param crewId - ID de la cuadrilla que realizó el trabajo
@@ -418,21 +513,19 @@ export async function getInventoryStatistics(
   await connectDB();
 
   try {
-    // 1. Obtener snapshots en el rango de fechas
-    const snapshots = await InventorySnapshotModel.find({
-      snapshotDate: { $gte: startDate, $lte: endDate },
-    })
-      .sort({ snapshotDate: 1 })
-      .lean();
+    // 1. Calcular métricas básicas del inventario actual
+    const allItems = await InventoryModel.find().lean();
+    
+    const totalItems = allItems.length;
+    const criticalStock = allItems.filter(
+      (item) => item.currentStock <= item.minimumStock * 0.5
+    ).length;
+    const totalWarehouseStock = allItems.reduce(
+      (sum, item) => sum + item.currentStock,
+      0
+    );
 
-    if (snapshots.length < 2) {
-      return {
-        message: "Se necesitan al menos 2 snapshots para calcular estadísticas",
-        snapshots: snapshots.length,
-      };
-    }
-
-    // 2. Obtener historial de movimientos en el mismo rango
+    // 2. Obtener historial de movimientos en el rango
     const historyQuery: any = {
       createdAt: { $gte: startDate, $lte: endDate },
     };
@@ -468,15 +561,28 @@ export async function getInventoryStatistics(
         return acc;
       }, {});
 
+    // 5. Intentar obtener snapshots (opcional)
+    const snapshots = await InventorySnapshotModel.find({
+      snapshotDate: { $gte: startDate, $lte: endDate },
+    })
+      .sort({ snapshotDate: 1 })
+      .lean();
+
     return {
       period: { start: startDate, end: endDate },
-      snapshotsCount: snapshots.length,
+      // Métricas básicas del inventario actual
+      totalItems,
+      criticalStock,
+      totalWarehouseStock,
+      // Métricas de movimientos
       totalMovements: movements.length,
       movementsByType: Object.keys(movementsByType).map((type) => ({
         type,
         count: movementsByType[type].length,
       })),
       materialUsage: Object.values(materialUsage),
+      // Snapshots (si están disponibles)
+      snapshotsCount: snapshots.length,
       snapshots: snapshots.map((s) => ({
         date: s.snapshotDate,
         warehouseStock: s.totalWarehouseStock,

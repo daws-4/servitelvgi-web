@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const [pendingOrdersTrend, setPendingOrdersTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
   const [activeCrewsCount, setActiveCrewsCount] = useState<number>(0);
   const [activeCrewsTrend, setActiveCrewsTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
+  const [criticalInventoryCount, setCriticalInventoryCount] = useState<number>(0);
 
 
   // Helper function to check if a date is today
@@ -115,6 +116,19 @@ export default function DashboardPage() {
           isPositive: true
         });
       }
+
+      // Fetch critical inventory (low stock items)
+      const inventoryResponse = await axios.get('/api/web/inventory');
+      const inventoryData = inventoryResponse.data;
+
+      // The API returns { success, count, items } structure
+      const allInventory = inventoryData.items || [];
+
+      // Count items with current stock at or below minimum stock
+      const criticalItems = allInventory.filter((item: any) =>
+        item.currentStock <= item.minimumStock
+      );
+      setCriticalInventoryCount(criticalItems.length);
 
     } catch (err) {
       console.error("Error fetching statCard data:", err);
@@ -211,12 +225,12 @@ export default function DashboardPage() {
 
             <StatCard
               title="Inventario Crítico"
-              value="3"
+              value={criticalInventoryCount.toString()}
               subValue="items"
               icon={<InventoryIcon className="text-lg" size={24} />}
               iconBgColor="bg-red-100"
               iconColor="text-red-600"
-              alertMessage="Requiere atención"
+              alertMessage={criticalInventoryCount > 0 ? "Requiere atención" : undefined}
             />
           </div>
 

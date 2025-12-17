@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { OrderEditForm, OrderEditData } from '@/components/orders/OrderEditForm';
+import { OrderHistoryModal } from '@/components/orders/OrderHistoryModal';
 import axios from 'axios';
 
 export default function OrderEditPage() {
@@ -13,6 +14,7 @@ export default function OrderEditPage() {
     const [orderData, setOrderData] = useState<OrderEditData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
     useEffect(() => {
         if (!orderId) {
@@ -219,6 +221,13 @@ export default function OrderEditPage() {
                     onDelete={handleDelete}
                 />
             </main>
+
+            {/* Order History Modal */}
+            <OrderHistoryModal
+                isOpen={isHistoryModalOpen}
+                onClose={() => setIsHistoryModalOpen(false)}
+                orderId={orderId}
+            />
         </div>
     );
 }

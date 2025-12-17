@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   restockInventory,
   assignMaterialToCrew,
+  returnMaterialFromCrew,
 } from "@/lib/inventoryService";
 
 export async function POST(request: NextRequest) {
@@ -74,11 +75,50 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "return": {
+        // Devolución de materiales de cuadrilla a bodega
+        const { crewId, items, reason, userId } = data;
+
+        if (!crewId) {
+          return NextResponse.json(
+            { success: false, error: "crewId es requerido" },
+            { status: 400 }
+          );
+        }
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+          return NextResponse.json(
+            { success: false, error: "Items es requerido y debe ser un array" },
+            { status: 400 }
+          );
+        }
+
+        if (!reason) {
+          return NextResponse.json(
+            { success: false, error: "Reason es requerido" },
+            { status: 400 }
+          );
+        }
+
+        const updatedCrew = await returnMaterialFromCrew(
+          crewId,
+          items,
+          reason,
+          userId
+        );
+
+        return NextResponse.json({
+          success: true,
+          message: "Materiales devueltos correctamente al almacén",
+          crew: updatedCrew,
+        });
+      }
+
       default:
         return NextResponse.json(
           {
             success: false,
-            error: `Acción no válida: ${action}. Usar 'restock' o 'assign'`,
+            error: `Acción no válida: ${action}. Usar 'restock', 'assign' o 'return'`,
           },
           { status: 400 }
         );

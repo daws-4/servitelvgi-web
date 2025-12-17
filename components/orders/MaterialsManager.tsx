@@ -1,190 +1,514 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 export interface Material {
-    name: string;
+    item: {
+        _id: string;
+        code: string;
+        description: string;
+        unit: string;
+    } | string;
     quantity: number;
 }
 
 interface MaterialsManagerProps {
+    orderId: string;
+    assignedCrewId?: string;
     initialMaterials?: Material[];
     onChange?: (materials: Material[]) => void;
 }
 
-const MATERIAL_OPTIONS = [
-    { value: "CABLE UTP CAT6", label: "Cable UTP Cat6 (mts)" },
-    { value: "CONECTOR RJ45", label: "Conector RJ45 (unidad)" },
-    { value: "ONT HUAWEI", label: "ONT Huawei (equipo)" },
-    { value: "ROUTER TP-LINK", label: "Router TP-Link (equipo)" },
-    { value: "PRECINTO PLASTICO", label: "Precinto Plástico (unidad)" },
-];
+interface CrewInventoryItem {
+    item: {
+        _id: string;
+        code: string;
+        description: string;
+        unit: string;
+    };
+    quantity: number;
+    lastUpdate: Date;
+}
 
 export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
+    orderId,
+    assignedCrewId,
     initialMaterials = [],
-    onChange
+    onChange,
 }) => {
     const [materials, setMaterials] = useState<Material[]>(initialMaterials);
-    const [selectedMaterial, setSelectedMaterial] = useState("");
+    const [crewInventory, setCrewInventory] = useState<CrewInventoryItem[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [selectedMaterialId, setSelectedMaterialId] = useState("");
     const [quantity, setQuantity] = useState(1);
+    const [returnModalOpen, setReturnModalOpen] = useState(false);
+    const [materialToReturn, setMaterialToReturn] = useState<Material | null>(null);
+    const [returningMaterial, setReturningMaterial] = useState(false);
+    const [returnReason, setReturnReason] = useState("");
 
-    // Notify parent of changes
+    // Notify parent of material changes
     useEffect(() => {
         if (onChange) {
             onChange(materials);
         }
-    }, [materials]);
+    }, [materials, onChange]);
+
+    // Fetch crew inventory when crew is assigned
+    useEffect(() => {
+        if (assignedCrewId) {
+            fetchCrewInventory();
+        } else {
+            setCrewInventory([]);
+        }
+    }, [assignedCrewId]);
+
+    const fetchCrewInventory = async () => {
+        if (!assignedCrewId) return;
+
+        try {
+            setLoading(true);
+            const response = await axios.get(`/api/web/crews?id=${assignedCrewId}`);
+            setCrewInventory(response.data.assignedInventory || []);
+        } catch (error) {
+            console.error("Error fetching crew inventory:", error);
+            alert("Error al cargar el inventario de la cuadrilla");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getAvailableQuantity = (itemId: string): number => {
+        const inventoryItem = crewInventory.find((inv) => inv.item._id === itemId);
+        return inventoryItem?.quantity || 0;
+    };
 
     const handleAddMaterial = () => {
-        if (!selectedMaterial) {
+        if (!selectedMaterialId) {
             alert("Por favor selecciona un material.");
             return;
         }
 
-        const newMaterial: Material = {
-            name: selectedMaterial,
-            quantity: quantity
-        };
+        const selectedItem = crewInventory.find(
+            (inv) => inv.item._id === selectedMaterialId
+        );
 
-        setMaterials(prev => [...prev, newMaterial]);
+        if (!selectedItem) {
+            alert("Material no encontrado");
+            return;
+        }
+
+        if (quantity <= 0) {
+            alert("La cantidad debe ser mayor a 0");
+            return;
+        }
+
+        if (quantity > selectedItem.quantity) {
+            alert(
+                `Cantidad no disponible. Máximo: ${selectedItem.quantity} ${selectedItem.item.unit}`
+            );
+            return;
+        }
+
+        // Check if material already exists in the list
+        const existingMaterialIndex = materials.findIndex((m) => {
+            const itemId = typeof m.item === "string" ? m.item : m.item._id;
+            return itemId === selectedMaterialId;
+        });
+
+        if (existingMaterialIndex >= 0) {
+            // Material already exists, update quantity
+            const existingMaterial = materials[existingMaterialIndex];
+            const newQuantity = existingMaterial.quantity + quantity;
+
+            // Validate total quantity
+            if (newQuantity > selectedItem.quantity) {
+                alert(
+                    `Cantidad total excede disponibilidad. Ya tienes ${existingMaterial.quantity} ${selectedItem.item.unit}. Máximo: ${selectedItem.quantity} ${selectedItem.item.unit}`
+                );
+                return;
+            }
+
+            // Update existing material quantity
+            setMaterials((prev) =>
+                prev.map((material, i) =>
+                    i === existingMaterialIndex
+                        ? { ...material, quantity: newQuantity }
+                        : material
+                )
+            );
+
+            alert(
+                `Cantidad actualizada: ${existingMaterial.quantity} + ${quantity} = ${newQuantity} ${selectedItem.item.unit}`
+            );
+        } else {
+            // Material doesn't exist, add new entry
+            const newMaterial: Material = {
+                item: selectedItem.item,
+                quantity: quantity,
+            };
+
+            setMaterials((prev) => [...prev, newMaterial]);
+        }
 
         // Reset inputs
-        setSelectedMaterial("");
+        setSelectedMaterialId("");
         setQuantity(1);
     };
 
     const handleRemoveMaterial = (index: number) => {
-        setMaterials(prev => prev.filter((_, i) => i !== index));
+        setMaterials((prev) => prev.filter((_, i) => i !== index));
     };
 
     const handleQuantityChange = (index: number, newQuantity: number) => {
         if (newQuantity < 1) return;
 
-        setMaterials(prev => prev.map((material, i) =>
-            i === index ? { ...material, quantity: newQuantity } : material
-        ));
+        const material = materials[index];
+        const itemId =
+            typeof material.item === "string" ? material.item : material.item._id;
+        const available = getAvailableQuantity(itemId);
+
+        if (newQuantity > available) {
+            alert(`Cantidad no disponible. Máximo: ${available}`);
+            return;
+        }
+
+        setMaterials((prev) =>
+            prev.map((material, i) =>
+                i === index ? { ...material, quantity: newQuantity } : material
+            )
+        );
+    };
+
+    const handleReturnClick = (material: Material) => {
+        setMaterialToReturn(material);
+        setReturnModalOpen(true);
+        setReturnReason("");
+    };
+
+    const handleReturnMaterial = async () => {
+        if (!materialToReturn || !assignedCrewId) return;
+
+        if (!returnReason.trim()) {
+            alert("Debe ingresar un motivo de devolución");
+            return;
+        }
+
+        try {
+            setReturningMaterial(true);
+
+            const itemId =
+                typeof materialToReturn.item === "string"
+                    ? materialToReturn.item
+                    : materialToReturn.item._id;
+
+            await axios.post("/api/web/inventory/movements", {
+                action: "return",
+                data: {
+                    crewId: assignedCrewId,
+                    items: [
+                        {
+                            inventoryId: itemId,
+                            quantity: materialToReturn.quantity,
+                        },
+                    ],
+                    reason: `${returnReason} (Orden #${orderId})`,
+                },
+            });
+
+            alert("Material devuelto correctamente al almacén");
+
+            // Remove material from list
+            setMaterials((prev) =>
+                prev.filter((m) => {
+                    const mItemId = typeof m.item === "string" ? m.item : m.item._id;
+                    return mItemId !== itemId || m.quantity !== materialToReturn.quantity;
+                })
+            );
+
+            // Refresh crew inventory
+            await fetchCrewInventory();
+
+            setReturnModalOpen(false);
+            setMaterialToReturn(null);
+            setReturnReason("");
+        } catch (error: any) {
+            console.error("Error returning material:", error);
+            alert(
+                error.response?.data?.error ||
+                "Error al devolver el material. Intente nuevamente."
+            );
+        } finally {
+            setReturningMaterial(false);
+        }
+    };
+
+    const renderMaterialDisplay = (material: Material) => {
+        if (typeof material.item === "string") {
+            return material.item;
+        }
+        return `${material.item.code} - ${material.item.description}`;
+    };
+
+    const getItemUnit = (material: Material): string => {
+        if (typeof material.item === "string") return "";
+        return material.item.unit;
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="bg-gray-50/50 border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-tools text-secondary"></i>
-                    <h3 className="font-semibold text-secondary">Materiales Utilizados</h3>
-                </div>
-                <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
-                    Control de Stock
-                </span>
-            </div>
-
-            <div className="p-6 space-y-4">
-                {/* Add Material Bar */}
-                <div className="flex flex-col sm:flex-row gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 items-end">
-                    <div className="flex-1 w-full">
-                        <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                            Material / Equipo
-                        </label>
-                        <select
-                            value={selectedMaterial}
-                            onChange={(e) => setSelectedMaterial(e.target.value)}
-                            className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all cursor-pointer"
-                        >
-                            <option value="">-- Seleccionar Material --</option>
-                            {MATERIAL_OPTIONS.map(option => (
-                                <option className="cursor-pointer" key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+        <>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gray-50/50 border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <i className="fa-solid fa-tools text-secondary"></i>
+                        <h3 className="font-semibold text-secondary">
+                            Materiales Utilizados
+                        </h3>
                     </div>
-                    <div className="w-24">
-                        <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                            Cantidad
-                        </label>
-                        <input
-                            type="number"
-                            min="1"
-                            value={quantity}
-                            onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                            className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-                        />
+                    <div className="flex items-center gap-2">
+                        {assignedCrewId && (
+                            <button
+                                onClick={fetchCrewInventory}
+                                className="text-xs text-gray-500 hover:text-primary transition-colors"
+                                title="Actualizar inventario"
+                            >
+                                <i className="fa-solid fa-rotate-right"></i>
+                            </button>
+                        )}
+                        <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
+                            {assignedCrewId ? "Inventario Real" : "Sin Cuadrilla"}
+                        </span>
                     </div>
-                    <button
-                        type="button"
-                        onClick={handleAddMaterial}
-                        className="bg-secondary hover:bg-primary text-white px-4 py-2.5 rounded-md font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
-                    >
-                        <i className="fa-solid fa-plus"></i> Agregar
-                    </button>
                 </div>
 
-                {/* Materials Table */}
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
-                            <tr>
-                                <th className="px-4 py-3">Material</th>
-                                <th className="px-4 py-3 w-24 text-center">Cant.</th>
-                                <th className="px-4 py-3 w-16 text-right"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {materials.length === 0 ? (
+                <div className="p-6 space-y-4">
+                    {/* Add Material Bar */}
+                    {!assignedCrewId ? (
+                        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                            <i className="fa-solid fa-info-circle text-yellow-600 mb-2 text-2xl"></i>
+                            <p className="text-sm text-yellow-800 font-medium">
+                                Asigna una cuadrilla primero para gestionar materiales
+                            </p>
+                        </div>
+                    ) : loading ? (
+                        <div className="p-4 bg-gray-50 rounded-lg text-center">
+                            <i className="fa-solid fa-spinner fa-spin text-gray-400 text-xl"></i>
+                            <p className="text-sm text-gray-500 mt-2">
+                                Cargando inventario...
+                            </p>
+                        </div>
+                    ) : crewInventory.length === 0 ? (
+                        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                            <i className="fa-solid fa-box-open text-gray-400 mb-2 text-2xl"></i>
+                            <p className="text-sm text-gray-600">
+                                La cuadrilla no tiene materiales asignados
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col sm:flex-row gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 items-end">
+                            <div className="flex-1 w-full">
+                                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+                                    Material / Equipo
+                                </label>
+                                <select
+                                    value={selectedMaterialId}
+                                    onChange={(e) => setSelectedMaterialId(e.target.value)}
+                                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+                                >
+                                    <option value="">-- Seleccionar Material --</option>
+                                    {crewInventory.map((inv) => (
+                                        <option key={inv.item._id} value={inv.item._id}>
+                                            {inv.item.code} - {inv.item.description} (Disp:{" "}
+                                            {inv.quantity} {inv.item.unit})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="w-24">
+                                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+                                    Cantidad
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={quantity}
+                                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                                    className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleAddMaterial}
+                                className="bg-secondary hover:bg-primary text-white px-4 py-2.5 rounded-md font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
+                            >
+                                <i className="fa-solid fa-plus"></i> Agregar
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Materials Table */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-200">
                                 <tr>
-                                    <td colSpan={3} className="px-4 py-8 text-center text-gray-400 italic">
-                                        No se han registrado materiales aún.
-                                    </td>
+                                    <th className="px-4 py-3">Material</th>
+                                    <th className="px-4 py-3 w-24 text-center">Cant.</th>
+                                    <th className="px-4 py-3 w-16 text-center">Unidad</th>
+                                    <th className="px-4 py-3 w-32 text-right">Acciones</th>
                                 </tr>
-                            ) : (
-                                materials.map((material, index) => (
-                                    <tr
-                                        key={index}
-                                        className="fade-in bg-white border-b border-gray-50 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <td className="px-4 py-3 font-medium text-gray-700">
-                                            {material.name}
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={material.quantity}
-                                                onChange={(e) => handleQuantityChange(index, parseInt(e.target.value) || 1)}
-                                                className="w-16 text-center border rounded p-1 text-sm focus:border-primary outline-none"
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveMaterial(index)}
-                                                className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
-                                            >
-                                                <i className="fa-solid fa-trash-can"></i>
-                                            </button>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {materials.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={4}
+                                            className="px-4 py-8 text-center text-gray-400 italic"
+                                        >
+                                            No se han registrado materiales aún.
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                ) : (
+                                    materials.map((material, index) => (
+                                        <tr
+                                            key={index}
+                                            className="bg-white border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <td className="px-4 py-3 font-medium text-gray-700">
+                                                {renderMaterialDisplay(material)}
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    value={material.quantity}
+                                                    onChange={(e) =>
+                                                        handleQuantityChange(
+                                                            index,
+                                                            parseInt(e.target.value) || 1
+                                                        )
+                                                    }
+                                                    className="w-16 text-center border rounded p-1 text-sm focus:border-primary outline-none"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-3 text-center text-gray-500">
+                                                {getItemUnit(material)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {assignedCrewId && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleReturnClick(material)}
+                                                            className="text-orange-500 hover:text-orange-600 p-1 rounded hover:bg-orange-50 transition-colors cursor-pointer"
+                                                            title="Devolver al almacén"
+                                                        >
+                                                            <i className="fa-solid fa-rotate-left"></i>
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveMaterial(index)}
+                                                        className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors cursor-pointer"
+                                                        title="Eliminar"
+                                                    >
+                                                        <i className="fa-solid fa-trash-can"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <style jsx>{`
-                @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(5px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                .fade-in {
-                    animation: fadeIn 0.3s ease-in;
-                }
-            `}</style>
-        </div>
+            {/* Return Material Modal */}
+            {returnModalOpen && materialToReturn && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-neutral/10">
+                            <div className="flex items-center gap-2">
+                                <i className="fa-solid fa-rotate-left text-orange-500 text-xl"></i>
+                                <h3 className="text-xl font-bold text-dark">
+                                    Devolver Material al Almacén
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setReturnModalOpen(false)}
+                                className="text-neutral hover:text-dark transition-colors"
+                                disabled={returningMaterial}
+                            >
+                                <i className="fa-solid fa-xmark text-xl"></i>
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6">
+                            {/* Material Info */}
+                            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                <p className="text-xs text-neutral mb-1">Material</p>
+                                <p className="font-medium text-dark">
+                                    {renderMaterialDisplay(materialToReturn)}
+                                </p>
+                                <p className="text-sm text-neutral mt-2">
+                                    Cantidad a devolver: {materialToReturn.quantity}{" "}
+                                    {getItemUnit(materialToReturn)}
+                                </p>
+                            </div>
+
+                            {/* Reason Input */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-dark mb-1">
+                                    Motivo de Devolución{" "}
+                                    <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    value={returnReason}
+                                    onChange={(e) => setReturnReason(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-neutral/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
+                                    placeholder="Ej: Material no utilizado en la orden"
+                                    rows={3}
+                                    required
+                                    disabled={returningMaterial}
+                                />
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setReturnModalOpen(false)}
+                                    className="flex-1 px-4 py-2 text-sm font-medium text-dark bg-white border border-neutral/30 rounded-lg hover:bg-gray-50 transition-colors"
+                                    disabled={returningMaterial}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleReturnMaterial}
+                                    disabled={returningMaterial}
+                                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {returningMaterial ? (
+                                        <>
+                                            <i className="fa-solid fa-circle-notch fa-spin"></i>
+                                            Devolviendo...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fa-solid fa-rotate-left"></i>
+                                            Devolver Material
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };

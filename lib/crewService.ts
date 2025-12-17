@@ -21,6 +21,7 @@ export async function getCrewById(id: string) {
   return await CrewModel.findById(id)
     .populate('leader', 'name surname role')
     .populate('members', 'name surname role')
+    .populate('assignedInventory.item', 'code description unit')
     .lean();
 }
 

@@ -189,6 +189,8 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
 
                 {/* 3. Materials Used */}
                 <MaterialsManager
+                    orderId={orderId}
+                    assignedCrewId={formData.assignedTo}
                     initialMaterials={materials}
                     onChange={setMaterials}
                 />

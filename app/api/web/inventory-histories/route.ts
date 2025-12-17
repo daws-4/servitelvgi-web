@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
+    
     if (id) {
       const item = await getInventoryHistoryById(id);
       if (!item)
@@ -30,7 +31,16 @@ export async function GET(request: Request) {
         );
       return NextResponse.json(item, { status: 200, headers: CORS_HEADERS });
     }
-    const items = await getInventoryHistories();
+    
+    // Extraer filtros de query params
+    const filters = {
+      startDate: url.searchParams.get("startDate") || undefined,
+      endDate: url.searchParams.get("endDate") || undefined,
+      crewId: url.searchParams.get("crewId") || undefined,
+      itemId: url.searchParams.get("itemId") || undefined,
+    };
+    
+    const items = await getInventoryHistories(filters);
     return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     return NextResponse.json(

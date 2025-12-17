@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import axios from "axios";
 import { CrewEditForm } from "@/components/crews/CrewEditForm";
+import { CrewInventoryCard } from "@/components/crews/CrewInventoryCard";
+import { ReturnMaterialModal } from "@/components/crews/ReturnMaterialModal";
 
 interface Installer {
     _id: string;
@@ -17,12 +19,24 @@ interface Vehicle {
     name: string;
 }
 
+interface InventoryItem {
+    item: {
+        _id: string;
+        code: string;
+        description: string;
+        unit: string;
+    };
+    quantity: number;
+    lastUpdate: Date;
+}
+
 interface CrewData {
     _id: string;
     name: string;
     leader: Installer;
     members: Installer[];
     vehiclesAssigned: Vehicle[];
+    assignedInventory: InventoryItem[];
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -37,6 +51,8 @@ export default function CrewEditPage() {
     const [availableInstallers, setAvailableInstallers] = useState<Installer[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [returnModalOpen, setReturnModalOpen] = useState(false);
+    const [selectedMaterial, setSelectedMaterial] = useState<InventoryItem | null>(null);
 
     useEffect(() => {
         fetchData();
@@ -95,6 +111,17 @@ export default function CrewEditPage() {
         router.push("/dashboard/crews");
     };
 
+    const handleReturnClick = (material: InventoryItem) => {
+        setSelectedMaterial(material);
+        setReturnModalOpen(true);
+    };
+
+    const handleReturnSuccess = async () => {
+        setReturnModalOpen(false);
+        setSelectedMaterial(null);
+        await fetchData(); // Refresh crew data to show updated inventory
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -149,6 +176,25 @@ export default function CrewEditPage() {
                     availableInstallers={availableInstallers}
                     onSubmit={handleSubmit}
                     onCancel={handleCancel}
+                />
+
+                {/* Material Asignado */}
+                <div className="mt-6">
+                    <CrewInventoryCard
+                        crewId={crew._id}
+                        assignedInventory={crew.assignedInventory || []}
+                        onReturnClick={handleReturnClick}
+                        onRefresh={fetchData}
+                    />
+                </div>
+
+                {/* Return Material Modal */}
+                <ReturnMaterialModal
+                    isOpen={returnModalOpen}
+                    onClose={() => setReturnModalOpen(false)}
+                    crewId={crew._id}
+                    material={selectedMaterial}
+                    onSuccess={handleReturnSuccess}
                 />
             </div>
         </main>

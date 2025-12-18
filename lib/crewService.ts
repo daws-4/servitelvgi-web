@@ -61,24 +61,31 @@ export async function updateCrew(id: string, data: any) {
     throw new Error('Crew not found');
   }
   
-  // Handle leader change
+  // Handle leader change with special case for role swaps
   if (data.leader && data.leader !== oldCrew.leader?.toString()) {
-    // Remove currentCrew from old leader
-    if (oldCrew.leader) {
+    const oldLeaderId = oldCrew.leader?.toString();
+    const newLeaderId = data.leader.toString();
+    const newMemberIds = (data.members || []).map((m: any) => m.toString());
+    
+    // Check if old leader is becoming a member
+    const oldLeaderBecomingMember = oldLeaderId && newMemberIds.includes(oldLeaderId);
+    
+    // Remove currentCrew from old leader ONLY if they're not staying as a member
+    if (oldLeaderId && !oldLeaderBecomingMember) {
       await InstallerModel.findByIdAndUpdate(
-        oldCrew.leader,
+        oldLeaderId,
         { $set: { currentCrew: null } }
       );
     }
+    // If old leader is becoming a member, their currentCrew will be handled by member logic
     
     // Assign currentCrew to new leader
     await InstallerModel.findByIdAndUpdate(
-      data.leader,
+      newLeaderId,
       { $set: { currentCrew: id } }
     );
   } else if (data.leader) {
     // Even if leader didn't change, ensure currentCrew is set
-    // This handles cases where the crew was edited but leader stayed the same
     await InstallerModel.findByIdAndUpdate(
       data.leader,
       { $set: { currentCrew: id } }
@@ -89,12 +96,21 @@ export async function updateCrew(id: string, data: any) {
   if (data.members) {
     const oldMemberIds = ((oldCrew as any).members || []).map((m: any) => m.toString());
     const newMemberIds = data.members.map((m: any) => m.toString());
+    const newLeaderId = data.leader?.toString();
     
-    // Find members that were removed
-    const removedMembers = oldMemberIds.filter((m: string) => !newMemberIds.includes(m));
+    // Remove the new leader from members list if they're in it (role swap scenario)
+    const actualNewMemberIds = newLeaderId 
+      ? newMemberIds.filter((m: string) => m !== newLeaderId)
+      : newMemberIds;
+    
+    // Find members that were removed (excluding the new leader and old leader who might be becoming a member)
+    // IMPORTANT: Exclude new leader from removedMembers to prevent clearing their currentCrew
+    const removedMembers = oldMemberIds.filter((m: string) => 
+      !actualNewMemberIds.includes(m) && m !== newLeaderId
+    );
     
     // Find members that were added
-    const addedMembers = newMemberIds.filter((m: string) => !oldMemberIds.includes(m));
+    const addedMembers = actualNewMemberIds.filter((m: string) => !oldMemberIds.includes(m));
     
     // Remove currentCrew from removed members
     if (removedMembers.length > 0) {
@@ -104,14 +120,18 @@ export async function updateCrew(id: string, data: any) {
       );
     }
     
-    // Assign currentCrew to added members
+    // Assign currentCrew to added members (including old leader if they became a member)
     if (addedMembers.length > 0) {
       await InstallerModel.updateMany(
         { _id: { $in: addedMembers } },
         { $set: { currentCrew: id } }
       );
     }
+    
+    // Update data.members to exclude the leader
+    data.members = actualNewMemberIds;
   }
+
   
   // Update the crew
   return await CrewModel.findByIdAndUpdate(

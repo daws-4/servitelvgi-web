@@ -1,4 +1,5 @@
 import InstallerModel from "@/models/Installer";
+import CrewModel from "@/models/Crew"; // Import to register the schema
 import { connectDB } from "@/lib/db";
 import bcrypt from "bcryptjs";
 

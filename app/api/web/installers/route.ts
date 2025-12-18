@@ -6,6 +6,8 @@ import {
   updateInstaller,
   deleteInstaller,
 } from "@/lib/installerService";
+// Import to ensure Crew schema is registered for populate operations
+import "@/models/Crew";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

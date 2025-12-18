@@ -1,4 +1,6 @@
 import InventoryHistoryModel from "@/models/InventoryHistory";
+import UserModel from "@/models/User";
+import InstallerModel from "@/models/Installer";
 import { connectDB } from "@/lib/db";
 
 export async function createInventoryHistory(data: any) {
@@ -38,15 +40,68 @@ export async function getInventoryHistories(filters: {
     .populate("item", "code description")
     .populate("crew", "name")
     .populate("order", "subscriberNumber")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
   
-  // Convertir a objetos planos después del populate
-  return results.map(doc => doc.toObject());
+  // Manually populate performedBy based on performedByModel
+  const populatedResults = await Promise.all(
+    results.map(async (doc: any) => {
+      if (doc.performedBy && doc.performedByModel) {
+        try {
+          if (doc.performedByModel === 'User') {
+            const user = await UserModel.findById(doc.performedBy)
+              .select('name surname username')
+              .lean();
+            doc.performedBy = user;
+          } else if (doc.performedByModel === 'Installer') {
+            const installer = await InstallerModel.findById(doc.performedBy)
+              .select('name surname')
+              .lean();
+            doc.performedBy = installer;
+          }
+        } catch (error) {
+          console.error('Error populating performedBy:', error);
+          // Keep the ID if population fails
+        }
+      }
+      return doc;
+    })
+  );
+  
+  return populatedResults;
 }
 
 export async function getInventoryHistoryById(id: string) {
   await connectDB();
-  return await InventoryHistoryModel.findById(id).lean();
+  const doc = await InventoryHistoryModel.findById(id)
+    .populate("item", "code description")
+    .populate("crew", "name")
+    .populate("order", "subscriberNumber")
+    .lean();
+  
+  if (!doc) return null;
+  
+  // Manually populate performedBy
+  const result: any = doc;
+  if (result.performedBy && result.performedByModel) {
+    try {
+      if (result.performedByModel === 'User') {
+        const user = await UserModel.findById(result.performedBy)
+          .select('name surname username')
+          .lean();
+        result.performedBy = user;
+      } else if (result.performedByModel === 'Installer') {
+        const installer = await InstallerModel.findById(result.performedBy)
+          .select('name surname')
+          .lean();
+        result.performedBy = installer;
+      }
+    } catch (error) {
+      console.error('Error populating performedBy:', error);
+    }
+  }
+  
+  return result;
 }
 
 export async function updateInventoryHistory(id: string, data: any) {

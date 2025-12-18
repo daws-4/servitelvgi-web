@@ -7,6 +7,7 @@ import InventoryModel from "@/models/Inventory";
 import CrewModel from "@/models/Crew";
 import InventoryHistoryModel from "@/models/InventoryHistory";
 import InventorySnapshotModel from "@/models/InventorySnapshot";
+import { SessionUser } from "@/lib/authHelpers";
 import mongoose from "mongoose";
 
 /**
@@ -17,7 +18,8 @@ import mongoose from "mongoose";
  */
 export async function restockInventory(
   items: { inventoryId: string; quantity: number }[],
-  reason: string
+  reason: string,
+  sessionUser?: SessionUser
 ) {
   await connectDB();
 
@@ -47,6 +49,8 @@ export async function restockInventory(
             type: "entry",
             quantityChange: item.quantity,
             reason: reason,
+            performedBy: sessionUser?.userId,
+            performedByModel: sessionUser?.userModel,
           },
         ],
         { session }
@@ -75,7 +79,7 @@ export async function restockInventory(
 export async function assignMaterialToCrew(
   crewId: string,
   items: { inventoryId: string; quantity: number }[],
-  userId?: string
+  sessionUser?: SessionUser
 ) {
   await connectDB();
 
@@ -144,6 +148,8 @@ export async function assignMaterialToCrew(
             quantityChange: -item.quantity, // Negativo porque sale de bodega
             reason: `Asignado a cuadrilla ${crew.name}`,
             crew: crewId,
+            performedBy: sessionUser?.userId,
+            performedByModel: sessionUser?.userModel,
           },
         ],
         { session }
@@ -174,7 +180,7 @@ export async function returnMaterialFromCrew(
   crewId: string,
   items: { inventoryId: string; quantity: number }[],
   reason: string,
-  userId?: string
+  sessionUser?: SessionUser
 ) {
   await connectDB();
 
@@ -239,6 +245,8 @@ export async function returnMaterialFromCrew(
             quantityChange: item.quantity, // Positivo porque regresa al almacén
             reason: reason,
             crew: crewId,
+            performedBy: sessionUser?.userId,
+            performedByModel: sessionUser?.userModel,
           },
         ],
         { session }
@@ -267,7 +275,8 @@ export async function returnMaterialFromCrew(
 export async function processOrderUsage(
   orderId: string,
   crewId: string,
-  materials: { inventoryId: string; quantity: number }[]
+  materials: { inventoryId: string; quantity: number }[],
+  sessionUser?: SessionUser
 ) {
   await connectDB();
 
@@ -322,6 +331,8 @@ export async function processOrderUsage(
             reason: `Usado en orden ${orderId}`,
             crew: crewId,
             order: orderId,
+            performedBy: sessionUser?.userId,
+            performedByModel: sessionUser?.userModel,
           },
         ],
         { session }
@@ -647,4 +658,260 @@ export async function updateInventory(id: string, data: any) {
 export async function deleteInventory(id: string) {
   await connectDB();
   return await InventoryModel.findByIdAndDelete(id).lean();
+}
+
+// ============================================================================
+// BATCH/BOBBIN MANAGEMENT FUNCTIONS
+// ============================================================================
+
+import InventoryBatchModel from "@/models/InventoryBatch";
+
+/**
+ * Crea un nuevo lote/bobina
+ * @param data - Datos del lote (batchCode, inventoryId, initialQuantity, etc.)
+ * @param sessionUser - Usuario que crea el lote
+ * @returns Lote creado
+ */
+export async function createBatch(
+  data: {
+    batchCode: string;
+    inventoryId: string;
+    initialQuantity: number;
+    unit?: string;
+    supplier?: string;
+    acquisitionDate?: Date;
+    notes?: string;
+  },
+  sessionUser?: SessionUser
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Verificar que el ítem de inventario existe
+    const inventoryItem = await InventoryModel.findById(data.inventoryId).session(
+      session
+    );
+
+    if (!inventoryItem) {
+      throw new Error(`Item de inventario no encontrado: ${data.inventoryId}`);
+    }
+
+    // Crear el lote
+    const [batch] = await InventoryBatchModel.create(
+      [
+        {
+          batchCode: data.batchCode.toUpperCase(),
+          item: data.inventoryId,
+          initialQuantity: data.initialQuantity,
+          currentQuantity: data.initialQuantity,
+          unit: data.unit || inventoryItem.unit || "metros",
+          supplier: data.supplier || "Netuno",
+          acquisitionDate: data.acquisitionDate || new Date(),
+          notes: data.notes,
+          location: "warehouse",
+          status: "active",
+        },
+      ],
+      { session }
+    );
+
+    // Incrementar el stock en bodega
+    await InventoryModel.findByIdAndUpdate(
+      data.inventoryId,
+      { $inc: { currentStock: data.initialQuantity } },
+      { session }
+    );
+
+    // Crear registro en historial
+    await InventoryHistoryModel.create(
+      [
+        {
+          item: data.inventoryId,
+          batch: batch._id,
+          type: "entry",
+          quantityChange: data.initialQuantity,
+          reason: `Ingreso de lote ${data.batchCode}`,
+          performedBy: sessionUser?.userId,
+          performedByModel: sessionUser?.userModel,
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+    return batch;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+/**
+ * Obtiene lotes/bobinas con filtros opcionales
+ * @param filters - Filtros (itemId, location, crewId, status, batchCode)
+ * @returns Array de lotes
+ */
+export async function getBatches(filters: {
+  itemId?: string;
+  location?: "warehouse" | "crew";
+  crewId?: string;
+  status?: "active" | "depleted" | "returned";
+  batchCode?: string;
+} = {}) {
+  await connectDB();
+
+  const query: any = {};
+
+  if (filters.itemId) query.item = filters.itemId;
+  if (filters.location) query.location = filters.location;
+  if (filters.crewId) query.crew = filters.crewId;
+  if (filters.status) query.status = filters.status;
+  if (filters.batchCode) {
+    query.batchCode = { $regex: filters.batchCode, $options: "i" };
+  }
+
+  return await InventoryBatchModel.find(query)
+    .populate("item", "code description unit")
+    .populate("crew", "name")
+    .sort({ batchCode: 1 })
+    .lean();
+}
+
+/**
+ * Asigna metros adicionales a una bobina existente
+ * @param batchCode - Código del lote
+ * @param metersToAdd - Metros a añadir
+ * @param sessionUser - Usuario que realiza la operación
+ * @returns Lote actualizado
+ */
+export async function assignMetersToBatch(
+  batchCode: string,
+  metersToAdd: number,
+  sessionUser?: SessionUser
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Obtener el lote
+    const batch = await InventoryBatchModel.findOne({
+      batchCode: batchCode.toUpperCase(),
+    }).session(session);
+
+    if (!batch) {
+      throw new Error(`Lote no encontrado: ${batchCode}`);
+    }
+
+    if (batch.status === "depleted") {
+      throw new Error("No se pueden añadir metros a una bobina agotada");
+    }
+
+    // Actualizar cantidad
+    batch.currentQuantity += metersToAdd;
+    if (batch.status === "depleted" && batch.currentQuantity > 0) {
+      batch.status = "active";
+    }
+    await batch.save({ session });
+
+    // Incrementar stock en bodega
+    await InventoryModel.findByIdAndUpdate(
+      batch.item,
+      { $inc: { currentStock: metersToAdd } },
+      { session }
+    );
+
+    // Crear registro en historial
+    await InventoryHistoryModel.create(
+      [
+        {
+          item: batch.item,
+          batch: batch._id,
+          type: "entry",
+          quantityChange: metersToAdd,
+          reason: `Metros añadidos a lote ${batchCode}`,
+          performedBy: sessionUser?.userId,
+          performedByModel: sessionUser?.userModel,
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+    return batch;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+/**
+ * Elimina una bobina agotada
+ * @param batchCode - Código del lote a eliminar
+ * @param sessionUser - Usuario que realiza la eliminación
+ * @returns Lote eliminado
+ */
+export async function deleteBatch(
+  batchCode: string,
+  sessionUser?: SessionUser
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Obtener el lote
+    const batch = await InventoryBatchModel.findOne({
+      batchCode: batchCode.toUpperCase(),
+    }).session(session);
+
+    if (!batch) {
+      throw new Error(`Lote no encontrado: ${batchCode}`);
+    }
+
+    // Solo permitir eliminar bobinas agotadas o con cantidad 0
+    if (batch.currentQuantity > 0 && batch.status !== "depleted") {
+      throw new Error(
+        "Solo se pueden eliminar bobinas agotadas (0 metros restantes)"
+      );
+    }
+
+    // Marcar como agotado en lugar de eliminar (para historial)
+    batch.status = "depleted";
+    batch.currentQuantity = 0;
+    await batch.save({ session });
+
+    // Crear registro en historial
+    await InventoryHistoryModel.create(
+      [
+        {
+          item: batch.item,
+          batch: batch._id,
+          type: "adjustment",
+          quantityChange: 0,
+          reason: `Bobina ${batchCode} marcada como agotada y eliminada`,
+          performedBy: sessionUser?.userId,
+          performedByModel: sessionUser?.userModel,
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+    return batch;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 }

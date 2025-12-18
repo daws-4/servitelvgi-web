@@ -39,6 +39,7 @@ export async function getOrderHistories(filters: {
   const results = await OrderHistoryModel.find(query)
     .populate("order", "subscriberNumber subscriberName")
     .populate("crew", "name")
+    .populate("changedBy", "name surname username")
     .sort({ createdAt: -1 });
   
   // Convert to plain objects after populate
@@ -47,7 +48,9 @@ export async function getOrderHistories(filters: {
 
 export async function getOrderHistoryById(id: string) {
   await connectDB();
-  return await OrderHistoryModel.findById(id).lean();
+  return await OrderHistoryModel.findById(id)
+    .populate("changedBy", "name surname username")
+    .lean();
 }
 
 export async function updateOrderHistory(id: string, data: any) {

@@ -10,8 +10,7 @@ export interface IUser {
   name: string;
   surname: string;
   email: string;
-  role: "admin" | "installer";
-  installerRef?: mongoose.Types.ObjectId;
+  role: "admin";
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -47,15 +46,6 @@ const UserSchema = new mongoose.Schema(
       type: String,
       enum: ["admin"],
       default: "admin",
-    },
-
-    // Vínculo con el modelo Installer (si el rol es 'installer')
-    installerRef: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Installer",
-      required: function () {
-        return this.role === "installer";
-      }, // Requerido solo para instaladores
     },
 
     isActive: {

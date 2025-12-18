@@ -7,11 +7,15 @@ import {
   assignMaterialToCrew,
   returnMaterialFromCrew,
 } from "@/lib/inventoryService";
+import { getUserFromRequest } from "@/lib/authHelpers";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, data } = body;
+
+    // Extract session user for tracking
+    const sessionUser = await getUserFromRequest(request);
 
     if (!action || !data) {
       return NextResponse.json(
@@ -39,7 +43,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const updatedItems = await restockInventory(items, reason);
+        const updatedItems = await restockInventory(items, reason, sessionUser || undefined);
 
         return NextResponse.json({
           success: true,
@@ -66,7 +70,7 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const updatedCrew = await assignMaterialToCrew(crewId, items, userId);
+        const updatedCrew = await assignMaterialToCrew(crewId, items, sessionUser || undefined);
 
         return NextResponse.json({
           success: true,
@@ -104,7 +108,7 @@ export async function POST(request: NextRequest) {
           crewId,
           items,
           reason,
-          userId
+          sessionUser || undefined
         );
 
         return NextResponse.json({

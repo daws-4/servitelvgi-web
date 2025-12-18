@@ -3,18 +3,19 @@ import InstallerModel from "@/models/Installer"; // Registers Installer schema
 import CrewModel from "@/models/Crew"; // Registers Crew schema
 import { connectDB } from "@/lib/db";
 import { createOrderHistory } from "@/lib/orderHistoryService";
+import { SessionUser } from "@/lib/authHelpers";
 
 // Ensure Installer and Crew models are registered for populate
 void InstallerModel;
 void CrewModel;
 
 // Función reutilizable para CREAR ordenes
-export async function createOrder(data: any) {
+export async function createOrder(data: any, sessionUser?: SessionUser) {
   await connectDB();
   // Aquí validas lógica de negocio (ej: verificar si el técnico existe)
   const newOrder = await OrderModel.create(data);
   
-  // Create initial history entry
+  // Create initial history entry with user info
   await createOrderHistory({
     order: newOrder._id,
     changeType: "created",
@@ -24,6 +25,8 @@ export async function createOrder(data: any) {
     },
     description: `Orden creada - ${newOrder.subscriberName}`,
     crew: newOrder.assignedTo || undefined,
+    changedBy: sessionUser?.userId,
+    changedByModel: sessionUser?.userModel,
   });
   
   return newOrder;
@@ -48,7 +51,7 @@ export async function getOrderById(id: string) {
 }
 
 // Helper function to compare and create history entries
-async function trackChanges(orderId: string, oldOrder: any, newData: any) {
+async function trackChanges(orderId: string, oldOrder: any, newData: any, sessionUser?: SessionUser) {
   const historyEntries = [];
 
   // Track status change
@@ -60,6 +63,8 @@ async function trackChanges(orderId: string, oldOrder: any, newData: any) {
       newValue: newData.status,
       description: `Estado cambiado de "${oldOrder.status}" a "${newData.status}"`,
       crew: newData.assignedTo || oldOrder.assignedTo || undefined,
+      changedBy: sessionUser?.userId,
+      changedByModel: sessionUser?.userModel,
     });
   }
 
@@ -73,6 +78,8 @@ async function trackChanges(orderId: string, oldOrder: any, newData: any) {
       newValue: newData.assignedTo,
       description: `Cuadrilla asignada: ${crewName?.name || 'Desconocida'}`,
       crew: newData.assignedTo,
+      changedBy: sessionUser?.userId,
+      changedByModel: sessionUser?.userModel,
     });
   }
 
@@ -85,6 +92,8 @@ async function trackChanges(orderId: string, oldOrder: any, newData: any) {
       newValue: newData.materialsUsed,
       description: `Materiales actualizados (${newData.materialsUsed?.length || 0} items)`,
       crew: newData.assignedTo || oldOrder.assignedTo || undefined,
+      changedBy: sessionUser?.userId,
+      changedByModel: sessionUser?.userModel,
     });
   }
 
@@ -95,7 +104,7 @@ async function trackChanges(orderId: string, oldOrder: any, newData: any) {
 }
 
 // Actualizar orden por id
-export async function updateOrder(id: string, data: any) {
+export async function updateOrder(id: string, data: any, sessionUser?: SessionUser) {
   await connectDB();
   
   // Get the old order first
@@ -114,7 +123,7 @@ export async function updateOrder(id: string, data: any) {
   }
   
   // Track changes before updating
-  await trackChanges(id, oldOrder, data);
+  await trackChanges(id, oldOrder, data, sessionUser);
   
   return await OrderModel.findByIdAndUpdate(
     id,

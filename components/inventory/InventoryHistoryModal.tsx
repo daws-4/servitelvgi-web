@@ -28,6 +28,12 @@ interface HistoryEntry {
         _id: string;
         subscriberNumber: string;
     };
+    performedBy?: {
+        _id: string;
+        name?: string;
+        surname?: string;
+        username?: string;
+    };
     createdAt: string;
 }
 
@@ -304,6 +310,12 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
                                                         <p className="text-xs text-neutral mt-1">
                                                             <i className="fa-solid fa-note-sticky mr-1"></i>
                                                             {entry.reason}
+                                                        </p>
+                                                    )}
+                                                    {entry.performedBy && (
+                                                        <p className="text-xs text-neutral mt-1">
+                                                            <i className="fa-solid fa-user mr-1"></i>
+                                                            Por: {entry.performedBy.name || entry.performedBy.username || 'Usuario'}
                                                         </p>
                                                     )}
                                                 </div>

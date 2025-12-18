@@ -25,6 +25,12 @@ interface HistoryEntry {
         _id: string;
         name: string;
     };
+    changedBy?: {
+        _id: string;
+        name?: string;
+        surname?: string;
+        username?: string;
+    };
     createdAt: string;
 }
 
@@ -301,6 +307,12 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
                                                         <p className="text-xs text-neutral mt-1">
                                                             <i className="fa-solid fa-users mr-1"></i>
                                                             Cuadrilla: {entry.crew.name}
+                                                        </p>
+                                                    )}
+                                                    {entry.changedBy && (
+                                                        <p className="text-xs text-neutral mt-1">
+                                                            <i className="fa-solid fa-user mr-1"></i>
+                                                            Por: {entry.changedBy.name || entry.changedBy.username || 'Usuario'}
                                                         </p>
                                                     )}
                                                 </div>

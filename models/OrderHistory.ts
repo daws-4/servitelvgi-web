@@ -37,9 +37,14 @@ const OrderHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Crew",
     },
-    // Optional: track who made the change (for future user authentication)
+    // Track who made the change
     changedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'changedByModel',
+    },
+    changedByModel: {
       type: String,
+      enum: ['User', 'Installer'],
     },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

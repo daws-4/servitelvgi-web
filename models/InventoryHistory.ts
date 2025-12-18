@@ -32,6 +32,16 @@ const InventoryHistorySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
     },
+
+    // Usuario/Instalador que realizó la operación
+    performedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'performedByModel',
+    },
+    performedByModel: {
+      type: String,
+      enum: ['User', 'Installer'],
+    },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 ); 

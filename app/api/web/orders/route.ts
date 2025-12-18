@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import {
   createOrder,
   getOrders,
@@ -7,6 +7,7 @@ import {
   deleteOrder,
 } from "@/lib/orderService";
 import { processOrderUsage } from "@/lib/inventoryService";
+import { getUserFromRequest } from "@/lib/authHelpers";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -42,10 +43,11 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const created = await createOrder(body);
+    const sessionUser = await getUserFromRequest(request);
+    const created = await createOrder(body, sessionUser || undefined);
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err) {
     return NextResponse.json(
@@ -55,7 +57,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const id = body.id || body._id;
@@ -68,6 +70,9 @@ export async function PUT(request: Request) {
     delete data.id;
     delete data._id;
     
+    // Get session user for history tracking
+    const sessionUser = await getUserFromRequest(request);
+    
     // INTEGRACIÓN DE INVENTARIO: Si la orden se está completando con materiales usados
     // procesar el consumo automáticamente
     if (
@@ -77,7 +82,7 @@ export async function PUT(request: Request) {
       data.materialsUsed.length > 0
     ) {
       // Obtener la orden actual para verificar que tiene cuadrilla asignada
-      const currentOrder = await getOrderById(id);
+      const currentOrder = await getOrderById(id) as any;
       
       if (!currentOrder) {
         return NextResponse.json(
@@ -101,7 +106,8 @@ export async function PUT(request: Request) {
           data.materialsUsed.map((m: any) => ({
             inventoryId: m.item || m.inventoryId,
             quantity: m.quantity
-          }))
+          })),
+          sessionUser || undefined
         );
       } catch (materialError: any) {
         return NextResponse.json(
@@ -111,7 +117,7 @@ export async function PUT(request: Request) {
       }
     }
     
-    const updated = await updateOrder(id, data);
+    const updated = await updateOrder(id, data, sessionUser || undefined);
     if (!updated)
       return NextResponse.json(
         { error: "Not found" },

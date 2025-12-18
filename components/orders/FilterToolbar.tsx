@@ -4,8 +4,7 @@ import React, { useState, useEffect } from "react";
 import { FormInput } from "@/components/interactiveForms/Input";
 import { FormSelect, SelectOption } from "@/components/interactiveForms/Select";
 import { FormButton } from "@/components/interactiveForms/Button";
-import FormDatePicker from "@/components/interactiveForms/DatePicker";
-import { parseDate } from "@internationalized/date";
+import { DateFilter } from "@/components/interactiveForms/DateRangePicker";
 
 interface FilterToolbarProps {
     searchValue?: string;
@@ -14,10 +13,8 @@ interface FilterToolbarProps {
     onStatusChange?: (value: string) => void;
     typeFilter?: string;
     onTypeChange?: (value: string) => void;
-    startDate?: string;
-    onStartDateChange?: (value: string) => void;
-    endDate?: string;
-    onEndDateChange?: (value: string) => void;
+    dateRange?: { start: string; end: string } | null;
+    onDateRangeChange?: (range: { start: string; end: string } | null) => void;
     crewFilter?: string;
     onCrewChange?: (value: string) => void;
     onNewOrder?: () => void;
@@ -46,10 +43,8 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     onStatusChange,
     typeFilter = "all",
     onTypeChange,
-    startDate = "",
-    onStartDateChange,
-    endDate = "",
-    onEndDateChange,
+    dateRange = null,
+    onDateRangeChange,
     crewFilter = "all",
     onCrewChange,
     onNewOrder,
@@ -76,7 +71,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     return (
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             {/* Filtros */}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 items-end ">
                 {/* Buscador Principal */}
                 <div className="relative">
                     <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
@@ -85,7 +80,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                         placeholder="Buscar abonado, nombre..."
                         value={searchValue}
                         onChange={(e) => onSearchChange?.(e.target.value)}
-                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary w-64 shadow-sm"
+                        className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary w-64 shadow-sm h-10"
                     />
                 </div>
 
@@ -94,7 +89,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     <select
                         value={statusFilter}
                         onChange={(e) => onStatusChange?.(e.target.value)}
-                        className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer"
+                        className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer h-10"
                     >
                         {statusOptions.map((option) => (
                             <option key={option.key} value={option.key}>
@@ -110,7 +105,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     <select
                         value={typeFilter}
                         onChange={(e) => onTypeChange?.(e.target.value)}
-                        className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer"
+                        className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer h-10"
                     >
                         {typeOptions.map((option) => (
                             <option key={option.key} value={option.key}>
@@ -126,7 +121,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     <select
                         value={crewFilter}
                         onChange={(e) => onCrewChange?.(e.target.value)}
-                        className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer"
+                        className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer h-10"
                     >
                         <option value="all">Cuadrilla: Todas</option>
                         {crews.map(crew => (
@@ -137,33 +132,20 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     </select>
                     <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
                 </div>
+                </div>
 
-                {/* Filtro Fecha Inicio */}
-                <div className="w-48">
-                    <FormDatePicker
-                        label="Desde"
-                        value={startDate ? parseDate(startDate) : null}
-                        onDateChange={(date) => onStartDateChange?.(date || "")}
+                {/* Filtro Rango de Fechas */}
+                <div className="w-80 mb-2">
+                    <DateFilter
+                        label="Filtrar por Fecha"
+                        onDateChange={onDateRangeChange}
+                        labelPlacement="outside"
                         classNames={{
                             base: "w-full",
                             inputWrapper: "h-10",
                         }}
                     />
                 </div>
-
-                {/* Filtro Fecha Fin */}
-                <div className="w-48">
-                    <FormDatePicker
-                        label="Hasta"
-                        value={endDate ? parseDate(endDate) : null}
-                        onDateChange={(date) => onEndDateChange?.(date || "")}
-                        classNames={{
-                            base: "w-full",
-                            inputWrapper: "h-10",
-                        }}
-                    />
-                </div>
-            </div>
 
             {/* Acciones Principales */}
             <button

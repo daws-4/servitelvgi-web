@@ -42,9 +42,12 @@ export async function GET(request: Request) {
     
     const items = await getInventoryHistories(filters);
     return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Error in inventory-histories GET:", err);
+    console.error("Error message:", err?.message);
+    console.error("Error stack:", err?.stack);
     return NextResponse.json(
-      { error: String(err) },
+      { error: err?.message || String(err) },
       { status: 500, headers: CORS_HEADERS }
     );
   }

@@ -6,6 +6,8 @@ import {
   updateCrew,
   deleteCrew,
 } from "@/lib/crewService";
+// Import to ensure Inventory schema is registered for populate operations
+import "@/models/Inventory";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",

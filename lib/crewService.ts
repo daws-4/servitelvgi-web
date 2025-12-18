@@ -1,6 +1,7 @@
 import CrewModel from "@/models/Crew";
 import InstallerModel from "@/models/Installer";
 import OrderModel from "@/models/Order";
+import InventoryModel from "@/models/Inventory";
 import { connectDB } from "@/lib/db";
 
 export async function createCrew(data: any) {
@@ -71,6 +72,13 @@ export async function updateCrew(id: string, data: any) {
     }
     
     // Assign currentCrew to new leader
+    await InstallerModel.findByIdAndUpdate(
+      data.leader,
+      { $set: { currentCrew: id } }
+    );
+  } else if (data.leader) {
+    // Even if leader didn't change, ensure currentCrew is set
+    // This handles cases where the crew was edited but leader stayed the same
     await InstallerModel.findByIdAndUpdate(
       data.leader,
       { $set: { currentCrew: id } }

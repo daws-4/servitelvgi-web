@@ -72,13 +72,13 @@ export async function restockInventory(
 /**
  * Asigna materiales a una cuadrilla desde bodega central
  * @param crewId - ID de la cuadrilla
- * @param items - Array de ítems con inventoryId y quantity
+ * @param items - Array de ítems con inventoryId, quantity y opcionalmente batchCode
  * @param userId - ID del usuario que realiza la asignación
  * @returns Cuadrilla actualizada con inventario asignado
  */
 export async function assignMaterialToCrew(
   crewId: string,
-  items: { inventoryId: string; quantity: number }[],
+  items: { inventoryId: string; quantity: number; batchCode?: string }[],
   sessionUser?: SessionUser
 ) {
   await connectDB();
@@ -87,73 +87,124 @@ export async function assignMaterialToCrew(
   session.startTransaction();
 
   try {
-    // 1. Verificar que hay suficiente stock en bodega
-    for (const item of items) {
-      const inventoryItem = await InventoryModel.findById(item.inventoryId).session(
-        session
-      );
-
-      if (!inventoryItem) {
-        throw new Error(`Item de inventario no encontrado: ${item.inventoryId}`);
-      }
-
-      if (inventoryItem.currentStock < item.quantity) {
-        throw new Error(
-          `Stock insuficiente para ${inventoryItem.description}. ` +
-            `Disponible: ${inventoryItem.currentStock}, Solicitado: ${item.quantity}`
-        );
-      }
-    }
-
-    // 2. Restar del inventario de bodega
-    for (const item of items) {
-      await InventoryModel.findByIdAndUpdate(
-        item.inventoryId,
-        { $inc: { currentStock: -item.quantity } },
-        { session }
-      );
-    }
-
-    // 3. Actualizar inventario de la cuadrilla (lógica de upsert)
     const crew = await CrewModel.findById(crewId).session(session);
     if (!crew) {
       throw new Error(`Cuadrilla no encontrada: ${crewId}`);
     }
 
     for (const item of items) {
-      // Buscar si el ítem ya existe en assignedInventory
-      const existingItemIndex = crew.assignedInventory.findIndex(
-        (inv: any) => inv.item.toString() === item.inventoryId
-      );
+      // If batchCode is provided, handle as bobbin assignment
+      if (item.batchCode) {
+        // Find the batch
+        const batch = await InventoryBatchModel.findOne({
+          batchCode: item.batchCode.toUpperCase(),
+        }).session(session);
 
-      if (existingItemIndex >= 0) {
-        // Si existe, sumar la cantidad
-        crew.assignedInventory[existingItemIndex].quantity += item.quantity;
-        crew.assignedInventory[existingItemIndex].lastUpdate = new Date();
+        if (!batch) {
+          throw new Error(`Bobina no encontrada: ${item.batchCode}`);
+        }
+
+        if (batch.location !== "warehouse") {
+          throw new Error(`Bobina ${item.batchCode} no está en almacén`);
+        }
+
+        if (batch.status !== "active") {
+          throw new Error(`Bobina ${item.batchCode} no está activa`);
+        }
+
+        // Transfer bobbin to crew
+        batch.location = "crew";
+        batch.crew = new mongoose.Types.ObjectId(crewId);
+        await batch.save({ session });
+
+        // Add to crew's assigned inventory
+        const existingItemIndex = crew.assignedInventory.findIndex(
+          (inv: any) => inv.item.toString() === item.inventoryId
+        );
+
+        if (existingItemIndex >= 0) {
+          crew.assignedInventory[existingItemIndex].quantity += batch.currentQuantity;
+          crew.assignedInventory[existingItemIndex].lastUpdate = new Date();
+        } else {
+          crew.assignedInventory.push({
+            item: new mongoose.Types.ObjectId(item.inventoryId),
+            quantity: batch.currentQuantity,
+            lastUpdate: new Date(),
+          });
+        }
+
+        // Create history record for bobbin assignment
+        await InventoryHistoryModel.create(
+          [
+            {
+              item: item.inventoryId,
+              batch: batch._id,
+              type: "assignment",
+              quantityChange: -batch.currentQuantity,
+              reason: `Bobina ${item.batchCode} asignada a cuadrilla ${crew.name}`,
+              crew: crewId,
+              performedBy: sessionUser?.userId,
+              performedByModel: sessionUser?.userModel,
+            },
+          ],
+          { session }
+        );
       } else {
-        // Si no existe, añadir nuevo ítem
-        crew.assignedInventory.push({
-          item: new mongoose.Types.ObjectId(item.inventoryId),
-          quantity: item.quantity,
-          lastUpdate: new Date(),
-        });
-      }
+        // Regular inventory item assignment (existing logic)
+        const inventoryItem = await InventoryModel.findById(item.inventoryId).session(
+          session
+        );
 
-      // 4. Crear registro en historial
-      await InventoryHistoryModel.create(
-        [
-          {
-            item: item.inventoryId,
-            type: "assignment",
-            quantityChange: -item.quantity, // Negativo porque sale de bodega
-            reason: `Asignado a cuadrilla ${crew.name}`,
-            crew: crewId,
-            performedBy: sessionUser?.userId,
-            performedByModel: sessionUser?.userModel,
-          },
-        ],
-        { session }
-      );
+        if (!inventoryItem) {
+          throw new Error(`Item de inventario no encontrado: ${item.inventoryId}`);
+        }
+
+        if (inventoryItem.currentStock < item.quantity) {
+          throw new Error(
+            `Stock insuficiente para ${inventoryItem.description}. ` +
+              `Disponible: ${inventoryItem.currentStock}, Solicitado: ${item.quantity}`
+          );
+        }
+
+        // Deduct from warehouse
+        await InventoryModel.findByIdAndUpdate(
+          item.inventoryId,
+          { $inc: { currentStock: -item.quantity } },
+          { session }
+        );
+
+        // Add to crew's assigned inventory
+        const existingItemIndex = crew.assignedInventory.findIndex(
+          (inv: any) => inv.item.toString() === item.inventoryId
+        );
+
+        if (existingItemIndex >= 0) {
+          crew.assignedInventory[existingItemIndex].quantity += item.quantity;
+          crew.assignedInventory[existingItemIndex].lastUpdate = new Date();
+        } else {
+          crew.assignedInventory.push({
+            item: new mongoose.Types.ObjectId(item.inventoryId),
+            quantity: item.quantity,
+            lastUpdate: new Date(),
+          });
+        }
+
+        // Create history record
+        await InventoryHistoryModel.create(
+          [
+            {
+              item: item.inventoryId,
+              type: "assignment",
+              quantityChange: -item.quantity,
+              reason: `Asignado a cuadrilla ${crew.name}`,
+              crew: crewId,
+              performedBy: sessionUser?.userId,
+              performedByModel: sessionUser?.userModel,
+            },
+          ],
+          { session }
+        );
+      }
     }
 
     await crew.save({ session });
@@ -269,13 +320,13 @@ export async function returnMaterialFromCrew(
  * Procesa el consumo de materiales al completar una orden
  * @param orderId - ID de la orden completada
  * @param crewId - ID de la cuadrilla que realizó el trabajo
- * @param materials - Array de materiales usados con inventoryId y quantity
+ * @param materials - Array de materiales usados con inventoryId, quantity y opcionalmente batchCode
  * @returns Confirmación de procesamiento
  */
 export async function processOrderUsage(
   orderId: string,
   crewId: string,
-  materials: { inventoryId: string; quantity: number }[],
+  materials: { inventoryId: string; quantity: number; batchCode?: string }[],
   sessionUser?: SessionUser
 ) {
   await connectDB();
@@ -291,52 +342,117 @@ export async function processOrderUsage(
 
     // Procesar cada material usado
     for (const material of materials) {
-      // Buscar el ítem en el inventario de la cuadrilla
-      const itemIndex = crew.assignedInventory.findIndex(
-        (inv: any) => inv.item.toString() === material.inventoryId
-      );
+      // Si tiene batchCode, es una bobina - manejar diferente
+      if (material.batchCode) {
+        // Buscar la bobina específica
+        const batch = await InventoryBatchModel.findOne({
+          batchCode: material.batchCode.toUpperCase(),
+          crew: crewId,
+        }).session(session);
 
-      if (itemIndex < 0) {
-        throw new Error(
-          `La cuadrilla no tiene asignado el material: ${material.inventoryId}`
+        if (!batch) {
+          throw new Error(
+            `Bobina ${material.batchCode} no encontrada para esta cuadrilla`
+          );
+        }
+
+        if (batch.currentQuantity < material.quantity) {
+          throw new Error(
+            `Metros insuficientes en bobina ${material.batchCode}. ` +
+              `Disponibles: ${batch.currentQuantity}m, Solicitados: ${material.quantity}m`
+          );
+        }
+
+        // Descontar metros de la bobina
+        batch.currentQuantity -= material.quantity;
+
+        // Marcar como agotada si no quedan metros
+        if (batch.currentQuantity <= 0) {
+          batch.status = "depleted";
+          batch.currentQuantity = 0;
+        }
+
+        await batch.save({ session });
+
+        // También descontar del inventario de la cuadrilla
+        const itemIndex = crew.assignedInventory.findIndex(
+          (inv: any) => inv.item.toString() === material.inventoryId
+        );
+
+        if (itemIndex >= 0) {
+          crew.assignedInventory[itemIndex].quantity -= material.quantity;
+          crew.assignedInventory[itemIndex].lastUpdate = new Date();
+
+          if (crew.assignedInventory[itemIndex].quantity <= 0) {
+            crew.assignedInventory.splice(itemIndex, 1);
+          }
+        }
+
+        // Crear registro en historial con referencia a batch
+        await InventoryHistoryModel.create(
+          [
+            {
+              item: material.inventoryId,
+              batch: batch._id,
+              type: "usage_order",
+              quantityChange: -material.quantity,
+              reason: `Bobina ${material.batchCode}: ${material.quantity}m usados en orden ${orderId}`,
+              crew: crewId,
+              order: orderId,
+              performedBy: sessionUser?.userId,
+              performedByModel: sessionUser?.userModel,
+            },
+          ],
+          { session }
+        );
+      } else {
+        // Material regular (no bobina) - lógica existente
+        const itemIndex = crew.assignedInventory.findIndex(
+          (inv: any) => inv.item.toString() === material.inventoryId
+        );
+
+        if (itemIndex < 0) {
+          throw new Error(
+            `La cuadrilla no tiene asignado el material: ${material.inventoryId}`
+          );
+        }
+
+        // Verificar que tenga suficiente cantidad
+        if (crew.assignedInventory[itemIndex].quantity < material.quantity) {
+          const item = await InventoryModel.findById(material.inventoryId);
+          throw new Error(
+            `Cantidad insuficiente de ${item?.description || "material"}. ` +
+              `Disponible: ${crew.assignedInventory[itemIndex].quantity}, ` +
+              `Solicitado: ${material.quantity}`
+          );
+        }
+
+        // Restar la cantidad
+        crew.assignedInventory[itemIndex].quantity -= material.quantity;
+        crew.assignedInventory[itemIndex].lastUpdate = new Date();
+
+        // Si la cantidad llega a 0, eliminar el ítem del array
+        if (crew.assignedInventory[itemIndex].quantity === 0) {
+          crew.assignedInventory.splice(itemIndex, 1);
+        }
+
+        // Crear registro en historial
+        await InventoryHistoryModel.create(
+          [
+            {
+              item: material.inventoryId,
+              type: "usage_order",
+              quantityChange: -material.quantity,
+              reason: `Usado en orden ${orderId}`,
+              crew: crewId,
+              order: orderId,
+              performedBy: sessionUser?.userId,
+              performedByModel: sessionUser?.userModel,
+            },
+          ],
+          { session }
         );
       }
-
-      // Verificar que tenga suficiente cantidad
-      if (crew.assignedInventory[itemIndex].quantity < material.quantity) {
-        const item = await InventoryModel.findById(material.inventoryId);
-        throw new Error(
-          `Cantidad insuficiente de ${item?.description || "material"}. ` +
-            `Disponible: ${crew.assignedInventory[itemIndex].quantity}, ` +
-            `Solicitado: ${material.quantity}`
-        );
-      }
-
-      // Restar la cantidad
-      crew.assignedInventory[itemIndex].quantity -= material.quantity;
-      crew.assignedInventory[itemIndex].lastUpdate = new Date();
-
-      // Si la cantidad llega a 0, eliminar el ítem del array
-      if (crew.assignedInventory[itemIndex].quantity === 0) {
-        crew.assignedInventory.splice(itemIndex, 1);
-      }
-
-      // Crear registro en historial
-      await InventoryHistoryModel.create(
-        [
-          {
-            item: material.inventoryId,
-            type: "usage_order",
-            quantityChange: -material.quantity,
-            reason: `Usado en orden ${orderId}`,
-            crew: crewId,
-            order: orderId,
-            performedBy: sessionUser?.userId,
-            performedByModel: sessionUser?.userModel,
-          },
-        ],
-        { session }
-      );
     }
 
     await crew.save({ session });

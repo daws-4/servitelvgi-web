@@ -157,7 +157,7 @@ export default function InventoryPage() {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
     return (
-        <div className="min-h-screen bg-gray-50/50">
+        <>
             {/* Page Header */}
             <div className="bg-white shadow-sm border-b border-neutral/20 sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-6 py-4">
@@ -171,70 +171,72 @@ export default function InventoryPage() {
             </div>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-6 py-6">
-                {/* Page Title & Actions */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                    <div>
-                        <h2 className="text-2xl font-bold text-dark">Catálogo de Materiales</h2>
-                        <p className="text-sm text-neutral mt-1">
-                            Administra el stock central, equipos y herramientas.
-                        </p>
+            <main className="flex-1 overflow-y-auto bg-gray-50/50">
+                <div className="max-w-7xl mx-auto px-6 py-6">
+                    {/* Page Title & Actions */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-dark">Catálogo de Materiales</h2>
+                            <p className="text-sm text-neutral mt-1">
+                                Administra el stock central, equipos y herramientas.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            <button
+                                onClick={historyModal.onOpen}
+                                className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors flex items-center gap-2 cursor-pointer"
+                            >
+                                <i className="fa-solid fa-clock-rotate-left"></i> Historial
+                            </button>
+                            <button
+                                onClick={assignModal.onOpen}
+                                className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
+                            >
+                                <i className="fa-solid fa-truck"></i> Asignar a Cuadrilla
+                            </button>
+                            <button
+                                onClick={restockModal.onOpen}
+                                className="px-4 py-2 bg-background text-secondary font-semibold rounded-lg hover:bg-background/80 transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
+                            >
+                                <i className="fa-solid fa-box-open"></i> Ingreso Manual
+                            </button>
+                            <button
+                                onClick={createModal.onOpen}
+                                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
+                            >
+                                <i className="fa-solid fa-plus"></i> Nuevo Ítem
+                            </button>
+                        </div>
                     </div>
-                    <div className="flex flex-wrap gap-3">
-                        <button
-                            onClick={historyModal.onOpen}
-                            className="px-4 py-2 border border-primary text-primary rounded-lg hover:bg-primary/5 transition-colors flex items-center gap-2 cursor-pointer"
-                        >
-                            <i className="fa-solid fa-clock-rotate-left"></i> Historial
-                        </button>
-                        <button
-                            onClick={assignModal.onOpen}
-                            className="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
-                        >
-                            <i className="fa-solid fa-truck"></i> Asignar a Cuadrilla
-                        </button>
-                        <button
-                            onClick={restockModal.onOpen}
-                            className="px-4 py-2 bg-background text-secondary font-semibold rounded-lg hover:bg-background/80 transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
-                        >
-                            <i className="fa-solid fa-box-open"></i> Ingreso Manual
-                        </button>
-                        <button
-                            onClick={createModal.onOpen}
-                            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2 shadow-lg shadow-primary/20 cursor-pointer"
-                        >
-                            <i className="fa-solid fa-plus"></i> Nuevo Ítem
-                        </button>
-                    </div>
+
+                    {/* KPI Cards */}
+                    <InventoryKPICards stats={stats} loading={loadingStats} />
+
+                    {/* Filter Toolbar */}
+                    <InventoryFilterToolbar
+                        searchValue={searchValue}
+                        onSearchChange={setSearchValue}
+                        typeFilter={typeFilter}
+                        onTypeChange={setTypeFilter}
+                        showOnlyLowStock={showOnlyLowStock}
+                        onLowStockToggle={setShowOnlyLowStock}
+                    />
+
+                    {/* Inventory Table */}
+                    <InventoryTable
+                        items={items}
+                        loading={loadingItems}
+                        selectedItems={selectedItems}
+                        onSelectionChange={setSelectedItems}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={totalItems}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                    />
                 </div>
-
-                {/* KPI Cards */}
-                <InventoryKPICards stats={stats} loading={loadingStats} />
-
-                {/* Filter Toolbar */}
-                <InventoryFilterToolbar
-                    searchValue={searchValue}
-                    onSearchChange={setSearchValue}
-                    typeFilter={typeFilter}
-                    onTypeChange={setTypeFilter}
-                    showOnlyLowStock={showOnlyLowStock}
-                    onLowStockToggle={setShowOnlyLowStock}
-                />
-
-                {/* Inventory Table */}
-                <InventoryTable
-                    items={items}
-                    loading={loadingItems}
-                    selectedItems={selectedItems}
-                    onSelectionChange={setSelectedItems}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={setCurrentPage}
-                />
             </main>
 
             {/* Modals */}
@@ -267,6 +269,6 @@ export default function InventoryPage() {
                 isOpen={historyModal.isOpen}
                 onClose={historyModal.onClose}
             />
-        </div>
+        </>
     );
 }

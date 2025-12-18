@@ -178,54 +178,56 @@ export default function CrewsPage() {
   }
 
   return (
-    <div className="p-6 bg-gray-50/50">
-      {/* Page Header */}
-      <h1 className="text-2xl font-bold text-dark mb-6">Gestión de Cuadrillas</h1>
+    <main className="flex-1 overflow-y-auto bg-gray-50/50">
+      <div className="p-6">
+        {/* Page Header */}
+        <h1 className="text-2xl font-bold text-dark mb-6">Gestión de Cuadrillas</h1>
 
-      {/* Filter Toolbar */}
-      <CrewsFilterToolbar
-        searchQuery={searchQuery}
-        statusFilter={statusFilter}
-        onSearchChange={setSearchQuery}
-        onStatusFilterChange={setStatusFilter}
-        onNewCrew={handleNewCrew}
-      />
-
-      {/* Bulk Action Bar */}
-      <BulkActionBar
-        selectedCount={selectedIds.length}
-        onArchive={handleArchive}
-        onDelete={handleDelete}
-        onAssignCrew={handleAssignInstaller}
-      />
-
-      {/* Crews Table */}
-      <CrewsTable
-        crews={paginatedCrews}
-        selectedIds={selectedIds}
-        onSelectAll={handleSelectAll}
-        onSelectRow={handleSelectRow}
-        onEditCrew={handleEditCrew}
-        onDeleteCrew={handleDeleteCrew}
-      />
-
-      {/* Pagination */}
-      {filteredCrews.length > 0 && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={filteredCrews.length}
-          itemsPerPage={itemsPerPage}
-          onPageChange={setCurrentPage}
+        {/* Filter Toolbar */}
+        <CrewsFilterToolbar
+          searchQuery={searchQuery}
+          statusFilter={statusFilter}
+          onSearchChange={setSearchQuery}
+          onStatusFilterChange={setStatusFilter}
+          onNewCrew={handleNewCrew}
         />
-      )}
 
-      {/* New Crew Modal */}
-      <NewCrewModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleModalSuccess}
-      />
-    </div>
+        {/* Bulk Action Bar */}
+        <BulkActionBar
+          selectedCount={selectedIds.length}
+          onArchive={handleArchive}
+          onDelete={handleDelete}
+          onAssignCrew={handleAssignInstaller}
+        />
+
+        {/* Crews Table */}
+        <CrewsTable
+          crews={paginatedCrews}
+          selectedIds={selectedIds}
+          onSelectAll={handleSelectAll}
+          onSelectRow={handleSelectRow}
+          onEditCrew={handleEditCrew}
+          onDeleteCrew={handleDeleteCrew}
+        />
+
+        {/* Pagination */}
+        {filteredCrews.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredCrews.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
+        )}
+
+        {/* New Crew Modal */}
+        <NewCrewModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSuccess={handleModalSuccess}
+        />
+      </div>
+    </main>
   );
 }

@@ -84,6 +84,7 @@ const OrderSchema = new mongoose.Schema(
       {
         item: { type: mongoose.Schema.Types.ObjectId, ref: "Inventory" },
         quantity: { type: Number, required: true },
+        batchCode: { type: String }, // Optional: identifies specific bobbin used
       },
     ],
     digitalSignature: { type: String },

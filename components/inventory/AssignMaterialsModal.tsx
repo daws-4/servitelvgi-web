@@ -16,6 +16,7 @@ interface AssignItem {
     code: string;
     description: string;
     quantity: number;
+    batchCode?: string; // Present if this is a bobbin assignment
 }
 
 interface AssignMaterialsModalProps {
@@ -33,18 +34,22 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
     const [selectedCrewId, setSelectedCrewId] = useState("");
     const [items, setItems] = useState<AssignItem[]>([]);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+    const [bobbins, setBobbins] = useState<any[]>([]);
     const [selectedItemId, setSelectedItemId] = useState("");
+    const [selectedBatchCode, setSelectedBatchCode] = useState("");
     const [quantity, setQuantity] = useState("");
     const [loading, setLoading] = useState(false);
     const [loadingCrews, setLoadingCrews] = useState(false);
     const [loadingItems, setLoadingItems] = useState(false);
+    const [loadingBobbins, setLoadingBobbins] = useState(false);
     const [error, setError] = useState("");
 
-    // Fetch crews and inventory items
+    // Fetch crews, inventory items and bobbins
     useEffect(() => {
         if (isOpen) {
             fetchCrews();
             fetchInventoryItems();
+            fetchBobbins();
         }
     }, [isOpen]);
 
@@ -75,6 +80,19 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
             console.error("Error fetching inventory items:", err);
         } finally {
             setLoadingItems(false);
+        }
+    };
+
+    const fetchBobbins = async () => {
+        setLoadingBobbins(true);
+        try {
+            const response = await fetch('/api/web/inventory/batches?location=warehouse&status=active');
+            const data = await response.json();
+            setBobbins(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Error fetching bobbins:', err);
+        } finally {
+            setLoadingBobbins(false);
         }
     };
 
@@ -117,6 +135,40 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
         setError("");
     };
 
+    const handleAddBobbin = () => {
+        if (!selectedBatchCode) {
+            setError("Selecciona una bobina");
+            return;
+        }
+
+        const selectedBatch = bobbins.find(b => b.batchCode === selectedBatchCode);
+        if (!selectedBatch) return;
+
+        // Check if bobbin already added
+        if (items.some(item => item.batchCode === selectedBatchCode)) {
+            setError("Esta bobina ya está en la lista");
+            return;
+        }
+
+        const itemInfo = typeof selectedBatch.item === 'object'
+            ? selectedBatch.item
+            : inventoryItems.find(i => i._id === selectedBatch.item);
+
+        setItems([
+            ...items,
+            {
+                inventoryId: itemInfo?._id || selectedBatch.item,
+                code: itemInfo?.code || 'CABLE',
+                description: `${itemInfo?.description || 'Cable'} (Bobina: ${selectedBatchCode})`,
+                quantity: selectedBatch.currentQuantity,
+                batchCode: selectedBatchCode,
+            },
+        ]);
+
+        setSelectedBatchCode("");
+        setError("");
+    };
+
     const handleRemoveItem = (inventoryId: string) => {
         setItems(items.filter((item) => item.inventoryId !== inventoryId));
     };
@@ -147,6 +199,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                         items: items.map((item) => ({
                             inventoryId: item.inventoryId,
                             quantity: item.quantity,
+                            ...(item.batchCode && { batchCode: item.batchCode }),
                         })),
                     },
                 }),
@@ -181,6 +234,15 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
         }
     };
 
+    // Filter out items that have bobbins from regular inventory list
+    const itemsWithBobbins = new Set(bobbins.map(b => {
+        return typeof b.item === 'object' ? b.item._id : b.item;
+    }));
+
+    const regularInventoryItems = inventoryItems.filter(item =>
+        !itemsWithBobbins.has(item._id)
+    );
+
     const crewOptions: SelectOption[] = crews.map((crew) => ({
         key: crew._id,
         label: `${crew.name} - ${crew.leader?.name || "Sin líder"}`,
@@ -191,16 +253,15 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
             isOpen={isOpen}
             onClose={handleClose}
             size="2xl"
-            scrollBehavior="inside"
+            scrollBehavior="outside"
             classNames={{
                 base: "max-w-2xl",
                 backdrop: "bg-dark/50 backdrop-blur-sm",
-                wrapper: "overflow-hidden",
             }}
         >
-            <ModalContent className="max-h-[80vh]">
-                <form onSubmit={handleSubmit} className="flex flex-col h-full">
-                    <ModalHeader className="flex-shrink-0 border-b border-neutral/10 bg-secondary/10">
+            <ModalContent>
+                <form onSubmit={handleSubmit} className="flex flex-col">
+                    <ModalHeader className="border-b border-neutral/10 bg-secondary/10">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-secondary rounded-lg text-white">
                                 <i className="fa-solid fa-truck"></i>
@@ -209,7 +270,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                         </div>
                     </ModalHeader>
 
-                    <ModalBody className="flex-1 overflow-y-auto py-6">
+                    <ModalBody className="py-6">
                         {error && (
                             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
                                 <i className="fa-solid fa-exclamation-circle mr-2"></i>
@@ -234,7 +295,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                         {/* Add Item Section */}
                         <div className="bg-gray-50 p-4 rounded-lg border border-neutral/10">
                             <p className="text-sm font-bold text-secondary mb-3">
-                                Agregar Material a Asignar
+                                Agregar Material Regular
                             </p>
                             <div className="flex flex-col md:flex-row gap-3">
                                 <div className="flex-1">
@@ -247,7 +308,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                                         variant="bordered"
                                         size="sm"
                                     >
-                                        {inventoryItems.map((item) => (
+                                        {regularInventoryItems.map((item) => (
                                             <AutocompleteItem key={item._id} textValue={item.description}>
                                                 <div className="flex flex-col">
                                                     <span className="font-medium">{item.description}</span>
@@ -282,6 +343,48 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                             </div>
                         </div>
 
+                        {/* Bobbin Assignment Section */}
+                        {bobbins.length > 0 && (
+                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <p className="text-sm font-bold text-blue-700 mb-3 flex items-center gap-2">
+                                    <i className="fa-solid fa-spool"></i>
+                                    Asignar Bobina de Cable
+                                </p>
+                                <div className="flex flex-col md:flex-row gap-3">
+                                    <div className="flex-1">
+                                        <Autocomplete
+                                            label="Buscar bobina"
+                                            placeholder="Código o tipo de cable..."
+                                            selectedKey={selectedBatchCode}
+                                            onSelectionChange={(key) => setSelectedBatchCode(key as string)}
+                                            isLoading={loadingBobbins}
+                                            variant="bordered"
+                                            size="sm"
+                                        >
+                                            {bobbins.map((batch) => (
+                                                <AutocompleteItem key={batch.batchCode} textValue={batch.batchCode}>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium">{batch.batchCode}</span>
+                                                        <span className="text-xs text-neutral">
+                                                            {batch.item?.description || 'Cable'} - {batch.currentQuantity}m disponibles
+                                                        </span>
+                                                    </div>
+                                                </AutocompleteItem>
+                                            ))}
+                                        </Autocomplete>
+                                    </div>
+                                    <FormButton
+                                        type="button"
+                                        onPress={handleAddBobbin}
+                                        variant="primary"
+                                        className="h-10"
+                                    >
+                                        <i className="fa-solid fa-plus"></i> Añadir Bobina
+                                    </FormButton>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Items List */}
                         <div>
                             <h4 className="text-sm font-bold text-dark mb-2">Materiales a Asignar</h4>
@@ -302,13 +405,21 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                                         </thead>
                                         <tbody className="divide-y divide-neutral/10">
                                             {items.map((item) => (
-                                                <tr key={item.inventoryId}>
+                                                <tr key={item.batchCode || item.inventoryId}>
                                                     <td className="px-4 py-3">
                                                         <div className="font-medium">{item.description}</div>
-                                                        <div className="text-xs text-neutral">{item.code}</div>
+                                                        <div className="text-xs text-neutral">
+                                                            {item.code}
+                                                            {item.batchCode && (
+                                                                <span className="ml-2 text-blue-600">
+                                                                    <i className="fa-solid fa-spool mr-1"></i>
+                                                                    {item.batchCode}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-bold text-secondary">
-                                                        {item.quantity}
+                                                        {item.quantity}{item.batchCode ? 'm' : ''}
                                                     </td>
                                                     <td className="px-4 py-3 text-right">
                                                         <button
@@ -328,7 +439,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                         </div>
                     </ModalBody>
 
-                    <ModalFooter className="flex-shrink-0 bg-gray-50 border-t border-neutral/10 flex justify-between items-center">
+                    <ModalFooter className="bg-gray-50 border-t border-neutral/10 flex justify-between items-center rounded-b-lg">
                         <div className="text-xs text-neutral">Total ítems: {items.length}</div>
                         <div className="flex gap-3">
                             <FormButton

@@ -11,6 +11,7 @@ export interface Material {
         unit: string;
     } | string;
     quantity: number;
+    batchCode?: string; // Optional: identifies specific bobbin used
 }
 
 interface MaterialsManagerProps {
@@ -31,6 +32,20 @@ interface CrewInventoryItem {
     lastUpdate: Date;
 }
 
+interface CrewBobbin {
+    _id: string;
+    batchCode: string;
+    item: {
+        _id: string;
+        code: string;
+        description: string;
+        unit: string;
+    };
+    currentQuantity: number;
+    initialQuantity: number;
+    status: string;
+}
+
 export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
     orderId,
     assignedCrewId,
@@ -39,8 +54,10 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
 }) => {
     const [materials, setMaterials] = useState<Material[]>(initialMaterials);
     const [crewInventory, setCrewInventory] = useState<CrewInventoryItem[]>([]);
+    const [crewBobbins, setCrewBobbins] = useState<CrewBobbin[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedMaterialId, setSelectedMaterialId] = useState("");
+    const [selectedBatchCode, setSelectedBatchCode] = useState("");
     const [quantity, setQuantity] = useState(1);
     const [returnModalOpen, setReturnModalOpen] = useState(false);
     const [materialToReturn, setMaterialToReturn] = useState<Material | null>(null);
@@ -54,12 +71,14 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         }
     }, [materials, onChange]);
 
-    // Fetch crew inventory when crew is assigned
+    // Fetch crew inventory and bobbins when crew is assigned
     useEffect(() => {
         if (assignedCrewId) {
             fetchCrewInventory();
+            fetchCrewBobbins();
         } else {
             setCrewInventory([]);
+            setCrewBobbins([]);
         }
     }, [assignedCrewId]);
 
@@ -75,6 +94,19 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             alert("Error al cargar el inventario de la cuadrilla");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchCrewBobbins = async () => {
+        if (!assignedCrewId) return;
+
+        try {
+            const response = await axios.get(
+                `/api/web/inventory/batches?crewId=${assignedCrewId}&status=active`
+            );
+            setCrewBobbins(response.data || []);
+        } catch (error) {
+            console.error("Error fetching crew bobbins:", error);
         }
     };
 
@@ -153,6 +185,57 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
 
         // Reset inputs
         setSelectedMaterialId("");
+        setQuantity(1);
+    };
+
+    const handleAddBobbin = () => {
+        if (!selectedBatchCode) {
+            alert("Por favor selecciona una bobina.");
+            return;
+        }
+
+        const selectedBobbin = crewBobbins.find(
+            (bob) => bob.batchCode === selectedBatchCode
+        );
+
+        if (!selectedBobbin) {
+            alert("Bobina no encontrada");
+            return;
+        }
+
+        if (quantity <= 0) {
+            alert("La cantidad debe ser mayor a 0");
+            return;
+        }
+
+        if (quantity > selectedBobbin.currentQuantity) {
+            alert(
+                `Metros no disponibles. Máximo: ${selectedBobbin.currentQuantity}m`
+            );
+            return;
+        }
+
+        // Check if bobbin already exists in the list
+        const existingBobbin = materials.find(
+            (m) => m.batchCode === selectedBatchCode
+        );
+
+        if (existingBobbin) {
+            alert("Esta bobina ya está en la lista. Modifica la cantidad existente.");
+            return;
+        }
+
+        // Add bobbin as material
+        const newMaterial: Material = {
+            item: selectedBobbin.item,
+            quantity: quantity,
+            batchCode: selectedBatchCode,
+        };
+
+        setMaterials((prev) => [...prev, newMaterial]);
+
+        // Reset inputs
+        setSelectedBatchCode("");
         setQuantity(1);
     };
 
@@ -346,6 +429,50 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                         </div>
                     )}
 
+                    {/* Add Bobbin Section - Only if crew has bobbins */}
+                    {assignedCrewId && crewBobbins.length > 0 && (
+                        <div className="flex flex-col sm:flex-row gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 items-end">
+                            <div className="flex-1 w-full">
+                                <label className="block text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">
+                                    <i className="fa-solid fa-spool mr-1"></i>
+                                    Bobina de Cable (Metros)
+                                </label>
+                                <select
+                                    value={selectedBatchCode}
+                                    onChange={(e) => setSelectedBatchCode(e.target.value)}
+                                    className="w-full px-3 py-2.5 border-2 border-blue-200 rounded-md bg-white text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
+                                >
+                                    <option value="">-- Seleccionar Bobina --</option>
+                                    {crewBobbins.map((bobbin) => (
+                                        <option key={bobbin._id} value={bobbin.batchCode}>
+                                            {bobbin.batchCode} - {bobbin.item.description} (Disp:{" "}
+                                            {bobbin.currentQuantity}m)
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="w-24">
+                                <label className="block text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">
+                                    Metros
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={quantity}
+                                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                                    className="w-full px-3 py-2.5 border-2 border-blue-200 rounded-md bg-white text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleAddBobbin}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-md font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer"
+                            >
+                                <i className="fa-solid fa-spool"></i> Añadir Bobina
+                            </button>
+                        </div>
+                    )}
+
                     {/* Materials Table */}
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                         <table className="w-full text-sm text-left">
@@ -374,7 +501,17 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                             className="bg-white border-b border-gray-50 hover:bg-gray-50 transition-colors"
                                         >
                                             <td className="px-4 py-3 font-medium text-gray-700">
-                                                {renderMaterialDisplay(material)}
+                                                <div className="flex items-center gap-2">
+                                                    {material.batchCode && (
+                                                        <i className="fa-solid fa-spool text-secondary" title="Bobina"></i>
+                                                    )}
+                                                    <span>{renderMaterialDisplay(material)}</span>
+                                                    {material.batchCode && (
+                                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
+                                                            {material.batchCode}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <input

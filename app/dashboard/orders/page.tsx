@@ -13,8 +13,7 @@ export default function OrdersPage() {
     const [searchValue, setSearchValue] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [typeFilter, setTypeFilter] = useState("all");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
     const [crewFilter, setCrewFilter] = useState("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
@@ -72,11 +71,11 @@ export default function OrdersPage() {
         }
 
         // Apply date range filter
-        if (startDate || endDate) {
+        if (dateRange) {
             filtered = filtered.filter(order => {
                 const orderDate = new Date(order.createdAt || order.updatedAt || Date.now());
-                const start = startDate ? new Date(startDate) : null;
-                const end = endDate ? new Date(endDate) : null;
+                const start = dateRange.start ? new Date(dateRange.start) : null;
+                const end = dateRange.end ? new Date(dateRange.end) : null;
 
                 // Set end date to end of day for inclusive filtering
                 if (end) {
@@ -95,7 +94,7 @@ export default function OrdersPage() {
         }
 
         return filtered;
-    }, [orders, searchValue, statusFilter, typeFilter, startDate, endDate, crewFilter]);
+    }, [orders, searchValue, statusFilter, typeFilter, dateRange, crewFilter]);
 
     // Pagination logic
     const itemsPerPage = 10;
@@ -145,14 +144,8 @@ export default function OrdersPage() {
         setSelectedOrders(new Set()); // Clear selection
     };
 
-    const handleStartDateChange = (value: string) => {
-        setStartDate(value);
-        setCurrentPage(1);
-        setSelectedOrders(new Set());
-    };
-
-    const handleEndDateChange = (value: string) => {
-        setEndDate(value);
+    const handleDateRangeChange = (range: { start: string; end: string } | null) => {
+        setDateRange(range);
         setCurrentPage(1);
         setSelectedOrders(new Set());
     };
@@ -196,10 +189,8 @@ export default function OrdersPage() {
                 onStatusChange={handleStatusChange}
                 typeFilter={typeFilter}
                 onTypeChange={handleTypeChange}
-                startDate={startDate}
-                onStartDateChange={handleStartDateChange}
-                endDate={endDate}
-                onEndDateChange={handleEndDateChange}
+                dateRange={dateRange}
+                onDateRangeChange={handleDateRangeChange}
                 crewFilter={crewFilter}
                 onCrewChange={handleCrewChange}
                 onNewOrder={handleNewOrder}

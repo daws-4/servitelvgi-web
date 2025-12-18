@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Servitel SGO</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Configuración de Colores Corporativos -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3e78b2',    // Rich Cerulean
+                        secondary: '#004ba8',  // Cobalt Blue
+                        tea: '#deefb7',        // Tea Green
+                        neutral: '#bcabae',    // Lilac Ash
+                        dark: '#0f0f0f',       // Onyx
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+        
+        /* Animación del Fondo Gradiente */
+        .bg-animated {
+            background: linear-gradient(-45deg, #3e78b2, #004ba8, #2a5298);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Estilos personalizados para inputs */
+        .input-group:focus-within .input-icon {
+            color: #3e78b2;
+        }
+    </style>
+</head>
+<!-- MODIFICADO: Se eliminó overflow-hidden y se agregó py-10 px-4 para permitir scroll y espaciado -->
+<body class="min-h-screen w-full flex items-center justify-center relative bg-gray-100 py-10 px-4">
+
+    <!-- Fondo animado y elementos decorativos (MODIFICADO: fixed para que no se muevan al hacer scroll) -->
+    <div class="fixed inset-0 bg-animated opacity-10 pointer-events-none -z-10"></div>
+    
+    <!-- Decoración Superior Izquierda -->
+    <div class="fixed top-0 left-0 w-full h-1/2 bg-primary/10 skew-y-3 origin-top-left pointer-events-none -z-10"></div>
+    
+    <!-- Decoración Inferior Derecha (Círculo verde) -->
+    <div class="fixed bottom-0 right-0 w-64 h-64 bg-tea rounded-full blur-3xl opacity-50 translate-x-1/2 translate-y-1/2 pointer-events-none -z-10"></div>
+    
+    <!-- Decoración Superior Izquierda (Círculo azul) -->
+    <div class="fixed top-10 left-10 w-32 h-32 bg-secondary/10 rounded-full blur-xl pointer-events-none -z-10"></div>
+
+    <!-- TARJETA PRINCIPAL -->
+    <div class="relative z-10 w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden border border-white/50 transition-all duration-300 hover:shadow-primary/20">
+        
+        <!-- Encabezado con Gradiente -->
+        <div class="bg-gradient-to-r from-primary to-secondary p-8 text-center relative overflow-hidden">
+            <!-- Círculo decorativo header -->
+            <div class="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10"></div>
+            
+            <div class="relative z-10 flex flex-col items-center">
+                <!-- Logo Container -->
+                <div class="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-4 backdrop-blur-sm border border-white/30 text-white shadow-lg">
+                    <i class="fa-solid fa-user-plus text-tea text-2xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white tracking-wide">SERVITEL SGO</h1>
+                <p class="text-blue-100 text-sm mt-1 font-light">Registro de Nuevo Administrador</p>
+            </div>
+        </div>
+
+        <!-- Formulario -->
+        <div class="p-8 bg-white/80 backdrop-blur-sm">
+            <form id="registerForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- COLUMNA IZQUIERDA: DATOS PERSONALES -->
+                <div class="space-y-5">
+                    <h3 class="text-primary font-bold border-b-2 border-gray-100 pb-2 text-xs uppercase tracking-wider mb-4">
+                        <i class="fa-solid fa-address-card mr-2"></i> Datos Personales
+                    </h3>
+
+                    <!-- Input: Nombre -->
+                    <div class="relative group input-group">
+                        <label class="block text-xs font-bold text-neutral uppercase mb-1.5 ml-1">Nombre</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-user text-gray-400 input-icon transition-colors"></i>
+                            </div>
+                            <input type="text" name="name" placeholder="Ej. Juan" required
+                                class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-dark focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder-gray-300">
+                        </div>
+                    </div>
+
+                    <!-- Input: Apellido -->
+                    <div class="relative group input-group">
+                        <label class="block text-xs font-bold text-neutral uppercase mb-1.5 ml-1">Apellido</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fa-regular fa-user text-gray-400 input-icon transition-colors"></i>
+                            </div>
+                            <input type="text" name="surname" placeholder="Ej. Pérez" required
+                                class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-dark focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder-gray-300">
+                        </div>
+                    </div>
+
+                    <!-- Input: Email -->
+                    <div class="relative group input-group">
+                        <label class="block text-xs font-bold text-neutral uppercase mb-1.5 ml-1">Correo Electrónico</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-envelope text-gray-400 input-icon transition-colors"></i>
+                            </div>
+                            <input type="email" name="email" placeholder="admin@servitel.com" required
+                                class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-dark focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder-gray-300">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: CREDENCIALES -->
+                <div class="space-y-5">
+                    <h3 class="text-primary font-bold border-b-2 border-gray-100 pb-2 text-xs uppercase tracking-wider mb-4">
+                        <i class="fa-solid fa-lock mr-2"></i> Credenciales
+                    </h3>
+
+                    <!-- Input: Usuario -->
+                    <div class="relative group input-group">
+                        <label class="block text-xs font-bold text-neutral uppercase mb-1.5 ml-1">Nombre de Usuario</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-400 font-bold input-icon transition-colors">@</span>
+                            </div>
+                            <input type="text" name="username" placeholder="Ej. admin.juan" required
+                                class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-dark focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder-gray-300">
+                        </div>
+                    </div>
+
+                    <!-- Input: Contraseña -->
+                    <div class="relative group input-group">
+                        <label class="block text-xs font-bold text-neutral uppercase mb-1.5 ml-1">Contraseña</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-key text-gray-400 input-icon transition-colors"></i>
+                            </div>
+                            <input type="password" name="password" id="passwordInput" placeholder="••••••••" required
+                                class="w-full pl-10 pr-12 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-dark focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all placeholder-gray-300">
+                            
+                            <!-- Botón Toggle Password -->
+                            <button type="button" onclick="togglePassword()" 
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-primary cursor-pointer focus:outline-none transition-colors">
+                                <i class="fa-solid fa-eye" id="eyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Nota Informativa -->
+                    <div class="bg-tea/40 p-3 rounded-lg border border-tea flex items-start gap-2 mt-4">
+                        <i class="fa-solid fa-circle-info text-green-700 mt-1"></i>
+                        <p class="text-xs text-green-800 leading-tight">
+                            <span class="font-bold">Información:</span> El usuario creado tendrá privilegios de <strong>Administrador</strong> y acceso completo al sistema Servitel.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- BOTÓN DE ACCIÓN -->
+                <div class="md:col-span-2 mt-6">
+                    <button type="submit" id="submitBtn"
+                        class="w-full bg-primary hover:bg-secondary text-white font-bold py-3.5 px-4 rounded-lg shadow-lg shadow-primary/30 transform hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed">
+                        <span id="btnText">Registrar Administrador</span>
+                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform" id="btnIcon"></i>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 p-4 border-t border-gray-100 flex justify-between items-center px-8 text-sm">
+             <a href="login.html" class="font-semibold text-primary hover:text-secondary hover:underline transition-colors flex items-center gap-1">
+                <i class="fa-solid fa-arrow-left"></i> Volver al Login
+             </a>
+            <p class="text-gray-400 text-xs">
+                Servitel SGO &copy; 2025
+            </p>
+        </div>
+    </div>
+
+    <!-- Script de Funcionalidad -->
+    <script>
+        // Función para mostrar/ocultar contraseña
+        function togglePassword() {
+            const passwordInput = document.getElementById('passwordInput');
+            const eyeIcon = document.getElementById('eyeIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        }
+
+        // Manejo del envío del formulario
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = document.getElementById('btnIcon');
+            const originalText = btnText.innerText;
+            
+            // Estado de Carga UI
+            btn.disabled = true;
+            btnText.innerText = 'Procesando...';
+            btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
+
+            // Recopilar datos
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                // NOTA: Esto fallará si se abre como archivo .html local porque no hay servidor corriendo
+                // Para producción, descomenta el fetch y ajusta la URL
+                
+                /*
+                const response = await fetch('/api/auth/createAdmin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (!response.ok) throw new Error(result.message);
+                */
+
+                // SIMULACIÓN DE ÉXITO (Para demostración visual)
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                alert('¡Administrador registrado correctamente! (Simulación)');
+                window.location.href = 'login.html';
+
+            } catch (error) {
+                alert(error.message || 'Error al conectar con el servidor');
+                
+                // Restaurar botón
+                btn.disabled = false;
+                btnText.innerText = originalText;
+                btnIcon.className = 'fa-solid fa-arrow-right';
+            }
+        });
+    </script>
+</body>
+</html>

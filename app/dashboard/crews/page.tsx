@@ -196,7 +196,7 @@ export default function CrewsPage() {
         selectedCount={selectedIds.length}
         onArchive={handleArchive}
         onDelete={handleDelete}
-        onAssignInstaller={handleAssignInstaller}
+        onAssignCrew={handleAssignInstaller}
       />
 
       {/* Crews Table */}

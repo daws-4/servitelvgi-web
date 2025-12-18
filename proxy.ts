@@ -30,11 +30,12 @@ export function proxy(req: NextRequest) {
   const isAgentApi = pathname.startsWith("/api/agent");
   const isMobileApi = pathname.startsWith("/api/mobile");
   const isRecoveryPath = pathname.startsWith("/recuperar-contrasena");
+  const isCreateAdminPath = pathname.startsWith("/create-admin");
 
   if (!token) {
-    // No session: allow only the login page, auth APIs and the agent webhook API.
+    // No session: allow only the login page, auth APIs, agent webhook API, create-admin page.
     // External services (N8N, webhooks) can call /api/agent/* without authentication.
-    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isRecoveryPath || isRecoveryPath) {
+    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isRecoveryPath || isCreateAdminPath) {
       return NextResponse.next();
     }
 
@@ -51,11 +52,11 @@ export function proxy(req: NextRequest) {
     return NextResponse.redirect(dashboard);
   }
 
-  // Check if the route exists - redirect to appropriate page if not found
   // Valid route patterns for authenticated users
   const validRoutes = [
     '/api/',
     '/recuperar-contrasena',
+    '/create-admin',
   ];
 
   // Valid dashboard subroutes

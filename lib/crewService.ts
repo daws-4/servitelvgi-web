@@ -5,7 +5,27 @@ import { connectDB } from "@/lib/db";
 
 export async function createCrew(data: any) {
   await connectDB();
-  return await CrewModel.create(data);
+  
+  // Create the crew
+  const crew = await CrewModel.create(data);
+  
+  // Automatically assign the leader's currentCrew to this crew
+  if (crew.leader) {
+    await InstallerModel.findByIdAndUpdate(
+      crew.leader,
+      { $set: { currentCrew: crew._id } }
+    );
+  }
+  
+  // Also update members' currentCrew if they exist
+  if (crew.members && crew.members.length > 0) {
+    await InstallerModel.updateMany(
+      { _id: { $in: crew.members } },
+      { $set: { currentCrew: crew._id } }
+    );
+  }
+  
+  return crew;
 }
 
 export async function getCrews(filters = {}) {
@@ -27,6 +47,65 @@ export async function getCrewById(id: string) {
 
 export async function updateCrew(id: string, data: any) {
   await connectDB();
+  
+  // Get the current crew data before update
+  const oldCrew = await CrewModel.findById(id).lean() as { 
+    _id: any; 
+    leader?: any; 
+    members?: any[];
+    [key: string]: any;
+  } | null;
+  
+  if (!oldCrew) {
+    throw new Error('Crew not found');
+  }
+  
+  // Handle leader change
+  if (data.leader && data.leader !== oldCrew.leader?.toString()) {
+    // Remove currentCrew from old leader
+    if (oldCrew.leader) {
+      await InstallerModel.findByIdAndUpdate(
+        oldCrew.leader,
+        { $set: { currentCrew: null } }
+      );
+    }
+    
+    // Assign currentCrew to new leader
+    await InstallerModel.findByIdAndUpdate(
+      data.leader,
+      { $set: { currentCrew: id } }
+    );
+  }
+  
+  // Handle members change
+  if (data.members) {
+    const oldMemberIds = ((oldCrew as any).members || []).map((m: any) => m.toString());
+    const newMemberIds = data.members.map((m: any) => m.toString());
+    
+    // Find members that were removed
+    const removedMembers = oldMemberIds.filter((m: string) => !newMemberIds.includes(m));
+    
+    // Find members that were added
+    const addedMembers = newMemberIds.filter((m: string) => !oldMemberIds.includes(m));
+    
+    // Remove currentCrew from removed members
+    if (removedMembers.length > 0) {
+      await InstallerModel.updateMany(
+        { _id: { $in: removedMembers } },
+        { $set: { currentCrew: null } }
+      );
+    }
+    
+    // Assign currentCrew to added members
+    if (addedMembers.length > 0) {
+      await InstallerModel.updateMany(
+        { _id: { $in: addedMembers } },
+        { $set: { currentCrew: id } }
+      );
+    }
+  }
+  
+  // Update the crew
   return await CrewModel.findByIdAndUpdate(
     id,
     { $set: data },

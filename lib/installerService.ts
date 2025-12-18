@@ -52,27 +52,37 @@ export async function createInstaller(data: any) {
 // Función reutilizable para LISTAR instaladores
 export async function getInstallers(filters = {}) {
   await connectDB();
-  const installers = await InstallerModel.find(filters).sort({ createdAt: -1 }).lean();
+  const installers = await InstallerModel.find(filters)
+    .populate('currentCrew', 'name') // Populate crew reference with name
+    .sort({ createdAt: -1 })
+    .lean();
   // Transform _id to id for frontend compatibility
   return installers.map((installer: any) => ({
     ...installer,
     id: installer._id.toString(),
+    // Transform currentCrew to just the name if it exists
+    currentCrew: installer.currentCrew?.name || null,
   }));
 }
 
 export async function getInstallerById(id: string) {
   await connectDB();
-  const installer = await InstallerModel.findById(id).lean();
+  const installer = await InstallerModel.findById(id)
+    .populate('currentCrew', 'name') // Populate crew reference with name
+    .lean();
   if (!installer) return null;
   
   // Cast to ensure TypeScript knows this is a single document, not an array
   const installerDoc = installer as any;
   
   // Transform _id to id for frontend compatibility
+  // Keep the currentCrew._id for the edit form to work properly
   return {
     ...installerDoc,
     _id: installerDoc._id.toString(),
     id: installerDoc._id.toString(),
+    // For edit form, we need the crew ID, not the name
+    currentCrew: installerDoc.currentCrew?._id?.toString() || null,
   };
 }
 

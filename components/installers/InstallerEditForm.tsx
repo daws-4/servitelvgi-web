@@ -145,12 +145,12 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                                     CORREO ELECTRÓNICO <span className="text-red-500">*</span>
                                 </label>
                                 <div className="relative">
-                                    <i className="fa-solid fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                    <i className="fa-solid fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs "></i>
                                     <input
                                         type="email"
                                         value={formData.email}
                                         onChange={(e) => handleInputChange("email", e.target.value)}
-                                        className="form-input pl-9"
+                                        className="form-input pl-9 "
                                         required
                                     />
                                 </div>

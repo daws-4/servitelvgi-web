@@ -33,9 +33,9 @@ export function proxy(req: NextRequest) {
   const isCreateAdminPath = pathname.startsWith("/create-admin");
 
   if (!token) {
-    // No session: allow only the login page, auth APIs, agent webhook API, create-admin page.
+    // No session: allow only the login page, auth APIs, agent webhook API.
     // External services (N8N, webhooks) can call /api/agent/* without authentication.
-    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isRecoveryPath || isCreateAdminPath) {
+    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isRecoveryPath) {
       return NextResponse.next();
     }
 
@@ -56,7 +56,6 @@ export function proxy(req: NextRequest) {
   const validRoutes = [
     '/api/',
     '/recuperar-contrasena',
-    '/create-admin',
   ];
 
   // Valid dashboard subroutes
@@ -66,6 +65,7 @@ export function proxy(req: NextRequest) {
     '/dashboard/installers',
     '/dashboard/crews',
     '/dashboard/inventory',
+    '/create-admin',
   ];
 
   // Check if it's a valid route (non-dashboard)

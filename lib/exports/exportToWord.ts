@@ -152,7 +152,6 @@ export async function exportReportToWord(
                 new Paragraph({
                   text: header,
                   alignment: AlignmentType.CENTER,
-                  bold: true,
                 }),
               ],
               shading: {

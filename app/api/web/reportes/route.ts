@@ -2,7 +2,7 @@
 // API Endpoint principal para generación de reportes
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/authHelpers";
+import { getUserFromRequest } from "@/lib/authHelpers";
 import {
   getDailyReport,
   getMonthlyReport,
@@ -25,7 +25,7 @@ import {
  */
 export async function GET(request: NextRequest) {
   try {
-    const sessionUser = await getSessionFromRequest(request);
+    const sessionUser = await getUserFromRequest(request);
     if (!sessionUser) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }

@@ -9,7 +9,7 @@ import type { ReportType, ReportMetadata } from "@/types/reportTypes";
  */
 export function exportReportToExcel(
   reportType: ReportType,
-  data: any[],
+  data: any,
   metadata: ReportMetadata
 ): void {
   // Crear workbook

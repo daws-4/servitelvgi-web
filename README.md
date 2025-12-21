@@ -181,3 +181,11 @@ el resultado final lo usas para reemplazar lo que haya en @beautifulMention
 - reporte de ordenes hacia netuno de instalaciones y averías
 - cantidad de instalaciones/averias realizadas por cuadrilla
 - reporte hacia servitel de inventario por cuadrilla
+
+en base a los archivos que te estoy pasando necesito que me diseñes la página de reportes para mi aplicación, en diseño necesito que te bases en el dashboard.html
+
+implementa las funcionalidades de los exports a pdf, word y excel en el front
+
+y maneja todos los servicios de la API que te estoy enviando que son sendton8n, venezuelaholidays report service y en la base de datos para almacenar los reportes ya creados generated report como modelo de mongodb
+
+devuelveme un archivo html con todas estas especificaciones estilizado con tailwind

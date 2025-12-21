@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import GeneratedReportModel from "@/models/GeneratedReport";
-import { getSessionFromRequest } from "@/lib/authHelpers";
+import { getUserFromRequest } from "@/lib/authHelpers";
 
 /**
  * GET /api/web/reportes/history
@@ -18,7 +18,7 @@ import { getSessionFromRequest } from "@/lib/authHelpers";
  */
 export async function GET(request: NextRequest) {
   try {
-    const sessionUser = await getSessionFromRequest(request);
+    const sessionUser = await getUserFromRequest(request);
     if (!sessionUser) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }

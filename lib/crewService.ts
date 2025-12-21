@@ -39,11 +39,20 @@ export async function getCrews(filters = {}) {
 
 export async function getCrewById(id: string) {
   await connectDB();
-  return await CrewModel.findById(id)
+  const crew = await CrewModel.findById(id)
     .populate('leader', 'name surname role')
     .populate('members', 'name surname role')
     .populate('assignedInventory.item', 'code description unit')
     .lean();
+  
+  // Filter out null inventory items (when referenced document doesn't exist)
+  if (crew && crew.assignedInventory) {
+    crew.assignedInventory = crew.assignedInventory.filter(
+      (inv: any) => inv.item != null
+    );
+  }
+  
+  return crew;
 }
 
 export async function updateCrew(id: string, data: any) {

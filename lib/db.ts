@@ -2,9 +2,8 @@ import mongoose from "mongoose";
 
 const conn = {
   isConnected: false,
+  listenersSetup: false,
 };
-
-mongoose.connection.setMaxListeners(60);
 
 export async function connectDB() {
   if (conn.isConnected) {
@@ -18,6 +17,25 @@ export async function connectDB() {
   }
 
   try {
+    // Set up event listeners only once
+    if (!conn.listenersSetup) {
+      mongoose.connection.setMaxListeners(60);
+      
+      mongoose.connection.on("connected", () => {
+        console.log("Mongo Connection Established");
+      });
+
+      mongoose.connection.on("error", (err: any) => {
+        console.log("Mongo Connection error", err);
+      });
+
+      mongoose.connection.on("disconnected", () => {
+        console.log("Mongo Connection Disconnected");
+      });
+
+      conn.listenersSetup = true;
+    }
+    
     const db = await mongoose.connect(dburl);
 
     console.log(`Connected to database: ${db.connection.db?.databaseName}`);
@@ -27,15 +45,3 @@ export async function connectDB() {
     throw new Error("Failed to connect to MongoDB");
   }
 }
-
-mongoose.connection.on("connected", () => {
-  console.log("Mongo Connection Established");
-});
-
-mongoose.connection.on("error", (err: any) => {
-  console.log("Mongo Connection error", err);
-});
-
-mongoose.connection.on("disconnected", () => {
-  console.log("Mongo Connection Disconnected");
-});

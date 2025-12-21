@@ -9,6 +9,7 @@ import InventoryHistoryModel from "@/models/InventoryHistory";
 import GeneratedReportModel from "@/models/GeneratedReport";
 import { SessionUser } from "@/lib/authHelpers";
 import { startOfMonth, endOfMonth, format, parseISO } from "date-fns";
+import type { Types } from "mongoose";
 import type {
   DailyReportData,
   MonthlyReportData,
@@ -18,6 +19,50 @@ import type {
   CrewInventoryData,
   OrderSummary,
 } from "@/types/reportTypes";
+
+// Type for lean Crew document
+interface CrewDocument {
+  _id: Types.ObjectId;
+  name: string;
+  leader: Types.ObjectId;
+  members: Types.ObjectId[];
+  vehiclesAssigned?: Array<{ id: string; name: string }>;
+  isActive: boolean;
+  assignedInventory?: Array<{
+    item: {
+      _id: Types.ObjectId;
+      code: string;
+      description: string;
+      unit: string;
+    };
+    quantity: number;
+    lastUpdated?: Date;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Helper function to transform raw Mongoose documents into OrderSummary objects
+ */
+function transformToOrderSummary(order: any): OrderSummary {
+  return {
+    _id: order._id.toString(),
+    subscriberNumber: order.subscriberNumber,
+    subscriberName: order.subscriberName,
+    address: order.address,
+    type: order.type,
+    status: order.status,
+    completionDate: order.completionDate,
+    assignmentDate: order.assignmentDate,
+    assignedTo: order.assignedTo ? {
+      _id: order.assignedTo._id?.toString() || order.assignedTo.toString(),
+      name: order.assignedTo.name || '',
+    } : undefined,
+    node: order.node,
+    servicesToInstall: order.servicesToInstall,
+  };
+}
 
 /**
  * 1. Reporte día a día de instalaciones/averías
@@ -39,7 +84,14 @@ export async function getDailyReport(
   }
 
   // Intentar usar caché con GeneratedReport
-  const reportType = type === "all" ? "daily_installations" : `daily_${type}s`;
+  let reportType = "daily_installations";
+  if (type === "averia") reportType = "daily_repairs";
+  // Si type es "instalacion" o "all", por defecto podría ser daily_installations,
+  // pero el enum 'daily_installations' implica SOLO instalaciones?
+  // Re-leyendo route.ts, si pide daily_installations, manda type='instalacion'.
+  // Si pide daily_repairs, manda type='averia'.
+  // Nunca manda 'all' desde route.ts para estos casos específicos.
+  if (type === "instalacion") reportType = "daily_installations";
 
   const result = await GeneratedReportModel.findOrGenerate(
     reportType,
@@ -72,11 +124,13 @@ export async function getDailyReport(
         .populate("assignedTo", "name")
         .lean();
 
-      // Separar en finalizadas y asignadas
-      const finalizadas = orders.filter((order) => order.status === "completed");
-      const asignadas = orders.filter((order) =>
-        ["assigned", "in_progress"].includes(order.status)  
-      );
+      // Separar en finalizadas y asignadas y transformar a OrderSummary
+      const finalizadas = orders
+        .filter((order) => order.status === "completed")
+        .map(transformToOrderSummary);
+      const asignadas = orders
+        .filter((order) => ["assigned", "in_progress"].includes(order.status))
+        .map(transformToOrderSummary);
 
       return {
         finalizadas,
@@ -115,7 +169,9 @@ export async function getMonthlyReport(
     type,
   };
 
-  const reportType = type === "all" ? "monthly_installations" : `monthly_${type}s`;
+  let reportType = "monthly_installations";
+  if (type === "averia") reportType = "monthly_repairs";
+  if (type === "instalacion") reportType = "monthly_installations";
 
   const result = await GeneratedReportModel.findOrGenerate(
     reportType,
@@ -212,7 +268,7 @@ export async function getInventoryReport(
 
   const result = await GeneratedReportModel.findOrGenerate(
     "inventory_report",
-    dateRange,
+    { startDate: dateRange.start, endDate: dateRange.end },
     async () => {
       const startDate = parseISO(dateRange.start);
       const endDate = parseISO(dateRange.end);
@@ -374,12 +430,15 @@ export async function getNetunoOrdersReport(
   const startDate = parseISO(dateRange.start);
   const endDate = parseISO(dateRange.end);
 
-  const pendientes = await OrderModel.find({
+  const rawPendientes = await OrderModel.find({
     googleFormReported: false,
     createdAt: { $gte: startDate, $lte: endDate },
   })
     .populate("assignedTo", "name")
     .lean();
+
+  // Transform to OrderSummary objects
+  const pendientes = rawPendientes.map(transformToOrderSummary);
 
   const totales = {
     instalaciones: pendientes.filter((o) => o.type === "instalacion").length,
@@ -465,12 +524,12 @@ export async function getCrewInventoryReport(
 
   const crews = await CrewModel.find(filter)
     .populate("assignedInventory.item", "code description unit")
-    .lean();
+    .lean<CrewDocument[]>();
 
   return crews.map((crew) => ({
     crewId: crew._id.toString(),
     crewName: crew.name,
-    inventory: (crew.assignedInventory || []).map((inv: any) => ({
+    inventory: (crew.assignedInventory || []).map((inv) => ({
       itemId: inv.item._id.toString(),
       code: inv.item.code,
       description: inv.item.description,

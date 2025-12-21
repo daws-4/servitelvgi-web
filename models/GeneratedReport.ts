@@ -1,7 +1,47 @@
 // models/GeneratedReport.ts
 // Modelo para cachear reportes generados y evitar regeneración costosa
 
-import mongoose from "mongoose";
+import mongoose, { Document, Model } from "mongoose";
+
+// TypeScript interface for the document
+export interface IGeneratedReport extends Document {
+  reportType: string;
+  filters: {
+    startDate: string;
+    endDate: string;
+    crewId?: mongoose.Types.ObjectId;
+    additionalFilters?: Map<string, string>;
+  };
+  data: any;
+  metadata: {
+    totalRecords: number;
+    generatedAt: Date;
+    generatedBy?: mongoose.Types.ObjectId;
+    generatedByModel?: "User" | "Installer";
+    executionTimeMs?: number;
+  };
+  exportedFiles?: {
+    excel?: string;
+    pdf?: string;
+    word?: string;
+  };
+  sentToN8n: boolean;
+  sentToN8nAt?: Date;
+  reportHash: string;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// TypeScript interface for the model (with static methods)
+export interface IGeneratedReportModel extends Model<IGeneratedReport> {
+  findOrGenerate(
+    reportType: string,
+    filters: any,
+    generateFn: () => Promise<any>,
+    sessionUser?: any
+  ): Promise<{ data: any; cached: boolean; reportId: any }>;
+}
 
 const GeneratedReportSchema = new mongoose.Schema(
   {
@@ -127,8 +167,8 @@ GeneratedReportSchema.statics.findOrGenerate = async function(
   return { data: newReport.data, cached: false, reportId: newReport._id };
 };
 
-const GeneratedReportModel =
-  mongoose.models?.GeneratedReport ||
-  mongoose.model("GeneratedReport", GeneratedReportSchema);
+const GeneratedReportModel: IGeneratedReportModel =
+  (mongoose.models?.GeneratedReport as IGeneratedReportModel) ||
+  mongoose.model<IGeneratedReport, IGeneratedReportModel>("GeneratedReport", GeneratedReportSchema);
 
 export default GeneratedReportModel;

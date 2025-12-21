@@ -4,6 +4,26 @@ import OrderModel from "@/models/Order";
 import InventoryModel from "@/models/Inventory";
 import { connectDB } from "@/lib/db";
 
+// Type for lean() Crew documents
+interface CrewLeanDocument {
+  _id: any;
+  name: string;
+  leader?: any;
+  members?: any[];
+  vehiclesAssigned?: Array<{ id: string; name: string }>;
+  isActive: boolean;
+  assignedInventory?: Array<{
+    item: any;
+    quantity?: number;
+    bobbins?: any[];
+    [key: string]: any;
+  }>;
+  createdAt?: Date;
+  updatedAt?: Date;
+  __v?: number;
+  [key: string]: any;
+}
+
 export async function createCrew(data: any) {
   await connectDB();
   
@@ -39,11 +59,11 @@ export async function getCrews(filters = {}) {
 
 export async function getCrewById(id: string) {
   await connectDB();
-  const crew = await CrewModel.findById(id)
+  const crew = (await CrewModel.findById(id)
     .populate('leader', 'name surname role')
     .populate('members', 'name surname role')
     .populate('assignedInventory.item', 'code description unit')
-    .lean();
+    .lean()) as CrewLeanDocument | null;
   
   // Filter out null inventory items (when referenced document doesn't exist)
   if (crew && crew.assignedInventory) {

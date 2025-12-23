@@ -19,6 +19,7 @@ interface InventoryTableProps {
     onSelectionChange: (selected: Set<string>) => void;
     onEdit: (item: InventoryItem) => void;
     onDelete: (itemId: string) => void;
+    onManageInstances?: (item: InventoryItem) => void;
     currentPage: number;
     totalPages: number;
     totalItems: number;
@@ -103,6 +104,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     onSelectionChange,
     onEdit,
     onDelete,
+    onManageInstances,
     currentPage,
     totalPages,
     totalItems,
@@ -228,20 +230,31 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => onEdit(item)}
-                                            className="text-neutral hover:text-secondary p-1 transition-colors cursor-pointer"
-                                            title="Editar"
-                                        >
-                                            <EditIcon />
-                                        </button>
-                                        <button
-                                            onClick={() => onDelete(item._id)}
-                                            className="text-neutral hover:text-red-500 p-1 ml-2 transition-colors cursor-pointer"
-                                            title="Eliminar"
-                                        >
-                                            <TrashIcon />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-1">
+                                            {item.type === "equipment" && onManageInstances && (
+                                                <button
+                                                    onClick={() => onManageInstances(item)}
+                                                    className="text-neutral hover:text-primary p-1 transition-colors cursor-pointer"
+                                                    title="Gestionar Instancias"
+                                                >
+                                                    <i className="fa-solid fa-microchip"></i>
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => onEdit(item)}
+                                                className="text-neutral hover:text-secondary p-1 transition-colors cursor-pointer"
+                                                title="Editar"
+                                            >
+                                                <EditIcon />
+                                            </button>
+                                            <button
+                                                onClick={() => onDelete(item._id)}
+                                                className="text-neutral hover:text-red-500 p-1 transition-colors cursor-pointer"
+                                                title="Eliminar"
+                                            >
+                                                <TrashIcon />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             );

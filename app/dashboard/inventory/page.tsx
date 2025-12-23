@@ -10,6 +10,7 @@ import EditItemModal from "@/components/inventory/EditItemModal";
 import RestockModal from "@/components/inventory/RestockModal";
 import AssignMaterialsModal from "@/components/inventory/AssignMaterialsModal";
 import InventoryHistoryModal from "@/components/inventory/InventoryHistoryModal";
+import ManageInstancesModal from "@/components/inventory/ManageInstancesModal";
 
 export default function InventoryPage() {
     // Modal states
@@ -18,6 +19,7 @@ export default function InventoryPage() {
     const restockModal = useDisclosure();
     const assignModal = useDisclosure();
     const historyModal = useDisclosure();
+    const manageInstancesModal = useDisclosure();
 
     // Data states
     const [items, setItems] = useState<InventoryItem[]>([]);
@@ -125,6 +127,12 @@ export default function InventoryPage() {
         editModal.onOpen();
     };
 
+    // Handle manage instances
+    const handleManageInstances = (item: InventoryItem) => {
+        setSelectedItem(item);
+        manageInstancesModal.onOpen();
+    };
+
     // Handle delete item
     const handleDelete = async (itemId: string) => {
         if (!confirm("¿Estás seguro de eliminar este ítem?")) return;
@@ -230,6 +238,7 @@ export default function InventoryPage() {
                         onSelectionChange={setSelectedItems}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
+                        onManageInstances={handleManageInstances}
                         currentPage={currentPage}
                         totalPages={totalPages}
                         totalItems={totalItems}
@@ -268,6 +277,14 @@ export default function InventoryPage() {
             <InventoryHistoryModal
                 isOpen={historyModal.isOpen}
                 onClose={historyModal.onClose}
+            />
+
+            <ManageInstancesModal
+                isOpen={manageInstancesModal.isOpen}
+                onClose={manageInstancesModal.onClose}
+                onSuccess={handleSuccess}
+                inventoryId={selectedItem?._id || ""}
+                itemDescription={selectedItem?.description || ""}
             />
         </>
     );

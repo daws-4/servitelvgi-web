@@ -777,6 +777,428 @@ export async function deleteInventory(id: string) {
 }
 
 // ============================================================================
+// EQUIPMENT INSTANCE MANAGEMENT FUNCTIONS
+// ============================================================================
+
+import type { CreateInstanceInput, AssignInstanceInput, InstallInstanceInput } from "@/types/inventory";
+
+/**
+ * Añade instancias a un ítem de equipo
+ * @param inventoryId - ID del ítem de inventario
+ * @param instances - Array de instancias a añadir
+ * @param sessionUser - Usuario que realiza la acción
+ * @returns Ítem actualizado
+ */
+export async function addEquipmentInstances(
+  inventoryId: string,
+  instances: CreateInstanceInput[],
+  sessionUser?: SessionUser
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const item = await InventoryModel.findById(inventoryId).session(session);
+
+    if (!item) {
+      throw new Error(`Ítem de inventario no encontrado: ${inventoryId}`);
+    }
+
+    if (item.type !== "equipment") {
+      throw new Error(
+        `Solo se pueden añadir instancias a ítems de tipo 'equipment'. Este ítem es de tipo '${item.type}'`
+      );
+    }
+
+    // Validar que los uniqueIds no existan ya
+    const existingIds = new Set(item.instances?.map((inst: any) => inst.uniqueId) || []);
+    for (const instance of instances) {
+      if (existingIds.has(instance.uniqueId)) {
+        throw new Error(`El ID único '${instance.uniqueId}' ya existe en este equipo`);
+      }
+    }
+
+    // Añadir las nuevas instancias
+    const newInstances = instances.map((inst) => ({
+      uniqueId: inst.uniqueId,
+      serialNumber: inst.serialNumber,
+      macAddress: inst.macAddress,
+      notes: inst.notes,
+      status: "in-stock",
+      createdAt: new Date(),
+    }));
+
+    if (!item.instances) {
+      item.instances = [];
+    }
+    item.instances.push(...newInstances);
+
+    await item.save({ session });
+
+    // Crear registro en historial
+    await InventoryHistoryModel.create(
+      [
+        {
+          item: inventoryId,
+          type: "entry",
+          quantityChange: instances.length,
+          reason: `Añadidas ${instances.length} instancias de equipo: ${instances.map((i) => i.uniqueId).join(", ")}`,
+          performedBy: sessionUser?.userId,
+          performedByModel: sessionUser?.userModel,
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+    return item;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+/**
+ * Obtiene instancias disponibles de un equipo
+ * @param inventoryId - ID del ítem de inventario
+ * @param status - Filtro de estado (opcional)
+ * @returns Array de instancias
+ */
+export async function getAvailableInstances(
+  inventoryId: string,
+  status: string = "in-stock"
+) {
+  await connectDB();
+
+  const item = await InventoryModel.findById(inventoryId).lean() as any;
+
+  if (!item) {
+    throw new Error(`Ítem de inventario no encontrado: ${inventoryId}`);
+  }
+
+  if (item.type !== "equipment") {
+    return [];
+  }
+
+  if (!item.instances || item.instances.length === 0) {
+    return [];
+  }
+
+  return item.instances.filter((inst: any) => inst.status === status);
+}
+
+/**
+ * Asigna instancias de equipo a una cuadrilla
+ * @param inventoryId - ID del ítem de inventario
+ * @param instanceIds - IDs únicos de las instancias a asignar
+ * @param crewId - ID de la cuadrilla
+ * @param sessionUser - Usuario que realiza la asignación
+ * @returns Resultado de la asignación
+ */
+export async function assignEquipmentInstances(
+  inventoryId: string,
+  instanceIds: string[],
+  crewId: string,
+  sessionUser?: SessionUser
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const item = await InventoryModel.findById(inventoryId).session(session);
+    const crew = await CrewModel.findById(crewId).session(session);
+
+    if (!item) {
+      throw new Error(`Ítem de inventario no encontrado: ${inventoryId}`);
+    }
+
+    if (!crew) {
+      throw new Error(`Cuadrilla no encontrada: ${crewId}`);
+    }
+
+    if (item.type !== "equipment") {
+      throw new Error("Solo se pueden asignar instancias de equipos");
+    }
+
+    // Asignar cada instancia
+    for (const uniqueId of instanceIds) {
+      const instance = item.instances?.find((inst: any) => inst.uniqueId === uniqueId);
+
+      if (!instance) {
+        throw new Error(`Instancia no encontrada: ${uniqueId}`);
+      }
+
+      if (instance.status !== "in-stock") {
+        throw new Error(
+          `La instancia ${uniqueId} no está disponible (estado: ${instance.status})`
+        );
+      }
+
+      // Actualizar estado de la instancia
+      instance.status = "assigned";
+      instance.assignedTo = {
+        crewId: new mongoose.Types.ObjectId(crewId),
+        assignedAt: new Date(),
+      };
+    }
+
+    await item.save({ session });
+
+    // Añadir a inventario de la cuadrilla (cantidad = número de instancias)
+    const existingItemIndex = crew.assignedInventory.findIndex(
+      (inv: any) => inv.item.toString() === inventoryId
+    );
+
+    if (existingItemIndex >= 0) {
+      crew.assignedInventory[existingItemIndex].quantity += instanceIds.length;
+      crew.assignedInventory[existingItemIndex].lastUpdate = new Date();
+    } else {
+      crew.assignedInventory.push({
+        item: new mongoose.Types.ObjectId(inventoryId),
+        quantity: instanceIds.length,
+        lastUpdate: new Date(),
+      });
+    }
+
+    await crew.save({ session });
+
+    // Crear registro en historial
+    await InventoryHistoryModel.create(
+      [
+        {
+          item: inventoryId,
+          type: "assignment",
+          quantityChange: -instanceIds.length,
+          reason: `Instancias asignadas a cuadrilla ${crew.name}: ${instanceIds.join(", ")}`,
+          crew: crewId,
+          performedBy: sessionUser?.userId,
+          performedByModel: sessionUser?.userModel,
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    return {
+      success: true,
+      assignedInstances: instanceIds,
+      crewId,
+      crewName: crew.name,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+/**
+ * Marca una instancia como instalada en una orden
+ * @param inventoryId - ID del ítem de inventario
+ * @param uniqueId - ID único de la instancia
+ * @param orderId - ID de la orden
+ * @param location - Dirección de instalación
+ * @param sessionUser - Usuario que realiza la acción
+ * @returns Ítem actualizado
+ */
+export async function markInstanceAsInstalled(
+  inventoryId: string,
+  uniqueId: string,
+  orderId: string,
+  location: string,
+  sessionUser?: SessionUser
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const item = await InventoryModel.findById(inventoryId).session(session);
+
+    if (!item) {
+      throw new Error(`Ítem de inventario no encontrado: ${inventoryId}`);
+    }
+
+    const instance = item.instances?.find((inst: any) => inst.uniqueId === uniqueId);
+
+    if (!instance) {
+      throw new Error(`Instancia no encontrada: ${uniqueId}`);
+    }
+
+    if (instance.status !== "assigned") {
+      throw new Error(
+        `La instancia ${uniqueId} debe estar asignada para ser instalada (estado actual: ${instance.status})`
+      );
+    }
+
+    // Actualizar estado de la instancia
+    instance.status = "installed";
+    instance.installedAt = {
+      orderId: new mongoose.Types.ObjectId(orderId),
+      installedDate: new Date(),
+      location,
+    };
+
+    await item.save({ session });
+
+    // Crear registro en historial
+    await InventoryHistoryModel.create(
+      [
+        {
+          item: inventoryId,
+          type: "usage_order",
+          quantityChange: -1,
+          reason: `Instancia ${uniqueId} instalada en ${location}`,
+          order: orderId,
+          crew: instance.assignedTo?.crewId,
+          performedBy: sessionUser?.userId,
+          performedByModel: sessionUser?.userModel,
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+    return item;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+/**
+ * Obtiene todas las instancias de un equipo con filtros
+ * @param inventoryId - ID del ítem de inventario
+ * @param filters - Filtros opcionales (status)
+ * @returns Array de instancias
+ */
+export async function getEquipmentInstances(
+  inventoryId: string,
+  filters: { status?: string } = {}
+) {
+  await connectDB();
+
+  const item = await InventoryModel.findById(inventoryId)
+    .populate("instances.assignedTo.crewId", "name")
+    .lean() as any;
+
+  if (!item) {
+    throw new Error(`Ítem de inventario no encontrado: ${inventoryId}`);
+  }
+
+  if (item.type !== "equipment") {
+    return [];
+  }
+
+  let instances = item.instances || [];
+
+  if (filters.status) {
+    instances = instances.filter((inst: any) => inst.status === filters.status);
+  }
+
+  return instances;
+}
+
+/**
+ * Actualiza una instancia de equipo
+ * @param inventoryId - ID del ítem de inventario
+ * @param uniqueId - ID único de la instancia
+ * @param updates - Datos a actualizar (serialNumber, macAddress, notes, status)
+ * @returns Ítem actualizado
+ */
+export async function updateEquipmentInstance(
+  inventoryId: string,
+  uniqueId: string,
+  updates: {
+    serialNumber?: string;
+    macAddress?: string;
+    notes?: string;
+    status?: string;
+  }
+) {
+  await connectDB();
+
+  const item = await InventoryModel.findById(inventoryId);
+
+  if (!item) {
+    throw new Error(`Ítem de inventario no encontrado: ${inventoryId}`);
+  }
+
+  const instance = item.instances?.find((inst: any) => inst.uniqueId === uniqueId);
+
+  if (!instance) {
+    throw new Error(`Instancia no encontrada: ${uniqueId}`);
+  }
+
+  // Actualizar campos permitidos
+  if (updates.serialNumber !== undefined) instance.serialNumber = updates.serialNumber;
+  if (updates.macAddress !== undefined) instance.macAddress = updates.macAddress;
+  if (updates.notes !== undefined) instance.notes = updates.notes;
+  
+  // Solo permitir cambio de estado si no está instalado
+  if (updates.status !== undefined) {
+    if (instance.status === "installed") {
+      throw new Error("No se puede cambiar el estado de una instancia instalada");
+    }
+    instance.status = updates.status;
+  }
+
+  await item.save();
+  return item;
+}
+
+/**
+ * Elimina una instancia de un equipo (solo si está en stock)
+ * @param inventoryId - ID del ítem de inventario
+ * @param uniqueId - ID único de la instancia
+ * @returns Ítem actualizado
+ */
+export async function deleteEquipmentInstance(
+  inventoryId: string,
+  uniqueId: string
+) {
+  await connectDB();
+
+  const item = await InventoryModel.findById(inventoryId);
+
+  if (!item) {
+    throw new Error(`Ítem de inventario no encontrado: ${inventoryId}`);
+  }
+
+  const instanceIndex = item.instances?.findIndex(
+    (inst: any) => inst.uniqueId === uniqueId
+  );
+
+  if (instanceIndex === undefined || instanceIndex < 0) {
+    throw new Error(`Instancia no encontrada: ${uniqueId}`);
+  }
+
+  const instance = item.instances[instanceIndex];
+
+  if (instance.status !== "in-stock") {
+    throw new Error(
+      `Solo se pueden eliminar instancias en stock. Estado actual: ${instance.status}`
+    );
+  }
+
+  item.instances.splice(instanceIndex, 1);
+  await item.save();
+
+  return item;
+}
+
+// ============================================================================
 // BATCH/BOBBIN MANAGEMENT FUNCTIONS
 // ============================================================================
 

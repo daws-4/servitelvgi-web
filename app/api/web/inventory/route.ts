@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
     const body = await request.json();
 
-    const { code, description, unit, currentStock, minimumStock, type } = body;
+    const { code, description, unit, currentStock, minimumStock, type, instances } = body;
 
     // Validar campos requeridos
     if (!code || !description) {
@@ -60,14 +60,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const newItem = await InventoryModel.create({
+    // Preparar datos del nuevo ítem
+    const itemData: any = {
       code,
       description,
       unit: unit || "unidades",
       currentStock: currentStock || 0,
       minimumStock: minimumStock || 5,
       type: type || "material",
-    });
+    };
+
+    // Si el tipo es equipment y hay instancias, añadirlas
+    if (type === "equipment" && instances && Array.isArray(instances)) {
+      // Validar uniqueIds únicos
+      const uniqueIds = instances.map((inst: any) => inst.uniqueId);
+      const hasDuplicates = uniqueIds.length !== new Set(uniqueIds).size;
+      
+      if (hasDuplicates) {
+        return NextResponse.json(
+          { success: false, error: "Los IDs únicos de las instancias deben ser únicos" },
+          { status: 400 }
+        );
+      }
+
+      itemData.instances = instances.map((inst: any) => ({
+        uniqueId: inst.uniqueId,
+        serialNumber: inst.serialNumber,
+        macAddress: inst.macAddress,
+        notes: inst.notes,
+        status: "in-stock",
+        createdAt: new Date(),
+      }));
+      
+      // El middleware actualizará currentStock automáticamente
+    }
+
+    const newItem = await InventoryModel.create(itemData);
 
     return NextResponse.json({
       success: true,

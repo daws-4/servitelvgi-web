@@ -6,6 +6,9 @@ import axios from "axios";
 import { CrewEditForm } from "@/components/crews/CrewEditForm";
 import { CrewInventoryCard } from "@/components/crews/CrewInventoryCard";
 import { ReturnMaterialModal } from "@/components/crews/ReturnMaterialModal";
+import MonthSelector from "@/components/crews/MonthSelector";
+import CrewMonthlySummary from "@/components/crews/CrewMonthlySummary";
+import CrewMovementHistory from "@/components/crews/CrewMovementHistory";
 
 interface Installer {
     _id: string;
@@ -53,6 +56,16 @@ export default function CrewEditPage() {
     const [error, setError] = useState<string | null>(null);
     const [returnModalOpen, setReturnModalOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<InventoryItem | null>(null);
+
+    // Get current month in YYYY-MM format
+    const getCurrentMonth = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    };
+
+    const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonth());
 
     useEffect(() => {
         fetchData();
@@ -185,6 +198,32 @@ export default function CrewEditPage() {
                         assignedInventory={crew.assignedInventory || []}
                         onReturnClick={handleReturnClick}
                         onRefresh={fetchData}
+                    />
+                </div>
+
+                {/* Month Selector */}
+                <div className="mt-6">
+                    <MonthSelector
+                        value={selectedMonth}
+                        onChange={setSelectedMonth}
+                        label="Seleccionar Mes"
+                        className="max-w-xs"
+                    />
+                </div>
+
+                {/* Monthly Summary */}
+                <div className="mt-6">
+                    <CrewMonthlySummary
+                        crewId={crew._id}
+                        selectedMonth={selectedMonth}
+                    />
+                </div>
+
+                {/* Movement History */}
+                <div className="mt-6">
+                    <CrewMovementHistory
+                        crewId={crew._id}
+                        selectedMonth={selectedMonth}
                     />
                 </div>
 

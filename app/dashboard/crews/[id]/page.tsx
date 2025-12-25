@@ -6,6 +6,7 @@ import axios from "axios";
 import { CrewEditForm } from "@/components/crews/CrewEditForm";
 import { CrewInventoryCard } from "@/components/crews/CrewInventoryCard";
 import { ReturnMaterialModal } from "@/components/crews/ReturnMaterialModal";
+import CrewEquipmentModal from "@/components/crews/CrewEquipmentModal";
 import MonthSelector from "@/components/crews/MonthSelector";
 import CrewMonthlySummary from "@/components/crews/CrewMonthlySummary";
 import CrewMovementHistory from "@/components/crews/CrewMovementHistory";
@@ -56,6 +57,7 @@ export default function CrewEditPage() {
     const [error, setError] = useState<string | null>(null);
     const [returnModalOpen, setReturnModalOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<InventoryItem | null>(null);
+    const [equipmentModalOpen, setEquipmentModalOpen] = useState(false);
 
     // Get current month in YYYY-MM format
     const getCurrentMonth = () => {
@@ -198,6 +200,7 @@ export default function CrewEditPage() {
                         assignedInventory={crew.assignedInventory || []}
                         onReturnClick={handleReturnClick}
                         onRefresh={fetchData}
+                        onEquipmentClick={() => setEquipmentModalOpen(true)}
                     />
                 </div>
 
@@ -234,6 +237,18 @@ export default function CrewEditPage() {
                     crewId={crew._id}
                     material={selectedMaterial}
                     onSuccess={handleReturnSuccess}
+                />
+
+                {/* Equipment Modal */}
+                <CrewEquipmentModal
+                    isOpen={equipmentModalOpen}
+                    onClose={() => setEquipmentModalOpen(false)}
+                    crewId={crew._id}
+                    crewName={crew.name}
+                    onSuccess={async () => {
+                        setEquipmentModalOpen(false);
+                        await fetchData();
+                    }}
                 />
             </div>
         </main>

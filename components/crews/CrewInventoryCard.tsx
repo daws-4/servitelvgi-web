@@ -8,6 +8,7 @@ interface InventoryItem {
         code: string;
         description: string;
         unit: string;
+        type?: string;
     };
     quantity: number;
     lastUpdate: Date;
@@ -18,6 +19,7 @@ interface CrewInventoryCardProps {
     assignedInventory: InventoryItem[];
     onReturnClick: (item: InventoryItem) => void;
     onRefresh: () => void;
+    onEquipmentClick?: () => void;
 }
 
 export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
@@ -25,8 +27,13 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
     assignedInventory,
     onReturnClick,
     onRefresh,
+    onEquipmentClick,
 }) => {
-    const hasInventory = assignedInventory && assignedInventory.length > 0;
+    // Filter out equipment items - they are shown in the equipment modal
+    const regularInventory = assignedInventory.filter(
+        (item) => item.item?.type !== "equipment"
+    );
+    const hasInventory = regularInventory && regularInventory.length > 0;
 
     return (
         <div className="bg-white p-6 rounded-xl shadow-sm border border-neutral/10">
@@ -36,13 +43,25 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
                     <i className="fa-solid fa-boxes-stacked text-primary text-lg"></i>
                     <h3 className="text-lg font-semibold text-dark">Material Asignado</h3>
                 </div>
-                <button
-                    onClick={onRefresh}
-                    className="p-2 text-neutral hover:text-primary transition-colors"
-                    title="Actualizar"
-                >
-                    <i className="fa-solid fa-rotate-right"></i>
-                </button>
+                <div className="flex items-center gap-2">
+                    {onEquipmentClick && (
+                        <button
+                            onClick={onEquipmentClick}
+                            className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                            title="Ver equipos asignados"
+                        >
+                            <i className="fa-solid fa-microchip"></i>
+                            Ver Equipos
+                        </button>
+                    )}
+                    <button
+                        onClick={onRefresh}
+                        className="p-2 text-neutral hover:text-primary transition-colors"
+                        title="Actualizar"
+                    >
+                        <i className="fa-solid fa-rotate-right"></i>
+                    </button>
+                </div>
             </div>
 
             {/* Content */}
@@ -59,20 +78,30 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
                             </tr>
                         </thead>
                         <tbody>
-                            {assignedInventory.map((inventoryItem, index) => (
+                            {regularInventory.map((inventoryItem, index) => (
                                 <tr
                                     key={inventoryItem.item._id || index}
                                     className="border-b border-neutral/5 hover:bg-gray-50/50 transition-colors"
                                 >
                                     <td className="py-3">
-                                        <span className="font-mono text-sm font-semibold text-dark">
+                                        <span className="font-mono text-sm font-semibold text-dark flex items-center gap-2">
+                                            {inventoryItem.item.type === 'equipment' && (
+                                                <i className="fa-solid fa-microchip text-purple-600" title="Equipo"></i>
+                                            )}
                                             {inventoryItem.item.code}
                                         </span>
                                     </td>
                                     <td className="py-3">
-                                        <span className="text-sm text-dark">
-                                            {inventoryItem.item.description}
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm text-dark">
+                                                {inventoryItem.item.description}
+                                            </span>
+                                            {inventoryItem.item.type === 'equipment' && (
+                                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">
+                                                    {inventoryItem.quantity} instancia{inventoryItem.quantity > 1 ? 's' : ''}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="py-3 text-right">
                                         <span className="font-semibold text-dark">

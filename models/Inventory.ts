@@ -94,9 +94,20 @@ InventorySchema.pre("save", function (next) {
     return next(new Error("El campo 'instances' solo es válido para ítems de tipo 'equipment'"));
   }
   
-  // Actualizar currentStock basado en instancias para equipos
-  if (this.type === "equipment" && this.instances) {
-    this.currentStock = this.instances.length;
+  // Para equipos, SIEMPRE currentStock debe ser igual a instances.length
+  if (this.type === "equipment") {
+    const calculatedStock = this.instances?.filter((inst: any) => inst.status === 'in-stock').length || 0;
+    
+    // Si alguien intentó modificar currentStock manualmente, corregir y advertir
+    if (this.isModified("currentStock") && this.currentStock !== calculatedStock) {
+      console.warn(
+        `[Inventory Model] Corrigiendo currentStock para equipo "${this.code}". ` +
+        `Valor intentado: ${this.currentStock}, Valor correcto: ${calculatedStock} (basado en instances.length)`
+      );
+    }
+    
+    // Forzar el valor correcto
+    this.currentStock = calculatedStock;
   }
   
   next();

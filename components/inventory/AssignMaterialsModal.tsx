@@ -17,6 +17,7 @@ interface AssignItem {
     description: string;
     quantity: number;
     batchCode?: string; // Present if this is a bobbin assignment
+    instanceIds?: string[]; // Present if this is equipment assignment
 }
 
 interface AssignMaterialsModalProps {
@@ -42,7 +43,13 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
     const [loadingCrews, setLoadingCrews] = useState(false);
     const [loadingItems, setLoadingItems] = useState(false);
     const [loadingBobbins, setLoadingBobbins] = useState(false);
+    const [loadingInstances, setLoadingInstances] = useState(false);
     const [error, setError] = useState("");
+
+    // Equipment state
+    const [selectedEquipmentId, setSelectedEquipmentId] = useState("");
+    const [availableInstances, setAvailableInstances] = useState<any[]>([]);
+    const [selectedInstanceIds, setSelectedInstanceIds] = useState<Set<string>>(new Set());
 
     // Fetch crews, inventory items and bobbins
     useEffect(() => {
@@ -52,6 +59,16 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
             fetchBobbins();
         }
     }, [isOpen]);
+
+    // Fetch available instances when equipment is selected
+    useEffect(() => {
+        if (selectedEquipmentId) {
+            fetchAvailableInstances(selectedEquipmentId);
+        } else {
+            setAvailableInstances([]);
+            setSelectedInstanceIds(new Set());
+        }
+    }, [selectedEquipmentId]);
 
     const fetchCrews = async () => {
         setLoadingCrews(true);
@@ -93,6 +110,20 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
             console.error('Error fetching bobbins:', err);
         } finally {
             setLoadingBobbins(false);
+        }
+    };
+
+    const fetchAvailableInstances = async (inventoryId: string) => {
+        setLoadingInstances(true);
+        try {
+            const response = await fetch(`/api/web/inventory/${inventoryId}/instances?status=in-stock`);
+            const data = await response.json();
+            setAvailableInstances(Array.isArray(data.instances) ? data.instances : []);
+        } catch (err) {
+            console.error('Error fetching instances:', err);
+            setAvailableInstances([]);
+        } finally {
+            setLoadingInstances(false);
         }
     };
 
@@ -169,6 +200,56 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
         setError("");
     };
 
+    const handleToggleInstance = (instanceId: string) => {
+        const newSelection = new Set(selectedInstanceIds);
+        if (newSelection.has(instanceId)) {
+            newSelection.delete(instanceId);
+        } else {
+            newSelection.add(instanceId);
+        }
+        setSelectedInstanceIds(newSelection);
+    };
+
+    const handleAddEquipment = () => {
+        if (!selectedEquipmentId) {
+            setError("Selecciona un tipo de equipo");
+            return;
+        }
+
+        if (selectedInstanceIds.size === 0) {
+            setError("Selecciona al menos una instancia");
+            return;
+        }
+
+        const selectedEquipment = inventoryItems.find(i => i._id === selectedEquipmentId);
+        if (!selectedEquipment) return;
+
+        // Check if already in list
+        if (items.some(item => item.inventoryId === selectedEquipmentId)) {
+            setError("Este equipo ya está en la lista");
+            return;
+        }
+
+        const instanceCount = selectedInstanceIds.size;
+        const instancesList = Array.from(selectedInstanceIds).join(', ');
+
+        setItems([
+            ...items,
+            {
+                inventoryId: selectedEquipment._id,
+                code: selectedEquipment.code,
+                description: `${selectedEquipment.description} (${instanceCount} instancia${instanceCount > 1 ? 's' : ''})`,
+                quantity: instanceCount,
+                instanceIds: Array.from(selectedInstanceIds),
+            },
+        ]);
+
+        setSelectedEquipmentId("");
+        setSelectedInstanceIds(new Set());
+        setAvailableInstances([]);
+        setError("");
+    };
+
     const handleRemoveItem = (inventoryId: string) => {
         setItems(items.filter((item) => item.inventoryId !== inventoryId));
     };
@@ -200,6 +281,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                             inventoryId: item.inventoryId,
                             quantity: item.quantity,
                             ...(item.batchCode && { batchCode: item.batchCode }),
+                            ...(item.instanceIds && { instanceIds: item.instanceIds }),
                         })),
                     },
                 }),
@@ -240,8 +322,10 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
     }));
 
     const regularInventoryItems = inventoryItems.filter(item =>
-        !itemsWithBobbins.has(item._id)
+        !itemsWithBobbins.has(item._id) && item.type !== "equipment"
     );
+
+    const equipmentItems = inventoryItems.filter(item => item.type === "equipment");
 
     const crewOptions: SelectOption[] = crews.map((crew) => ({
         key: crew._id,
@@ -385,6 +469,99 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                             </div>
                         )}
 
+                        {/*Equipment Assignment Section */}
+                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <p className="text-sm font-bold text-purple-700 mb-3 flex items-center gap-2">
+                                <i className="fa-solid fa-microchip"></i>
+                                Asignar Equipos
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                <Autocomplete
+                                    label="Tipo de Equipo"
+                                    placeholder="ONT, Modem, Router..."
+                                    selectedKey={selectedEquipmentId}
+                                    onSelectionChange={(key) => setSelectedEquipmentId(key as string)}
+                                    isLoading={loadingItems}
+                                    variant="bordered"
+                                    size="sm"
+                                >
+                                    {equipmentItems.map((item) => (
+                                        <AutocompleteItem key={item._id} textValue={item.description}>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium">{item.description}</span>
+                                                <span className="text-xs text-neutral">
+                                                    {item.code} - {item.currentStock} disponibles
+                                                </span>
+                                            </div>
+                                        </AutocompleteItem>
+                                    ))}
+                                </Autocomplete>
+
+                                {/* Show instances when equipment is selected */}
+                                {selectedEquipmentId && availableInstances.length > 0 && (
+                                    <div className="mt-2 max-h-48 overflow-y-auto border border-purple-200 rounded-lg p-3 bg-white">
+                                        <p className="text-xs font-semibold text-purple-800 mb-2">
+                                            Seleccionar Instancias ({selectedInstanceIds.size} seleccionadas)
+                                        </p>
+                                        {loadingInstances ? (
+                                            <div className="flex justify-center py-4">
+                                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {availableInstances.map((instance) => (
+                                                    <label
+                                                        key={instance.uniqueId}
+                                                        className="flex items-start gap-2 p-2 hover:bg-purple-50 rounded cursor-pointer"
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedInstanceIds.has(instance.uniqueId)}
+                                                            onChange={() => handleToggleInstance(instance.uniqueId)}
+                                                            className="mt-1"
+                                                        />
+                                                        <div className="flex-1 text-sm">
+                                                            <div className="font-semibold text-purple-700">
+                                                                {instance.uniqueId}
+                                                            </div>
+                                                            {instance.serialNumber && (
+                                                                <div className="text-xs text-neutral">
+                                                                    SN: {instance.serialNumber}
+                                                                </div>
+                                                            )}
+                                                            {instance.macAddress && (
+                                                                <div className="text-xs text-neutral">
+                                                                    MAC: {instance.macAddress}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {selectedEquipmentId && availableInstances.length === 0 && !loadingInstances && (
+                                    <div className="text-xs text-neutral italic p-2 bg-white border border-purple-200 rounded">
+                                        No hay instancias disponibles para este equipo
+                                    </div>
+                                )}
+
+                                {selectedEquipmentId && selectedInstanceIds.size > 0 && (
+                                    <FormButton
+                                        type="button"
+                                        onPress={handleAddEquipment}
+                                        variant="primary"
+                                        size="sm"
+                                        className="bg-purple-600 hover:bg-purple-700"
+                                    >
+                                        <i className="fa-solid fa-plus"></i> Añadir {selectedInstanceIds.size} Equipo(s)
+                                    </FormButton>
+                                )}
+                            </div>
+                        </div>
+
                         {/* Items List */}
                         <div>
                             <h4 className="text-sm font-bold text-dark mb-2">Materiales a Asignar</h4>
@@ -414,6 +591,12 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                                                                 <span className="ml-2 text-blue-600">
                                                                     <i className="fa-solid fa-spool mr-1"></i>
                                                                     {item.batchCode}
+                                                                </span>
+                                                            )}
+                                                            {item.instanceIds && (
+                                                                <span className="ml-2 text-purple-600">
+                                                                    <i className="fa-solid fa-microchip mr-1"></i>
+                                                                    {item.instanceIds.length} instancia{item.instanceIds.length > 1 ? 's' : ''}
                                                                 </span>
                                                             )}
                                                         </div>

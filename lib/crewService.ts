@@ -62,7 +62,7 @@ export async function getCrewById(id: string) {
   const crew = (await CrewModel.findById(id)
     .populate('leader', 'name surname role')
     .populate('members', 'name surname role')
-    .populate('assignedInventory.item', 'code description unit')
+    .populate('assignedInventory.item', 'code description unit type')
     .lean()) as CrewLeanDocument | null;
   
   // Filter out null inventory items (when referenced document doesn't exist)

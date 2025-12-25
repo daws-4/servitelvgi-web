@@ -31,6 +31,13 @@ interface Bobbin {
     status: string;
 }
 
+interface EquipmentInstance {
+    uniqueId: string;
+    serialNumber?: string;
+    macAddress?: string;
+    notes?: string;
+}
+
 interface RestockModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -57,6 +64,16 @@ export const RestockModal: React.FC<RestockModalProps> = ({
     const [selectedBobbinId, setSelectedBobbinId] = useState("");
     const [metersToAdd, setMetersToAdd] = useState("");
 
+    // Equipment Management State
+    const [selectedEquipmentTypeId, setSelectedEquipmentTypeId] = useState("");
+    const [equipmentInstances, setEquipmentInstances] = useState<EquipmentInstance[]>([]);
+    const [instanceForm, setInstanceForm] = useState<EquipmentInstance>({
+        uniqueId: "",
+        serialNumber: "",
+        macAddress: "",
+        notes: "",
+    });
+
     // Shared State
     const [activeTab, setActiveTab] = useState<string>("manual");
     const [loading, setLoading] = useState(false);
@@ -73,6 +90,10 @@ export const RestockModal: React.FC<RestockModalProps> = ({
             }
         }
     }, [isOpen, activeTab]);
+
+    // Filter items by type
+    const regularMaterials = inventoryItems.filter(item => item.type !== "equipment");
+    const equipmentTypes = inventoryItems.filter(item => item.type === "equipment");
 
     const fetchInventoryItems = async () => {
         setLoadingItems(true);
@@ -290,6 +311,74 @@ export const RestockModal: React.FC<RestockModalProps> = ({
         }
     };
 
+    // Equipment Handlers
+    const handleAddInstance = () => {
+        if (!instanceForm.uniqueId.trim()) {
+            setError("El ID único es requerido");
+            return;
+        }
+
+        if (equipmentInstances.some(inst => inst.uniqueId === instanceForm.uniqueId)) {
+            setError("Este ID único ya existe en la lista");
+            return;
+        }
+
+        setEquipmentInstances([...equipmentInstances, { ...instanceForm }]);
+        setInstanceForm({
+            uniqueId: "",
+            serialNumber: "",
+            macAddress: "",
+            notes: "",
+        });
+        setError("");
+    };
+
+    const handleRemoveInstance = (uniqueId: string) => {
+        setEquipmentInstances(equipmentInstances.filter(inst => inst.uniqueId !== uniqueId));
+    };
+
+    const handleSubmitEquipment = async () => {
+        if (!selectedEquipmentTypeId) {
+            setError("Selecciona un tipo de equipo");
+            return;
+        }
+
+        if (equipmentInstances.length === 0) {
+            setError("Debes agregar al menos una instancia");
+            return;
+        }
+
+        setLoading(true);
+        setError("");
+        try {
+            const response = await fetch("/api/web/inventory/instances", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    inventoryId: selectedEquipmentTypeId,
+                    instances: equipmentInstances,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                setError(data.error || "Error al agregar instancias");
+                setLoading(false);
+                return;
+            }
+
+            setSelectedEquipmentTypeId("");
+            setEquipmentInstances([]);
+            onSuccess();
+            alert(`${equipmentInstances.length} instancia(s) agregada(s) exitosamente`);
+        } catch (err) {
+            setError("Error de conexión con el servidor");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleClose = () => {
         if (!loading) {
             setError("");
@@ -300,6 +389,14 @@ export const RestockModal: React.FC<RestockModalProps> = ({
             setNewBobbinMeters("");
             setSelectedBobbinId("");
             setMetersToAdd("");
+            setSelectedEquipmentTypeId("");
+            setEquipmentInstances([]);
+            setInstanceForm({
+                uniqueId: "",
+                serialNumber: "",
+                macAddress: "",
+                notes: "",
+            });
             onClose();
         }
     };
@@ -377,7 +474,7 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                                 variant="bordered"
                                                 size="sm"
                                             >
-                                                {inventoryItems.map((item) => (
+                                                {regularMaterials.map((item) => (
                                                     <AutocompleteItem key={item._id} textValue={item.description}>
                                                         <div className="flex flex-col">
                                                             <span className="font-medium">{item.description}</span>
@@ -620,8 +717,8 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <span className={`px-2 py-1 rounded-full text-xs ${bobbin.currentQuantity === 0
-                                                                        ? 'bg-red-100 text-red-700'
-                                                                        : 'bg-green-100 text-green-700'
+                                                                    ? 'bg-red-100 text-red-700'
+                                                                    : 'bg-green-100 text-green-700'
                                                                     }`}>
                                                                     {bobbin.currentQuantity === 0 ? 'Agotada' : 'Activa'}
                                                                 </span>
@@ -653,6 +750,171 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                         isDisabled={loading}
                                     >
                                         Cerrar
+                                    </FormButton>
+                                </div>
+                            </div>
+                        </Tab>
+
+                        {/* Equipment Management Tab */}
+                        <Tab
+                            key="equipment"
+                            title={
+                                <div className="flex items-center gap-2">
+                                    <i className="fa-solid fa-microchip"></i>
+                                    <span>Gestión de Equipos</span>
+                                </div>
+                            }
+                        >
+                            <div className="flex flex-col gap-6 mt-4">
+                                {/* Select Equipment Type */}
+                                <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                    <h4 className="text-sm font-bold text-dark mb-3 flex items-center gap-2">
+                                        <i className="fa-solid fa-server text-purple-600"></i>
+                                        Seleccionar Tipo de Equipo
+                                    </h4>
+                                    <Autocomplete
+                                        label="Tipo de Equipo"
+                                        placeholder="ONT, Modem, Router..."
+                                        selectedKey={selectedEquipmentTypeId}
+                                        onSelectionChange={(key) => setSelectedEquipmentTypeId(key as string)}
+                                        isLoading={loadingItems}
+                                        variant="bordered"
+                                        size="md"
+                                    >
+                                        {equipmentTypes.map((item) => (
+                                            <AutocompleteItem key={item._id} textValue={item.description}>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{item.description}</span>
+                                                    <span className="text-xs text-neutral">
+                                                        {item.code} - Stock: {item.currentStock}
+                                                    </span>
+                                                </div>
+                                            </AutocompleteItem>
+                                        ))}
+                                    </Autocomplete>
+                                </div>
+
+                                {/* Add Equipment Instances */}
+                                {selectedEquipmentTypeId && (
+                                    <div className="bg-gray-50 p-4 rounded-lg border border-neutral/10">
+                                        <h4 className="text-sm font-bold text-dark mb-3">Agregar Instancias</h4>
+                                        <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <FormInput
+                                                label="ID Único *"
+                                                placeholder="Ej: ONT-12345"
+                                                value={instanceForm.uniqueId}
+                                                onValueChange={(value) =>
+                                                    setInstanceForm({ ...instanceForm, uniqueId: value })
+                                                }
+                                                size="sm"
+                                            />
+                                            <FormInput
+                                                label="Número de Serie"
+                                                placeholder="Opcional"
+                                                value={instanceForm.serialNumber}
+                                                onValueChange={(value) =>
+                                                    setInstanceForm({ ...instanceForm, serialNumber: value })
+                                                }
+                                                size="sm"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <FormInput
+                                                label="MAC Address"
+                                                placeholder="Opcional"
+                                                value={instanceForm.macAddress}
+                                                onValueChange={(value) =>
+                                                    setInstanceForm({ ...instanceForm, macAddress: value })
+                                                }
+                                                size="sm"
+                                            />
+                                            <FormInput
+                                                label="Notas"
+                                                placeholder="Opcional"
+                                                value={instanceForm.notes}
+                                                onValueChange={(value) =>
+                                                    setInstanceForm({ ...instanceForm, notes: value })
+                                                }
+                                                size="sm"
+                                            />
+                                        </div>
+                                        <FormButton
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onPress={handleAddInstance}
+                                            isDisabled={loading}
+                                        >
+                                            <i className="fa-solid fa-plus mr-2"></i>
+                                            Añadir Instancia
+                                        </FormButton>
+                                    </div>
+                                )}
+
+                                {/* Instances List */}
+                                {equipmentInstances.length > 0 && (
+                                    <div>
+                                        <h4 className="text-sm font-bold text-dark mb-3">
+                                            Instancias a Agregar ({equipmentInstances.length})
+                                        </h4>
+                                        <div className="border border-neutral/20 rounded-lg overflow-hidden">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-purple-100 text-purple-900 text-xs uppercase">
+                                                    <tr>
+                                                        <th className="px-4 py-2">ID Único</th>
+                                                        <th className="px-4 py-2">Serial</th>
+                                                        <th className="px-4 py-2">MAC</th>
+                                                        <th className="px-4 py-2">Notas</th>
+                                                        <th className="px-4 py-2"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-neutral/10">
+                                                    {equipmentInstances.map((inst) => (
+                                                        <tr key={inst.uniqueId}>
+                                                            <td className="px-4 py-3 font-semibold text-purple-700">
+                                                                {inst.uniqueId}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-neutral text-xs">
+                                                                {inst.serialNumber || '-'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-neutral text-xs">
+                                                                {inst.macAddress || '-'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-neutral text-xs italic">
+                                                                {inst.notes || '-'}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveInstance(inst.uniqueId)}
+                                                                    className="text-neutral hover:text-red-500 transition-colors cursor-pointer"
+                                                                    disabled={loading}
+                                                                >
+                                                                    <i className="fa-solid fa-trash"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3 justify-end">
+                                    <FormButton
+                                        variant="secondary"
+                                        onPress={handleClose}
+                                        isDisabled={loading}
+                                    >
+                                        Cancelar
+                                    </FormButton>
+                                    <FormButton
+                                        onPress={handleSubmitEquipment}
+                                        isLoading={loading}
+                                        isDisabled={!selectedEquipmentTypeId || equipmentInstances.length === 0}
+                                    >
+                                        Agregar {equipmentInstances.length} Instancia(s)
                                     </FormButton>
                                 </div>
                             </div>

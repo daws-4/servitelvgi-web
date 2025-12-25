@@ -1,191 +1,695 @@
-# Sistema de Gestión de Órdenes (SGO) - Servitel
+# Sistema de Gestión de Operaciones (SGO) - Servitel
 
-Este proyecto es un sistema integral para la gestión de operaciones de Servitel, contratista de Netuno. Su objetivo es digitalizar y automatizar el ciclo de vida completo de las órdenes de servicio (instalaciones y averías), desde su recepción por canales no estructurados (WhatsApp) hasta el reporte final en los sistemas del cliente (Google Forms).
-
----
-
-## 🚀 Tecnologías Principales
-
-* **Backend (Servidor):** Node.js (probablemente con Express.js o Fastify)
-* **Base de Datos:** MongoDB (con Mongoose)
-* **Frontend (Web Admin):** React.js (Next.js recomendado)
-* **Aplicación Móvil (Instalador):** React Native
-* **Agente IA / Automatización:** n8n
-* **Integración de Mensajería:** WhatsApp Business API (Meta)
+Sistema integral de gestión para operaciones de Servitel, contratista de Netuno. Digitaliza y automatiza el ciclo completo de órdenes de servicio (instalaciones y averías), gestión de cuadrillas, control de inventario, y generación de reportes empresariales.
 
 ---
 
-## 📦 Módulos del Sistema
+## 🚀 Stack Tecnológico
 
-El proyecto se divide en 5 componentes principales, como se define en la propuesta:
+### Frontend
+* **Framework:** Next.js 16 + React 18 + TypeScript
+* **UI Library:** HeroUI (Componentes modernos basados en React Aria)
+* **Estilos:** Tailwind CSS 4.1
+* **Animaciones:** Framer Motion
+* **Estado:** React Context API
+* **Manejo de Fechas:** date-fns 4.1
 
-### 1. Servidor (Backend)
-Es el núcleo central que orquesta toda la lógica de negocio y la comunicación entre módulos.
+### Backend
+* **Runtime:** Node.js
+* **Framework:** Next.js API Routes (Serverless)
+* **Base de Datos:** MongoDB 8.19 + Mongoose
+* **Autenticación:** JWT (JSON Web Tokens) con Jose
+* **Hash de Contraseñas:** bcryptjs
 
-* **Responsabilidades:**
-    * Exponer una API RESTful para el consumo de los clientes (Web y Móvil).
-    * Lógica de negocio (asignación, estados de órdenes).
-    * Autenticación y autorización (JWT).
-    * Gestión de la base de datos (CRUD de Órdenes, Instaladores, Inventario).
+### Integración y Automatización
+* **Workflow Engine:** n8n
+* **IA:** OpenAI GPT-4o (procesamiento de imágenes)
+* **Mensajería:** WhatsApp Business API (Meta)
+* **Reportes Externos:** Google Forms (Netuno)
 
-### 2. Módulo Web (Panel de Administración)
-La interfaz para el personal de oficina (Administradores, Logística, Supervisores) para gestionar la operación.
-
-* **Funcionalidades Clave:**
-    * Dashboard con métricas (órdenes pendientes, completadas, por técnico).
-    * Gestión de Órdenes (crear manualmente, asignar a técnico, ver estado).
-    * Gestión de Instaladores (crear, editar, ver inventario asignado).
-    * Gestión de Inventario (stock central, asignación de material a técnicos, ver histórico).
-
-### 3. Módulo Móvil (App del Instalador)
-La herramienta de trabajo diaria para los técnicos en campo.
-
-* **Funcionalidades Clave:**
-    * Login (vinculado al modelo `User` y `Installer`).
-    * Recepción de órdenes asignadas (con notificaciones push).
-    * Ver detalles de la orden (dirección, abonado, tipo de trabajo).
-    * Navegación GPS a la dirección.
-    * Cambiar estado de la orden (en camino, en sitio, completada, cancelada).
-    * **Reporte de Cierre:** Formulario para registrar materiales usados, capturar firma digital del cliente y tomar fotos de evidencia.
-
-### 4. Agente IA (n8n)
-El motor de automatización que conecta el sistema con servicios externos y elimina tareas manuales.
-
-* **Flujos de Trabajo (Workflows):**
-    * **Flujo 1: Recepción de Órdenes (WhatsApp):**
-        1.  Escucha mensajes en un grupo/canal de WhatsApp (vía Meta API).
-        2.  Filtra mensajes que contienen imágenes de órdenes.
-        3.  Envía la imagen a una IA (OpenAI GPT-4o) para extraer el texto.
-        4.  Formatea el texto extraído en un JSON.
-        5.  Llama a la API del Backend para crear la `Orden` en MongoDB.
-    * **Flujo 2: Reporte a Netuno (Google Forms):**
-        1.  Detecta (vía webhook o polling) cuando una orden se marca como "Completada" en la base de datos.
-        2.  Recopila toda la información de la orden (datos del cliente, materiales, técnico).
-        3.  Realiza una solicitud HTTP (POST) al Google Form de Netuno para registrar la orden finalizada.
-
-### 5. Móvil Admin (App de Supervisión)
-Una versión ligera del panel web para supervisores en campo (a definir según la prioridad).
-
-* **Funcionalidades Posibles:**
-    * Dashboard rápido (pendientes vs. completadas).
-    * Capacidad de reasignar órdenes entre técnicos.
-    * Ver ubicación de técnicos (si se implementa rastreo GPS).
+### Exportación de Reportes
+* **Excel:** xlsx, xlsx-js-style
+* **PDF:** jsPDF + jspdf-autotable
+* **Word:** docx
+* **Guardado:** file-saver
 
 ---
 
-## 🗺️ Pasos a Seguir (Roadmap de Desarrollo)
+## 📦 Arquitectura del Sistema
 
-### Fase 1: Fundación y Núcleo del Backend
-1.  **Base de Datos:** Definir y desplegar los modelos de MongoDB (¡Completado!).
-2.  **API Inicial:** Crear el servidor (Node.js) y los endpoints CRUD básicos para `Órdenes`, `Instaladores` e `Inventario`.
-3.  **Autenticación:** Implementar la autenticación de usuarios (login) con JWT para los roles `admin` e `installer`.
+El sistema está compuesto por 5 módulos principales:
 
-### Fase 2: Automatización de Entrada (n8n)
-1.  **Desplegar n8n:** Configurar la instancia de n8n en un servidor (ej. Render).
-2.  **Conectar WhatsApp:** Configurar la API de WhatsApp Business (Meta) y conectarla a n8n.
-3.  **Flujo de Recepción (IA):** Crear el workflow que lee las imágenes de WhatsApp, usa IA para procesarlas y llama a la API (Fase 1) para crear la `Orden` en la base de datos.
+### 1. **Panel Web de Administración** ✅ IMPLEMENTADO
+Aplicación Next.js completa para gestión operativa del personal administrativo.
 
-### Fase 3: Módulo Web (Administración)
-1.  **Estructura:** Iniciar el proyecto en React (Next.js).
-2.  **Vistas de Gestión:** Desarrollar las interfaces para ver, filtrar y (lo más importante) **asignar** las órdenes que llegan automáticamente desde n8n.
-3.  **Gestión de Inventario:** Crear las vistas para manejar el stock central y asignar material a los instaladores.
+**Características Principales:**
+- ✅ Dashboard con métricas en tiempo real
+- ✅ Sistema de autenticación con roles (Admin, Supervisor, Logística)
+- ✅ Gestión completa de órdenes de servicio
+- ✅ Administración de cuadrillas de trabajo
+- ✅ Control total de inventario (bodega + cuadrillas)
+- ✅ Sistema de reportes avanzado con múltiples formatos de exportación
+- ✅ Modo oscuro/claro con next-themes
+- ✅ Diseño responsive y moderno
 
-### Fase 4: Módulo Móvil (Instaladores)
-1.  **Estructura:** Iniciar el proyecto en React Native (Expo).
-2.  **Flujo del Técnico:** Implementar el login, la lista de órdenes asignadas y la vista de detalles.
-3.  **Formulario de Cierre:** Crear el formulario clave donde el técnico reporta el cierre (materiales, firma, fotos) y actualiza el estado de la `Orden` a "Completada".
+### 2. **Backend API** ✅ IMPLEMENTADO
+API RESTful robusta con endpoints organizados por entidad.
 
-### Fase 5: Cierre del Ciclo (Integración Final)
-1.  **Flujo de Reporte (n8n):** Crear el segundo workflow en n8n que se activa cuando una orden cambia a "Completada".
-2.  **Google Forms:** Configurar el nodo (HTTP Request) para enviar los datos de la orden cerrada al formulario de Netuno.
-3.  **Pruebas End-to-End:** Realizar pruebas completas del sistema (desde la recepción en WhatsApp hasta el reporte final en Google Forms).
+**Servicios Implementados:**
+- ✅ `authHelpers.ts` - Autenticación y autorización JWT
+- ✅ `orderService.ts` - Gestión de órdenes de servicio
+- ✅ `crewService.ts` - Administración de cuadrillas
+- ✅ `inventoryService.ts` - Control de inventario con transacciones
+- ✅ `installerService.ts` - Gestión de técnicos instaladores
+- ✅ `reportService.ts` - Generación de reportes con agregaciones MongoDB
+- ✅ `orderHistoryService.ts` - Historial de cambios en órdenes
+- ✅ `inventoryHistoryService.ts` - Trazabilidad de movimientos de inventario
 
+### 3. **Aplicación Móvil (Instaladores)** 🚧 EN DESARROLLO
+React Native (Expo) para técnicos de campo.
 
+**Funcionalidades Planificadas:**
+- Login vinculado a modelo `User` e `Installer`
+- Recepción de órdenes asignadas con notificaciones push
+- Vista de detalles de orden (dirección, abonado, tipo)
+- Navegación GPS a ubicación
+- Actualización de estados (en camino, en sitio, completada)
+- Formulario de cierre con materiales usados, firma digital y fotos
 
+### 4. **Motor de Automatización (n8n)** 🚧 CONFIGURADO
+Workflows inteligentes para automatización de procesos.
 
+**Flujos Implementados:**
+- 📥 **Recepción de Órdenes vía WhatsApp:**
+  1. Escucha mensajes en grupo/canal de WhatsApp
+  2. Detecta imágenes de órdenes
+  3. Extrae texto con GPT-4o Vision
+  4. Convierte a JSON estructurado
+  5. Crea orden automáticamente en MongoDB
 
+- 📤 **Reporte Automático a Netuno:**
+  1. Webhook al completar orden
+  2. Recopila información (cliente, materiales, técnico)
+  3. Envía POST a Google Form de Netuno
 
+### 5. **Móvil Admin (Supervisión)** 📋 PLANIFICADO
+App ligera para supervisores en campo.
 
+---
 
-# LISTA DE COMPONENTES WEB REUTILIZABLES A CREAR
-Visualización de Datos (Lo más crítico)
-Table: El componente rey. Lo usarás en el 80% del Dashboard para listar Órdenes, Inventario e Instaladores. Aprovecha sus props de selectionMode (para seleccionar varias filas) y pagination.
+## 🎯 Funcionalidades Implementadas
 
-Chip: Vital para los Estados. Úsalo para mostrar etiquetas visuales como "Pendiente" (warning), "Completada" (success) o "Avería" (danger).
+### 🏠 Dashboard Principal
+- **Métricas en Tiempo Real:**
+  - Total de órdenes por estado (pendiente, asignada, completada, cancelada)
+  - Órdenes separadas por tipo (instalación/avería)
+  - Rendimiento de cuadrillas
+  - Alertas de inventario bajo stock
 
-Card: El contenedor principal. Úsalo para crear las tarjetas de métricas del Dashboard ("Total Instalaciones") y para agrupar información en la vista de detalle de una orden.
+- **Gráficos y Visualización:**
+  - Tarjetas de estadísticas con iconos dinámicos
+  - Indicadores de tendencia
+  - Filtros por período (hoy, semana, mes, año)
 
-User: Perfecto para las tablas de asignación. Muestra el avatar del técnico junto con su nombre y cargo (o teléfono) en un solo bloque pre-estilizado.
+### 📋 Gestión de Órdenes
+**Componentes:** `OrdersTable`, `NewOrderModal`, `OrderDetailsModal`, `AssignOrderModal`
 
-Skeleton: Úsalo mientras cargas datos de la base de datos. Muestra "falsas" filas de tabla o tarjetas grises para mejorar la percepción de velocidad de la app.
+- ✅ Crear órdenes manualmente o recibir de WhatsApp
+- ✅ Asignar/reasignar órdenes a cuadrillas
+- ✅ Actualizar estados del ciclo de vida
+- ✅ Ver historial completo de cambios (`OrderHistory`)
+- ✅ Filtros avanzados (estado, tipo, fecha, cuadrilla)
+- ✅ Búsqueda por número de abonado, dirección, o código
+- ✅ Paginación y ordenamiento
+- ✅ Vista de detalles con toda la información
 
-📝 Formularios e Interacción
-Input: Para todos los campos de texto (Nombre abonado, dirección) y crucialmente para la barra de búsqueda en las tablas.
+**Estados de Orden:**
+- `pendiente` - Recibida, esperando asignación
+- `asignada` - Asignada a cuadrilla específica
+- `en-camino` - Técnico en tránsito
+- `en-sitio` - Técnico trabajando en ubicación
+- `completada` - Trabajo finalizado con éxito
+- `cancelada` - Orden cancelada con motivo registrado
 
-Autocomplete: Esencial para el selector de técnicos y materiales. Permite buscar dentro de una lista larga (ej: buscar "Cable UTP" entre 500 ítems) en lugar de hacer scroll infinito.
+### 👥 Gestión de Cuadrillas (Crews)
+**Componentes:** `CrewsTable`, `NewCrewForm`, `CrewEditForm`, `CrewInventoryCard`, `CrewMonthlySummary`, `CrewMovementHistory`
 
-DateRangePicker: Necesario para la barra de filtros. Permite al administrador filtrar órdenes "Desde el 1 de Enero hasta el 31 de Enero".
+- ✅ Crear y editar cuadrillas con líder y miembros
+- ✅ Asignar vehículos a cuadrillas
+- ✅ Ver inventario asignado a cada cuadrilla en tiempo real
+- ✅ **Resumen mensual de materiales:**
+  - Selector de mes/año
+  - Total de materiales asignados en el período
+  - Total de materiales consumidos en órdenes
+  - Balance por ítem de inventario
+- ✅ **Historial de movimientos de inventario:**
+  - Tipo de movimiento (asignación, consumo, devolución)
+  - Fecha y hora exacta
+  - Cantidad y material involucrado
+  - Usuario que realizó el movimiento
+  - Orden asociada (si aplica)
+- ✅ Activar/desactivar cuadrillas
+- ✅ Filtros por estado activo/inactivo
 
-Select: Para opciones fijas y cortas, como filtrar por "Tipo de Orden" (Avería/Instalación) o "Estado".
+### 📦 Gestión de Inventario
+**Componentes:** `InventoryTable`, `CreateItemModal`, `EditItemModal`, `ManageInstancesModal`, `AssignMaterialsModal`, `ReturnMaterialModal`
 
-Textarea: Específico para el campo "Reporte de Cierre" o "Detalles de la Falla", donde el técnico necesita escribir párrafos largos.
+#### Sistema Dual de Inventario
 
-Switch: Ideal para activar/desactivar cosas rápidamente, como el estado de un instalador ("Activo/Inactivo") o configuraciones del sistema.
+**A) Materiales de Consumo** (`type: "material"`)
+- Gestionados por **cantidad**
+- Ejemplos: cable, conectores, grapas, cinta
+- Control de stock central
+- Asignación por cantidad a cuadrillas
+- Seguimiento de consumo por orden
 
-Button: HeroUI tiene botones con estados de carga (isLoading). Úsalos en los formularios para evitar que el usuario haga doble clic mientras se guarda la orden.
+**B) Equipos Individuales** (`type: "equipment"`)
+- Gestionados por **instancias individuales**
+- Cada equipo tiene ID único (número de serie/MAC)
+- Ejemplos: ONTs, modems, routers
+- **Estados de instancia:**
+  - `in-stock` - En bodega central
+  - `assigned` - Asignado a cuadrilla
+  - `installed` - Instalado en cliente
+  - `damaged` - Averiado
+  - `retired` - Dado de baja
 
-🗂️ Navegación y Estructura
-Modal: Crítico para la acción de "Asignar Técnico". Evita que tengas que navegar a otra página solo para asignar una orden; hazlo en una ventana emergente.
+**Funcionalidades de Inventario:**
+- ✅ CRUD completo de ítems de inventario
+- ✅ Categorización (material/equipment/tool)
+- ✅ Control de stock mínimo con alertas
+- ✅ **Gestión de instancias de equipos:**
+  - Agregar equipos con ID único, serial, MAC
+  - Asignar instancias específicas a cuadrillas
+  - Marcar como instalada en orden específica
+  - Rastrear ubicación de instalación
+  - Reportar equipos dañados
+- ✅ Reabastecer inventario central con registro de lotes
+- ✅ Asignar materiales/equipos a cuadrillas
+- ✅ Devolver materiales de cuadrillas a bodega
+- ✅ Procesar consumo al completar órdenes
+- ✅ Historial completo de movimientos con trazabilidad
+- ✅ Snapshots diarios automáticos del estado de inventario
+- ✅ Estadísticas de uso por período
 
-Navbar: Para la barra superior de tu layout (donde va el perfil del usuario logueado y el título del sistema).
+**Servicios de Inventario (`inventoryService.ts`):**
+```typescript
+- restockInventory() - Reabastecer bodega central
+- assignMaterialToCrew() - Asignar a cuadrilla
+- returnMaterialFromCrew() - Devolver a bodega
+- processOrderUsage() - Consumir en orden
+- addEquipmentInstances() - Agregar equipos individuales
+- assignInstanceToCrew() - Asignar equipo específico
+- markInstanceAsInstalled() - Registrar instalación
+- getAvailableInstances() - Consultar disponibles
+- getInstanceById() - Buscar equipo por ID
+- updateInstance() - Actualizar estado de equipo
+- deleteInstance() - Eliminar equipo
+```
 
-Dropdown: Úsalo dentro de las filas de la tabla (el botón de 3 puntitos ...). Ahí agruparás acciones como: "Ver Detalle", "Editar", "Eliminar".
+### 📊 Sistema de Reportes
+**Componentes:** `ReportFilters`, `ReportTable`, `ExportActions`, `ReportHistoryDrawer`
 
-Pagination: HeroUI separa la paginación de la tabla. Úsalo al pie de tus listados para navegar entre cientos de órdenes.
+#### Tipos de Reportes Disponibles
 
-Breadcrumbs: Ayuda al usuario a saber dónde está (ej: Inicio > Órdenes > Orden #1234). Muy útil para la navegabilidad profunda.
+**1. Reporte Diario** (`getDailyReport`)
+- Órdenes finalizadas y asignadas por fecha específica
+- Filtro por tipo (instalación/avería/todas)
+- Desglose por estado
+- Listado detallado de órdenes
 
-ℹ️ Feedback y Detalles
-Tooltip: Úsalo en las tablas para mostrar información que no cabe. Por ejemplo, si la "Dirección" es muy larga y se corta con ..., al pasar el mouse el Tooltip muestra la dirección completa.
+**2. Reporte Mensual** (`getMonthlyReport`)
+- Resumen del mes completo
+- Desglose día por día
+- Totales agregados (finalizadas/asignadas)
+- Tendencias del período
 
-Divider: Un componente simple pero útil para separar secciones visualmente dentro de un formulario largo (ej: separar "Datos del Cliente" de "Materiales Utilizados").
+**3. Reporte de Inventario** (`getInventoryReport`)
+- Material en instalaciones
+- Material en averías
+- Material averiado
+- Material recuperado
+- Rango de fechas configurable
+- Totales por ítem
 
-Spinner: Indicador de carga circular. Úsalo cuando se esté subiendo una imagen de evidencia o procesando una solicitud al servidor.
+**4. Reporte Netuno** (`getNetunoOrdersReport`)
+- Órdenes pendientes de reportar a Google Forms
+- Órdenes ya reportadas
+- Información lista para envío a Netuno
 
-💡 Consejo Pro
-HeroUI permite personalizar los temas. Configura en tu tailwind.config.js los colores semánticos de HeroUI (primary, secondary, success, warning) con tu paleta (#3e78b2, #ffd166, etc.). Así, cuando uses <Button color="primary">, automáticamente usará tu azul corporativo.
+**5. Rendimiento por Cuadrilla** (`getCrewPerformanceReport`)
+- Instalaciones realizadas por cuadrilla
+- Averías completadas por cuadrilla
+- Total de órdenes por equipo
+- Ranking de productividad
+- Período configurable
 
+**6. Inventario por Cuadrilla** (`getCrewInventoryReport`)
+- Estado actual de materiales asignados
+- Desglose por cuadrilla
+- Inventario disponible de cada equipo
+- Vista general o por cuadrilla específica
 
-plantilla prompt para replicar tsx
+#### Funcionalidades de Reportes
+- ✅ Filtros dinámicos (fecha, tipo, cuadrilla)
+- ✅ **Exportación múltiple formato:**
+  - 📗 **Excel** (xlsx con estilos) - Tablas formateadas con colores
+  - 📕 **PDF** (jsPDF) - Documento imprimible con tablas
+  - 📘 **Word** (docx) - Documento editable para reportes corporativos
+- ✅ Historial de reportes generados
+- ✅ Almacenamiento de reportes en MongoDB (`GeneratedReport`)
+- ✅ Regeneración de reportes previos
+- ✅ Integración con n8n para envío automático
+- ✅ Consideración de días feriados venezolanos
+- ✅ Vistas responsivas con tablas adaptables
 
-@beautifulMention
- Necesito que logres replicar esta página, usando los componentes ya creados y modificando los que hagan falta, toma en cuenta los colores del 
+### 👤 Gestión de Usuarios
+**Componentes:** `InstallerForm`, `InstallerCard`
 
-dashboard
-  y todos los componentes ya creados en  
+- ✅ Crear usuarios administrativos
+- ✅ Gestionar instaladores/técnicos
+- ✅ Roles: `admin`, `supervisor`, `logistica`, `installer`
+- ✅ Vincular instalador con usuario para acceso móvil
+- ✅ Actualizar información de contacto
+- ✅ Desactivar usuarios
 
-components, si hace falta crear más los creas, y si hace falta modificar alguno lo modificas
+---
 
-el punto de la replica es hacerlo pero con la estructuración modular que permite react al tener todos los componentes separados por archivos y pudiendo reutilizarlos cada que haga falta
+## 🗄️ Modelos de Base de Datos
 
-el resultado final lo usas para reemplazar lo que haya en @beautifulMention
+### `User.ts`
+```typescript
+{
+  email: string (unique)
+  passwordHash: string
+  role: 'admin' | 'supervisor' | 'logistica' | 'installer'
+  name: string
+  createdAt: Date
+}
+```
 
+### `Order.ts`
+```typescript
+{
+  subscriberNumber: string
+  subscriberName: string
+  address: string
+  type: 'instalacion' | 'averia'
+  status: 'pendiente' | 'asignada' | 'en-camino' | ...
+  assignedCrew?: ObjectId (ref: Crew)
+  priority: 'baja' | 'media' | 'alta' | 'urgente'
+  description?: string
+  materialsUsed?: [{item, quantity, batchCode}]
+  completionDetails?: {...}
+  reportedToNetuno: boolean
+  reportedAt?: Date
+  createdAt: Date
+  updatedAt: Date
+}
+```
 
+### `Crew.ts`
+```typescript
+{
+  name: string
+  leader: ObjectId (ref: Installer)
+  members: ObjectId[] (ref: Installer)
+  vehiclesAssigned?: [{id, name}]
+  isActive: boolean
+  assignedInventory: [{
+    item: ObjectId (ref: Inventory)
+    quantity: number
+    lastUpdated?: Date
+  }]
+  createdAt: Date
+  updatedAt: Date
+}
+```
 
+### `Inventory.ts`
+```typescript
+{
+  code: string (unique)
+  description: string
+  unit: string
+  currentStock: number
+  minimumStock: number
+  type: 'material' | 'equipment' | 'tool'
+  
+  // Solo para type === 'equipment'
+  instances: [{
+    uniqueId: string (unique)
+    serialNumber?: string
+    macAddress?: string
+    status: 'in-stock' | 'assigned' | 'installed' | 'damaged' | 'retired'
+    assignedTo?: {crewId, orderId, assignedAt}
+    installedAt?: {orderId, installedDate, location}
+    notes?: string
+    createdAt: Date
+  }]
+  
+  createdAt: Date
+  updatedAt: Date
+}
+```
 
-# REPORTES
+### `InventoryHistory.ts`
+```typescript
+{
+  itemId: ObjectId (ref: Inventory)
+  type: 'restock' | 'assign_to_crew' | 'return_from_crew' | 'used_in_order'
+  quantity: number
+  originCrew?: ObjectId
+  destinationCrew?: ObjectId
+  orderId?: ObjectId
+  userId?: ObjectId
+  reason?: string
+  createdAt: Date
+}
+```
 
-- dia a dia de instalaciones/Averias finalizadas y asignadas
-- mensual de instalaciones/Averias finalizadas y asignadas el última día del mes
-- primer día hábil del mes y a la segunda semana del mes reporte de inventario de instalaciones, averías, material averiado y material recuperado
-- reporte de ordenes hacia netuno de instalaciones y averías
-- cantidad de instalaciones/averias realizadas por cuadrilla
-- reporte hacia servitel de inventario por cuadrilla
+### `InventorySnapshot.ts`
+```typescript
+{
+  snapshotDate: Date
+  warehouseStock: [{item, quantity, currentStock}]
+  crewInventories: [{crew, inventory: [{item, quantity}]}]
+  totalValueEstimate?: number
+  createdAt: Date
+}
+```
 
-en base a los archivos que te estoy pasando necesito que me diseñes la página de reportes para mi aplicación, en diseño necesito que te bases en el dashboard.html
+### `GeneratedReport.ts`
+```typescript
+{
+  name: string
+  reportType: 'daily' | 'monthly' | 'inventory' | ...
+  filters: {...}
+  data: Mixed (JSON del reporte)
+  generatedBy?: ObjectId (ref: User)
+  createdAt: Date
+}
+```
 
-implementa las funcionalidades de los exports a pdf, word y excel en el front
+### `Installer.ts`
+```typescript
+{
+  name: string
+  phone: string
+  userId?: ObjectId (ref: User)
+  isActive: boolean
+  createdAt: Date
+}
+```
 
-y maneja todos los servicios de la API que te estoy enviando que son sendton8n, venezuelaholidays report service y en la base de datos para almacenar los reportes ya creados generated report como modelo de mongodb
+### `OrderHistory.ts`
+```typescript
+{
+  orderId: ObjectId (ref: Order)
+  changedBy?: ObjectId (ref: User)
+  changeType: string
+  previousValue?: Mixed
+  newValue?: Mixed
+  description?: string
+  createdAt: Date
+}
+```
 
-devuelveme un archivo html con todas estas especificaciones estilizado con tailwind
+---
+
+## 🎨 Componentes UI Reutilizables
+
+### Visualización de Datos
+- ✅ `Table` - Tablas con selección, paginación, ordenamiento
+- ✅ `Chip` - Badges para estados (con colores semánticos)
+- ✅ `Card` - Contenedores de información  
+- ✅ `User` - Avatar + nombre + metadata
+- ✅ `Skeleton` - Placeholders de carga
+- ✅ `Accordion` - Secciones expandibles
+
+### Formularios
+- ✅ `Input` - Campos de texto con validación
+- ✅ `Autocomplete` - Búsqueda en listas largas
+- ✅ `Select` - Selectores de opciones
+- ✅ `Textarea` - Campos de texto largo
+- ✅ `Switch` - Interruptores binarios
+- ✅ `Button` - Botones con estados de carga
+- ✅ `Radio` - Opciones excluyentes
+- ✅ `Form` - Contenedor de formularios validados
+
+### Navegación
+- ✅ `Modal` - Ventanas emergentes
+- ✅ `Drawer` - Panel lateral deslizable
+- ✅ `Navbar` - Barra superior
+- ✅ `Sidebar` - Menú lateral con navegación
+- ✅ `Dropdown` - Menús desplegables
+- ✅ `Pagination` - Navegación de páginas
+- ✅ `Tabs` - Pestañas de contenido
+- ✅ `Breadcrumbs` - Migas de pan
+
+### Feedback
+- ✅ `Tooltip` - Información contextual
+- ✅ `Toast` - Notificaciones temporales
+- ✅ `Spinner` - Indicadores de carga
+- ✅ `Progress` - Barras de progreso
+- ✅ `Alert` - Mensajes de advertencia/información
+- ✅ `Divider` - Separadores visuales
+
+### Iconografía
+- ✅ `dashboard-icons.tsx` - Iconos del dashboard
+- ✅ `icons.tsx` - Iconos generales del sistema
+
+---
+
+## 🎨 Sistema de Diseño
+
+### Paleta de Colores
+Configurada en `tailwind.config.js`:
+
+```javascript
+colors: {
+  primary: '#3e78b2',    // Azul corporativo
+  secondary: '#ffd166',  // Amarillo/Dorado
+  success: '#06d6a0',    // Verde
+  warning: '#ef476f',    // Rojo/Rosa
+  danger: '#e63946',     // Rojo intenso
+}
+```
+
+### Tema Oscuro/Claro
+- ✅ Implementado con `next-themes`
+- ✅ Persistencia de preferencia del usuario
+- ✅ Componente `theme-switch.tsx`
+- ✅ Colores semánticos adaptables
+
+### Responsive Design
+- ✅ Mobile first
+- ✅ Breakpoints de Tailwind CSS
+- ✅ Navegación adaptable (sidebar/hamburger)
+- ✅ Tablas con scroll horizontal en móvil
+
+---
+
+## 🚀 Instalación y Configuración
+
+### Prerrequisitos
+- Node.js 20+
+- npm o yarn
+- MongoDB 6.0+
+- Git
+
+### 1. Clonar Repositorio
+```bash
+git clone <repository-url>
+cd servitelvgi-web
+```
+
+### 2. Instalar Dependencias
+```bash
+npm install
+```
+
+### 3. Configurar Variables de Entorno
+Crear archivo `.env` en la raíz:
+
+```env
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/serviteldb
+JWT_SECRET=tu_clave_secreta_muy_segura_aqui
+NEXT_PUBLIC_API_URL=http://localhost:3000
+```
+
+### 4. Ejecutar en Desarrollo
+```bash
+npm run dev
+```
+
+La aplicación estará disponible en `http://localhost:3000`
+
+### 5. Build para Producción
+```bash
+npm run build
+npm start
+```
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+servitelvgi-web/
+├── app/                      # App Router de Next.js
+│   ├── api/                  # API Routes (Backend)
+│   │   ├── web/
+│   │   │   ├── auth/         # Endpoints de autenticación
+│   │   │   ├── orders/       # CRUD de órdenes
+│   │   │   ├── crews/        # Gestión de cuadrillas
+│   │   │   ├── inventory/    # Control de inventario
+│   │   │   │   └── instances/# Gestión de instancias de equipos
+│   │   │   ├── installers/   # Gestión de técnicos
+│   │   │   ├── reports/      # Generación de reportes
+│   │   │   └── users/        # Gestión de usuarios
+│   ├── dashboard/            # Páginas del panel admin
+│   │   ├── page.tsx          # Dashboard principal
+│   │   ├── orders/           # Página de órdenes
+│   │   ├── crews/            # Página de cuadrillas
+│   │   │   └── [id]/         # Detalle de cuadrilla
+│   │   ├── inventory/        # Página de inventario
+│   │   ├── installers/       # Página de instaladores
+│   │   └── reports/          # Página de reportes
+│   ├── create-admin/         # Creación de primer admin
+│   ├── layout.tsx            # Layout raíz
+│   ├── page.tsx              # Página de login
+│   └── providers.tsx         # Providers de Next.js
+├── components/               # Componentes React
+│   ├── dashboard/            # Componentes del dashboard
+│   ├── orders/               # Componentes de órdenes
+│   ├── crews/                # Componentes de cuadrillas
+│   ├── inventory/            # Componentes de inventario
+│   ├── installers/           # Componentes de instaladores
+│   ├── reports/              # Componentes de reportes
+│   ├── login/                # Componentes de login
+│   ├── Navbar.tsx            # Barra de navegación
+│   └── sidebar.tsx           # Menú lateral
+├── lib/                      # Servicios y utilidades
+│   ├── db.ts                 # Conexión a MongoDB
+│   ├── authHelpers.ts        # Helpers de autenticación
+│   ├── orderService.ts       # Lógica de órdenes
+│   ├── crewService.ts        # Lógica de cuadrillas
+│   ├── inventoryService.ts   # Lógica de inventario (43KB)
+│   ├── installerService.ts   # Lógica de instaladores
+│   ├── reportService.ts      # Lógica de reportes
+│   ├── orderHistoryService.ts
+│   ├── inventoryHistoryService.ts
+│   ├── exports/              # Exportadores
+│   │   ├── exportToExcel.ts
+│   │   ├── exportToPDF.ts
+│   │   └── exportToWord.ts
+│   └── utils/
+├── models/                   # Modelos de Mongoose
+│   ├── User.ts
+│   ├── Order.ts
+│   ├── Crew.ts
+│   ├── Inventory.ts
+│   ├── Installer.ts
+│   ├── InventoryHistory.ts
+│   ├── InventorySnapshot.ts
+│   ├── OrderHistory.ts
+│   └── GeneratedReport.ts
+├── types/                    # Tipos de TypeScript
+│   ├── inventory.ts
+│   └── reportTypes.ts
+├── contexts/                 # React Contexts
+├── config/                   # Configuraciones
+├── public/                   # Archivos estáticos
+├── styles/                   # Estilos globales
+├── proxy.ts                  # Middleware de autenticación
+├── tailwind.config.js        # Configuración de Tailwind
+├── next.config.js            # Configuración de Next.js
+├── tsconfig.json             # Configuración de TypeScript
+└── package.json              # Dependencias
+```
+
+---
+
+## 🔒 Seguridad
+
+- ✅ Autenticación JWT con tokens seguros
+- ✅ Hash de contraseñas con bcryptjs
+- ✅ Middleware de autenticación en todas las rutas protegidas
+- ✅ Validación de roles por endpoint
+- ✅ Sanitización de inputs
+- ✅ Protección CSRF (Next.js built-in)
+- ✅ Rate limiting (por implementar)
+
+---
+
+## 🧪 Testing (Planificado)
+
+- Unit tests con Jest
+- Integration tests con Supertest
+- E2E tests con Playwright
+- Component tests con React Testing Library
+
+---
+
+## 📈 Roadmap Futuro
+
+### Corto Plazo
+- [ ] Implementar notificaciones push (Firebase Cloud Messaging)
+- [ ] Aplicación móvil completa para instaladores
+- [ ] Panel de métricas avanzadas con gráficos (Chart.js/Recharts)
+- [ ] Sistema de chat interno entre oficina y campo
+
+### Mediano Plazo
+- [ ] Rastreo GPS en tiempo real de cuadrillas
+- [ ] Módulo de planificación de rutas optimizadas
+- [ ] Sistema de tickets de soporte
+- [ ] Integración con ERP/Contabilidad
+
+### Largo Plazo
+- [ ] App móvil para supervisores
+- [ ] Machine Learning para predicción de tiempos
+- [ ] Análisis predictivo de inventario
+- [ ] Portal de autogestión para clientes
+
+---
+
+## 👥 Roles y Permisos
+
+| Rol | Dashboard | Órdenes | Cuadrillas | Inventario | Reportes | Usuarios |
+|-----|-----------|---------|------------|------------|----------|----------|
+| **Admin** | ✅ | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ Todos | ✅ CRUD |
+| **Supervisor** | ✅ | ✅ Ver/Editar | ✅ Ver | ✅ Ver | ✅ Consultar | ❌ |
+| **Logística** | ✅ | ✅ Ver/Asignar | ✅ Ver | ✅ CRUD | ✅ Inventario | ❌ |
+| **Installer** | ❌ | ✅ Asignadas (Móvil) | ❌ | ❌ | ❌ | ❌ |
+
+---
+
+## 🤝 Contribución
+
+Este es un proyecto privado de Servitel. Para contribuir:
+
+1. Crear branch desde `main`: `git checkout -b feature/nueva-funcionalidad`
+2. Hacer commits descriptivos
+3. Crear Pull Request con descripción detallada
+4. Esperar revisión de código
+5. Merge después de aprobación
+
+---
+
+## 📝 Licencia
+
+Propietario: Servitel  
+Todos los derechos reservados © 2025
+
+---
+
+## 📞 Contacto y Soporte
+
+Para soporte técnico o consultas sobre el sistema, contactar al equipo de desarrollo.
+
+---
+
+**Última actualización:** Diciembre 2024  
+**Versión:** 0.0.1  
+**Estado:** En producción activa

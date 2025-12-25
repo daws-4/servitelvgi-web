@@ -7,6 +7,7 @@ import InventoryModel from "@/models/Inventory";
 import CrewModel from "@/models/Crew";
 import InventoryHistoryModel from "@/models/InventoryHistory";
 import InventorySnapshotModel from "@/models/InventorySnapshot";
+import InventoryBatchModel from "@/models/InventoryBatch";
 import { SessionUser } from "@/lib/authHelpers";
 import mongoose from "mongoose";
 
@@ -28,6 +29,22 @@ export async function restockInventory(
 
   try {
     const updatedItems = [];
+
+    // Validar que ningún ítem sea de tipo equipo
+    for (const item of items) {
+      const inventoryItem = await InventoryModel.findById(item.inventoryId).session(session);
+      
+      if (!inventoryItem) {
+        throw new Error(`Item de inventario no encontrado: ${item.inventoryId}`);
+      }
+      
+      if (inventoryItem.type === "equipment") {
+        throw new Error(
+          `El ítem "${inventoryItem.description}" es un equipo y no puede reabastecerse por cantidad. ` +
+          `Use el endpoint /api/web/inventory/instances para agregar instancias de equipos.`
+        );
+      }
+    }
 
     for (const item of items) {
       // Incrementar el stock en bodega
@@ -72,13 +89,13 @@ export async function restockInventory(
 /**
  * Asigna materiales a una cuadrilla desde bodega central
  * @param crewId - ID de la cuadrilla
- * @param items - Array de ítems con inventoryId, quantity y opcionalmente batchCode
- * @param userId - ID del usuario que realiza la asignación
+ * @param items - Array de ítems con inventoryId, quantity y opcionalmente batchCode o instanceIds
+ * @param sessionUser - Usuario que realiza la asignación
  * @returns Cuadrilla actualizada con inventario asignado
  */
 export async function assignMaterialToCrew(
   crewId: string,
-  items: { inventoryId: string; quantity: number; batchCode?: string }[],
+  items: { inventoryId: string; quantity: number; batchCode?: string; instanceIds?: string[] }[],
   sessionUser?: SessionUser
 ) {
   await connectDB();
@@ -149,6 +166,83 @@ export async function assignMaterialToCrew(
           ],
           { session }
         );
+      } else if ((item as any).instanceIds && (item as any).instanceIds.length > 0) {
+        // Handle equipment instance assignment
+        const inventoryItem = await InventoryModel.findById(item.inventoryId).session(session);
+
+        if (!inventoryItem) {
+          throw new Error(`Item de inventario no encontrado: ${item.inventoryId}`);
+        }
+
+        if (inventoryItem.type !== "equipment") {
+          throw new Error(
+            `El ítem "${inventoryItem.description}" no es un equipo. Use cantidad en lugar de instanceIds.`
+          );
+        }
+
+        const instanceIds = (item as any).instanceIds as string[];
+
+        // Validate and assign each instance
+        for (const instanceId of instanceIds) {
+          const instance = inventoryItem.instances.find(
+            (inst: any) => inst.uniqueId === instanceId
+          );
+
+          if (!instance) {
+            throw new Error(`Instancia ${instanceId} no encontrada en ${inventoryItem.description}`);
+          }
+
+          if (instance.status !== 'in-stock') {
+            throw new Error(
+              `Instancia ${instanceId} no está disponible (estado: ${instance.status})`
+            );
+          }
+
+          // Update instance
+          instance.status = 'assigned';
+          instance.assignedTo = {
+            crewId: new mongoose.Types.ObjectId(crewId),
+            assignedAt: new Date(),
+          };
+        }
+
+        // Save the inventory item with updated instances
+        await inventoryItem.save({ session });
+
+        // Update crew's assigned inventory
+        const existingItemIndex = crew.assignedInventory.findIndex(
+          (inv: any) => inv.item.toString() === item.inventoryId
+        );
+
+        if (existingItemIndex >= 0) {
+          crew.assignedInventory[existingItemIndex].quantity += instanceIds.length;
+          crew.assignedInventory[existingItemIndex].lastUpdate = new Date();
+        } else {
+          crew.assignedInventory.push({
+            item: new mongoose.Types.ObjectId(item.inventoryId),
+            quantity: instanceIds.length,
+            lastUpdate: new Date(),
+          });
+        }
+
+        // Create history record
+        await InventoryHistoryModel.create(
+          [
+            {
+              item: item.inventoryId,
+              type: "assignment",
+              quantityChange: -instanceIds.length,
+              reason: `${instanceIds.length} instancia(s) de ${inventoryItem.description} asignada(s) a cuadrilla ${crew.name}`,
+              crew: crewId,
+              performedBy: sessionUser?.userId,
+              performedByModel: sessionUser?.userModel,
+              metadata: {
+                instanceIds: instanceIds,
+              },
+            },
+          ],
+          { session }
+        );
       } else {
         // Regular inventory item assignment (existing logic)
         const inventoryItem = await InventoryModel.findById(item.inventoryId).session(
@@ -157,6 +251,14 @@ export async function assignMaterialToCrew(
 
         if (!inventoryItem) {
           throw new Error(`Item de inventario no encontrado: ${item.inventoryId}`);
+        }
+
+        // Validar que no sea equipo
+        if (inventoryItem.type === "equipment") {
+          throw new Error(
+            `El ítem "${inventoryItem.description}" es un equipo y debe asignarse por instancias específicas. ` +
+            `No se puede asignar por cantidad.`
+          );
         }
 
         if (inventoryItem.currentStock < item.quantity) {
@@ -407,6 +509,16 @@ export async function processOrderUsage(
         );
       } else {
         // Material regular (no bobina) - lógica existente
+        
+        // Validar que no sea equipo sin instanceId
+        const inventoryItem = await InventoryModel.findById(material.inventoryId).session(session);
+        if (inventoryItem && inventoryItem.type === "equipment") {
+          throw new Error(
+            `El equipo "${inventoryItem.description}" debe especificar qué instancia se utilizó. ` +
+            `No se puede consumir por cantidad.`
+          );
+        }
+        
         const itemIndex = crew.assignedInventory.findIndex(
           (inv: any) => inv.item.toString() === material.inventoryId
         );
@@ -1202,7 +1314,6 @@ export async function deleteEquipmentInstance(
 // BATCH/BOBBIN MANAGEMENT FUNCTIONS
 // ============================================================================
 
-import InventoryBatchModel from "@/models/InventoryBatch";
 
 /**
  * Crea un nuevo lote/bobina
@@ -1453,3 +1564,147 @@ export async function deleteBatch(
     session.endSession();
   }
 }
+
+/**
+ * Devuelve instancias de equipos de una cuadrilla al almacén
+ * @param crewId - ID de la cuadrilla
+ * @param instanceIds - Array de IDs únicos de instancias a devolver
+ * @param reason - Motivo de la devolución
+ * @param sessionUser - Usuario que realiza la devolución
+ */
+export async function returnEquipmentInstances(
+  crewId: string,
+  instanceIds: string[],
+  reason: string,
+  sessionUser?: SessionUser
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const crew = await CrewModel.findById(crewId).session(session);
+    if (!crew) {
+      throw new Error(`Cuadrilla no encontrada: ${crewId}`);
+    }
+
+    // Group instances by inventory item for efficient processing
+    const instancesByItem = new Map<string, string[]>();
+
+    // First pass: validate all instances and group them
+    for (const uniqueId of instanceIds) {
+      let found = false;
+
+      // Search through all inventory items to find this instance
+      const inventoryItems = await InventoryModel.find({ type: "equipment" }).session(session);
+
+      for (const inventoryItem of inventoryItems) {
+        const instance = inventoryItem.instances.find(
+          (inst: any) => inst.uniqueId === uniqueId
+        );
+
+        if (instance) {
+          // Validate instance is assigned to this crew
+          if (instance.status !== 'assigned') {
+            throw new Error(
+              `La instancia ${uniqueId} no está asignada (estado: ${instance.status})`
+            );
+          }
+
+          if (instance.assignedTo?.crewId?.toString() !== crewId) {
+            throw new Error(
+              `La instancia ${uniqueId} no está asignada a esta cuadrilla`
+            );
+          }
+
+          // Group by inventory item
+          if (!instancesByItem.has(inventoryItem._id.toString())) {
+            instancesByItem.set(inventoryItem._id.toString(), []);
+          }
+          instancesByItem.get(inventoryItem._id.toString())!.push(uniqueId);
+
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        throw new Error(`Instancia ${uniqueId} no encontrada`);
+      }
+    }
+
+    // Second pass: update instances and inventory
+    for (const [inventoryId, itemInstanceIds] of Array.from(instancesByItem.entries())) {
+      const inventoryItem = await InventoryModel.findById(inventoryId).session(session);
+
+      if (!inventoryItem) continue;
+
+      // Update each instance
+      for (const uniqueId of itemInstanceIds) {
+        const instance = inventoryItem.instances.find(
+          (inst: any) => inst.uniqueId === uniqueId
+        );
+
+        if (instance) {
+          instance.status = 'in-stock';
+          instance.assignedTo = undefined;
+        }
+      }
+
+      // Save inventory item with updated instances
+      await inventoryItem.save({ session });
+
+      // Update crew's assigned inventory
+      const crewInventoryIndex = crew.assignedInventory.findIndex(
+        (inv: any) => inv.item.toString() === inventoryId
+      );
+
+      if (crewInventoryIndex >= 0) {
+        crew.assignedInventory[crewInventoryIndex].quantity -= itemInstanceIds.length;
+
+        // Remove from crew if quantity reaches 0
+        if (crew.assignedInventory[crewInventoryIndex].quantity <= 0) {
+          crew.assignedInventory.splice(crewInventoryIndex, 1);
+        } else {
+          crew.assignedInventory[crewInventoryIndex].lastUpdate = new Date();
+        }
+      }
+
+      // Create history record
+      await InventoryHistoryModel.create(
+        [
+          {
+            item: inventoryId,
+            type: "return",
+            quantityChange: itemInstanceIds.length,
+            reason: `${itemInstanceIds.length} instancia(s) devuelta(s) por ${crew.name}: ${reason}`,
+            crew: crewId,
+            performedBy: sessionUser?.userId,
+            performedByModel: sessionUser?.userModel,
+            metadata: {
+              instanceIds: itemInstanceIds,
+            },
+          },
+        ],
+        { session }
+      );
+    }
+
+    // Save crew with updated inventory
+    await crew.save({ session });
+
+    await session.commitTransaction();
+
+    return {
+      success: true,
+      returnedCount: instanceIds.length,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+

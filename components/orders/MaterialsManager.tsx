@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import OrderEquipmentModal from "./OrderEquipmentModal";
 
 export interface Material {
     item: {
@@ -9,9 +10,11 @@ export interface Material {
         code: string;
         description: string;
         unit: string;
+        type?: string;
     } | string;
     quantity: number;
     batchCode?: string; // Optional: identifies specific bobbin used
+    instanceIds?: string[]; // Optional: identifies specific equipment instances used
 }
 
 interface MaterialsManagerProps {
@@ -64,6 +67,14 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
     const [returningMaterial, setReturningMaterial] = useState(false);
     const [returnReason, setReturnReason] = useState("");
 
+    // Equipment state
+    const [crewEquipment, setCrewEquipment] = useState<any[]>([]);
+    const [selectedEquipmentId, setSelectedEquipmentId] = useState("");
+    const [equipmentInstances, setEquipmentInstances] = useState<any[]>([]);
+    const [selectedInstanceIds, setSelectedInstanceIds] = useState<Set<string>>(new Set());
+    const [loadingEquipment, setLoadingEquipment] = useState(false);
+    const [equipmentModalOpen, setEquipmentModalOpen] = useState(false);
+
     // Notify parent of material changes
     useEffect(() => {
         if (onChange) {
@@ -76,9 +87,11 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         if (assignedCrewId) {
             fetchCrewInventory();
             fetchCrewBobbins();
+            fetchCrewEquipment();
         } else {
             setCrewInventory([]);
             setCrewBobbins([]);
+            setCrewEquipment([]);
         }
     }, [assignedCrewId]);
 
@@ -107,6 +120,20 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             setCrewBobbins(response.data || []);
         } catch (error) {
             console.error("Error fetching crew bobbins:", error);
+        }
+    };
+
+    const fetchCrewEquipment = async () => {
+        if (!assignedCrewId) return;
+
+        try {
+            setLoadingEquipment(true);
+            const response = await axios.get(`/api/web/crews/${assignedCrewId}/equipment-instances`);
+            setCrewEquipment(response.data.instances || []);
+        } catch (error) {
+            console.error("Error fetching crew equipment:", error);
+        } finally {
+            setLoadingEquipment(false);
         }
     };
 
@@ -239,6 +266,89 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         setQuantity(1);
     };
 
+    const handleToggleInstance = (instanceId: string) => {
+        const newSelection = new Set(selectedInstanceIds);
+        if (newSelection.has(instanceId)) {
+            newSelection.delete(instanceId);
+        } else {
+            newSelection.add(instanceId);
+        }
+        setSelectedInstanceIds(newSelection);
+    };
+
+    const handleAddEquipment = () => {
+        if (!selectedEquipmentId) {
+            alert("Por favor selecciona un equipo.");
+            return;
+        }
+
+        if (selectedInstanceIds.size === 0) {
+            alert("Debes seleccionar al menos una instancia.");
+            return;
+        }
+
+        // Get equipment info from crewEquipment
+        const firstInstance = crewEquipment.find(eq =>
+            Array.from(selectedInstanceIds).includes(eq.uniqueId)
+        );
+
+        if (!firstInstance) return;
+
+        // Check if equipment type already in list
+        if (materials.some(m => {
+            const itemId = typeof m.item === 'string' ? m.item : m.item._id;
+            return itemId === selectedEquipmentId;
+        })) {
+            alert("Este tipo de equipo ya está en la lista. Modifica las instancias.");
+            return;
+        }
+
+        // Add equipment with selected instances
+        const newMaterial: Material = {
+            item: {
+                _id: firstInstance.inventoryId,
+                code: firstInstance.itemCode,
+                description: firstInstance.itemDescription,
+                unit: "unidades",
+                type: "equipment",
+            },
+            quantity: selectedInstanceIds.size,
+            instanceIds: Array.from(selectedInstanceIds),
+        };
+
+        setMaterials((prev) => [...prev, newMaterial]);
+
+        // Reset
+        setSelectedEquipmentId("");
+        setSelectedInstanceIds(new Set());
+        setEquipmentInstances([]);
+    };
+
+    const handleEquipmentModalAdd = (instances: any[]) => {
+        // Group instances by inventoryId
+        const grouped = instances.reduce((acc, inst) => {
+            if (!acc[inst.inventoryId]) {
+                acc[inst.inventoryId] = {
+                    item: {
+                        _id: inst.inventoryId,
+                        code: inst.itemCode,
+                        description: inst.itemDescription,
+                        unit: "unidades",
+                        type: "equipment",
+                    },
+                    quantity: 0,
+                    instanceIds: [],
+                };
+            }
+            acc[inst.inventoryId].quantity += 1;
+            acc[inst.inventoryId].instanceIds.push(inst.uniqueId);
+            return acc;
+        }, {} as Record<string, Material>);
+
+        // Add to materials
+        setMaterials((prev) => [...prev, ...Object.values(grouped)]);
+    };
+
     const handleRemoveMaterial = (index: number) => {
         setMaterials((prev) => prev.filter((_, i) => i !== index));
     };
@@ -252,7 +362,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         const available = getAvailableQuantity(itemId);
 
         if (newQuantity > available) {
-            alert(`Cantidad no disponible. Máximo: ${available}`);
+            alert(`Cantidad no disponible.Máximo: ${available} `);
             return;
         }
 
@@ -330,11 +440,15 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         if (typeof material.item === "string") {
             return material.item;
         }
-        return `${material.item.code} - ${material.item.description}`;
+        if (!material.item) {
+            return "Item no encontrado";
+        }
+        return `${material.item.code} - ${material.item.description} `;
     };
 
     const getItemUnit = (material: Material): string => {
         if (typeof material.item === "string") return "";
+        if (!material.item) return "";
         return material.item.unit;
     };
 
@@ -473,6 +587,23 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                         </div>
                     )}
 
+                    {/* Add Equipment Button - Opens Modal */}
+                    {assignedCrewId && crewEquipment.length > 0 && (
+                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                            <button
+                                type="button"
+                                onClick={() => setEquipmentModalOpen(true)}
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-md font-medium text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                                <i className="fa-solid fa-microchip"></i>
+                                Agregar Equipos Instalados
+                            </button>
+                            <p className="text-xs text-purple-600 mt-2 text-center">
+                                {crewEquipment.length} equipo(s) disponible(s)
+                            </p>
+                        </div>
+                    )}
+
                     {/* Materials Table */}
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
                         <table className="w-full text-sm text-left">
@@ -503,12 +634,20 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                             <td className="px-4 py-3 font-medium text-gray-700">
                                                 <div className="flex items-center gap-2">
                                                     {material.batchCode && (
-                                                        <i className="fa-solid fa-spool text-secondary" title="Bobina"></i>
+                                                        <i className="fa-solid fa-spool text-blue-600" title="Bobina"></i>
+                                                    )}
+                                                    {material.instanceIds && (
+                                                        <i className="fa-solid fa-microchip text-purple-600" title="Equipo"></i>
                                                     )}
                                                     <span>{renderMaterialDisplay(material)}</span>
                                                     {material.batchCode && (
                                                         <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">
                                                             {material.batchCode}
+                                                        </span>
+                                                    )}
+                                                    {material.instanceIds && (
+                                                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                                                            {material.instanceIds.length} instancia{material.instanceIds.length > 1 ? 's' : ''}
                                                         </span>
                                                     )}
                                                 </div>
@@ -645,6 +784,16 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Order Equipment Modal */}
+            {assignedCrewId && (
+                <OrderEquipmentModal
+                    isOpen={equipmentModalOpen}
+                    onClose={() => setEquipmentModalOpen(false)}
+                    crewId={assignedCrewId}
+                    onAddEquipment={handleEquipmentModalAdd}
+                />
             )}
         </>
     );

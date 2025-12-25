@@ -245,11 +245,24 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
                             />
                         )}
 
+                        {/* Información para equipos */}
+                        {isEquipment && (
+                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                    <i className="fa-solid fa-info-circle text-purple-600 text-lg mt-0.5"></i>
+                                    <div className="text-sm text-purple-800">
+                                        <p className="font-semibold mb-1">Los equipos se gestionan por instancias individuales</p>
+                                        <p>El stock se calculará automáticamente según las instancias agregadas. Cada equipo debe tener un ID único para su trazabilidad.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Sección de Instancias para Equipos */}
                         {isEquipment && (
                             <div className="mt-6 border-t pt-6">
                                 <h4 className="text-md font-semibold text-dark mb-4 flex items-center gap-2">
-                                    <i className="fa-solid fa-microchip text-primary"></i>
+                                    <i className="fa-solid fa-microchip text-purple-600"></i>
                                     Instancias de Equipo (Opcional)
                                 </h4>
                                 <p className="text-sm text-neutral mb-4">

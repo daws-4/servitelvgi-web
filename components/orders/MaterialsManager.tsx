@@ -346,7 +346,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         }, {} as Record<string, Material>);
 
         // Add to materials
-        setMaterials((prev) => [...prev, ...Object.values(grouped)]);
+        setMaterials((prev) => [...prev, ...Object.values(grouped) as Material[]]);
     };
 
     const handleRemoveMaterial = (index: number) => {

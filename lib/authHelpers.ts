@@ -6,9 +6,11 @@ interface DecodedToken {
   _id: string;
   username: string;
   name: string;
-  surname: string;
-  email: string;
-  role: string;
+  surname?: string;
+  email?: string;
+  role: 'admin' | 'installer';
+  crewId?: string | null;
+  crewName?: string | null;
 }
 
 export interface SessionUser {
@@ -17,6 +19,8 @@ export interface SessionUser {
   username: string;
   name: string;
   role: string;
+  crewId?: string | null;
+  crewName?: string | null;
 }
 
 /**
@@ -49,6 +53,50 @@ export async function getUserFromRequest(req: NextRequest): Promise<SessionUser 
     };
   } catch (err) {
     console.error("Error extracting user from token:", err);
+    return null;
+  }
+}
+
+/**
+ * Extract installer information from JWT Bearer token in Authorization header
+ * Used for mobile app authentication
+ * Returns null if no valid token is found
+ */
+export async function getInstallerFromBearerToken(
+  authHeader: string | null
+): Promise<SessionUser | null> {
+  try {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return null;
+    }
+
+    const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error("Missing JWT_SECRET in environment");
+      return null;
+    }
+
+    const decoded = jwt.verify(token, jwtSecret) as DecodedToken;
+
+    // Verify this is an installer token
+    if (decoded.role !== 'installer') {
+      console.error("Token is not for an installer");
+      return null;
+    }
+
+    return {
+      userId: decoded._id,
+      userModel: 'Installer',
+      username: decoded.username,
+      name: decoded.name,
+      role: decoded.role,
+      crewId: decoded.crewId || null,
+      crewName: decoded.crewName || null
+    };
+  } catch (err) {
+    console.error("Error extracting installer from bearer token:", err);
     return null;
   }
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { FormInput } from '@/components/interactiveForms/Input';
 import { FormSelect, SelectOption } from '@/components/interactiveForms/Select';
 import { FormButton } from '@/components/interactiveForms/Button';
+import { ToggleSwitch } from '@/components/interactiveForms/ToggleSwitch';
 import { EyeOpenIcon, EyeCloseIcon } from '@/components/icons';
 
 interface NewInstallerFormData {
@@ -19,6 +20,7 @@ interface NewInstallerFormData {
     phone: string;
     status: string;
     currentCrew: string;
+    showInventory: boolean;
 }
 
 interface NewInstallerFormProps {
@@ -40,6 +42,7 @@ export const NewInstallerForm: React.FC<NewInstallerFormProps> = ({ onSuccess, o
         phone: '',
         status: 'active',
         currentCrew: '',
+        showInventory: false,
     });
 
     const [crews, setCrews] = useState<any[]>([]);
@@ -81,7 +84,7 @@ export const NewInstallerForm: React.FC<NewInstallerFormProps> = ({ onSuccess, o
         }))
     ];
 
-    const handleInputChange = (field: keyof NewInstallerFormData, value: string) => {
+    const handleInputChange = (field: keyof NewInstallerFormData, value: string | boolean) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -106,6 +109,7 @@ export const NewInstallerForm: React.FC<NewInstallerFormProps> = ({ onSuccess, o
                 phone: formData.phone,
                 status: formData.status,
                 currentCrew: formData.currentCrew || null,
+                showInventory: formData.showInventory,
             };
 
             const response = await fetch('/api/web/installers', {
@@ -248,6 +252,16 @@ export const NewInstallerForm: React.FC<NewInstallerFormProps> = ({ onSuccess, o
                         isLoading={isLoadingCrews}
                         className="md:col-span-2"
                     />
+                    <div className="md:col-span-2">
+                        <ToggleSwitch
+                            id="showInventory"
+                            name="showInventory"
+                            checked={formData.showInventory}
+                            onChange={(checked) => handleInputChange('showInventory', checked)}
+                            label="Inventario"
+                            description="desea que el instalador vea su propio inventario"
+                        />
+                    </div>
                 </div>
             </div>
 

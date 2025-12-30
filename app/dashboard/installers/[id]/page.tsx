@@ -14,6 +14,7 @@ interface Installer {
     phone: string;
     status: "active" | "inactive";
     onDuty: boolean;
+    showInventory: boolean;
     currentCrew?: string | null;
 }
 

@@ -84,7 +84,8 @@ export async function POST(request: Request) {
       surname: installer.surname,
       role: "installer",
       crewId: crewData?._id || null,
-      crewName: crewData?.name || null
+      crewName: crewData?.name || null,
+      showInventory: installer.showInventory || false,
     };
 
     const token = jwt.sign(
@@ -107,7 +108,8 @@ export async function POST(request: Request) {
           phone: installer.phone,
           status: installer.status,
           onDuty: installer.onDuty,
-          crew: crewData
+          crew: crewData,
+          showInventory: installer.showInventory || false,
         }
       },
       { status: 200 }

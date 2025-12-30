@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
           phone: installer.phone,
           status: installer.status,
           onDuty: installer.onDuty,
+          showInventory: installer.showInventory || false,
           crew: crewData
         }
       },

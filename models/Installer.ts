@@ -38,6 +38,10 @@ const InstallerSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+    showInventory:{
+      type:Boolean,
+      default:false
+    },
     onDuty:{
       type:Boolean,
       default:false

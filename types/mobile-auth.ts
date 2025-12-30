@@ -48,6 +48,7 @@ export interface InstallerTokenPayload {
   role: 'installer';
   crewId: string | null;
   crewName: string | null;
+  showInventory: boolean;
   iat?: number;
   exp?: number;
 }

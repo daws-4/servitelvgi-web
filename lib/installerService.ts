@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 export async function createInstaller(data: any) {
   await connectDB();
   
-  const { username, password, email, surname, name, phone, status, currentCrew } = data;
+  const { username, password, email, surname, name, phone, status, currentCrew, showInventory } = data;
   
   try {
     // 1. Hash password
@@ -22,6 +22,7 @@ export async function createInstaller(data: any) {
       name,
       phone,
       status,
+      showInventory,
       currentCrew: currentCrew
     });
     

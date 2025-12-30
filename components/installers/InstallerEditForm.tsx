@@ -19,6 +19,7 @@ interface InstallerData {
     phone: string;
     status: "active" | "inactive";
     onDuty: boolean;
+    showInventory: boolean;
     currentCrew?: string | null;
 }
 
@@ -42,6 +43,7 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
         phone: installer.phone,
         status: installer.status,
         onDuty: installer.onDuty,
+        showInventory: installer.showInventory || false,
         currentCrew: installer.currentCrew || "",
         password: "",
     });
@@ -65,6 +67,7 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                 phone: formData.phone,
                 status: formData.status,
                 onDuty: formData.onDuty,
+                showInventory: formData.showInventory,
                 currentCrew: formData.currentCrew || null,
             };
 
@@ -246,6 +249,16 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                                 onChange={(checked) => handleInputChange("onDuty", checked)}
                                 label="En Guardia (On Duty)"
                                 description="Disponible para emergencias"
+                            />
+
+                            {/* Show Inventory Toggle */}
+                            <ToggleSwitch
+                                id="showInventory"
+                                name="showInventory"
+                                checked={formData.showInventory}
+                                onChange={(checked) => handleInputChange("showInventory", checked)}
+                                label="Inventario"
+                                description="desea que el instalador vea su propio inventario"
                             />
 
                             <hr className="border-gray-100" />

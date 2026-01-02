@@ -5,6 +5,7 @@ import { FormInput } from '@/components/interactiveForms/Input';
 import { FormTextarea } from '@/components/interactiveForms/Textarea';
 import { MaterialsManager, Material } from './MaterialsManager';
 import { OrderStatusManager, OrderStatus, OrderType } from './OrderStatusManager';
+import { PhotoEvidenceManager } from './PhotoEvidenceManager';
 import { UserIcon } from '@/components/icons';
 
 // Microchip icon for technical section
@@ -31,6 +32,7 @@ export interface OrderEditData {
     status: OrderStatus;
     assignedTo?: string;
     materialsUsed?: Material[];
+    photoEvidence?: string[]; // Image IDs in format "recordId:filename"
 }
 
 interface OrderEditFormProps {
@@ -50,6 +52,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
 }) => {
     const [formData, setFormData] = useState<OrderEditData>(initialData);
     const [materials, setMaterials] = useState<Material[]>(initialData.materialsUsed || []);
+    const [photoIds, setPhotoIds] = useState<string[]>(initialData.photoEvidence || []);
     const [isSaving, setIsSaving] = useState(false);
 
     const handleInputChange = (field: keyof OrderEditData, value: string) => {
@@ -71,6 +74,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                 type: data.type,
                 assignedTo: data.assignedTo || undefined,
                 materialsUsed: materials,
+                photoEvidence: photoIds,
             };
 
             if (onSave) {
@@ -193,6 +197,15 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     assignedCrewId={formData.assignedTo}
                     initialMaterials={materials}
                     onChange={setMaterials}
+                />
+
+                {/* 4. Photo Evidence */}
+                <PhotoEvidenceManager
+                    orderId={orderId}
+                    installerId={formData.assignedTo} // Using assignedTo as installer for now
+                    crewId={formData.assignedTo}
+                    initialPhotoIds={photoIds}
+                    onChange={setPhotoIds}
                 />
 
             </div>

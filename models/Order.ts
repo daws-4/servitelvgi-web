@@ -87,8 +87,17 @@ const OrderSchema = new mongoose.Schema(
         batchCode: { type: String }, // Optional: identifies specific bobbin used
       },
     ],
-    digitalSignature: { type: String },
-    photoEvidence: [{ type: String }],
+    
+    // Evidencia fotográfica (Array de URLs de las imágenes subidas)
+    photoEvidence: {
+      type: [String],
+      default: [],
+    },
+    
+    // Firma del cliente (String Base64 exportado por react-native-signature-canvas)
+    customerSignature: {
+      type: String,
+    },
 
     // Control de reporte a Netuno
     googleFormReported: {

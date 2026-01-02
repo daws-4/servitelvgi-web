@@ -656,12 +656,12 @@ servitelvgi-web/
 
 ## 👥 Roles y Permisos
 
-| Rol | Dashboard | Órdenes | Cuadrillas | Inventario | Reportes | Usuarios |
-|-----|-----------|---------|------------|------------|----------|----------|
-| **Admin** | ✅ | ✅ CRUD | ✅ CRUD | ✅ CRUD | ✅ Todos | ✅ CRUD |
-| **Supervisor** | ✅ | ✅ Ver/Editar | ✅ Ver | ✅ Ver | ✅ Consultar | ❌ |
-| **Logística** | ✅ | ✅ Ver/Asignar | ✅ Ver | ✅ CRUD | ✅ Inventario | ❌ |
-| **Installer** | ❌ | ✅ Asignadas (Móvil) | ❌ | ❌ | ❌ | ❌ |
+| Rol -----------| Dashboard | Órdenes -------------| Cuadrillas | Inventario | Reportes-----| Usuarios |
+|----------------|-----------|----------------------|------------|------------|--------------|----------|
+| **Admin** -----| ✅ ------| ✅ CRUD -------------| ✅ CRUD --| ✅ CRUD ---| ✅ Todos ----| ✅ CRUD |
+| **Supervisor** | ✅ ------| ✅ Ver/Editar -------| ✅ Ver ---| ✅ Ver ----| ✅ Consultar | ❌ -----|
+| **Logística** -| ✅ ------| ✅ Ver/Asignar ------| ✅ Ver ---| ✅ CRUD ---| ✅ Inventario| ❌ -----|
+| **Installer** -| ❌ ------| ✅ Asignadas (Móvil) | ❌ -------| ❌ --------| ❌ ----------| ❌ -----|
 
 ---
 

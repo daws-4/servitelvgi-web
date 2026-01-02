@@ -73,6 +73,19 @@ export async function PUT(request: NextRequest) {
     // Get session user for history tracking
     const sessionUser = await getUserFromRequest(request);
     
+    /**
+     * EVIDENCIA FOTOGRÁFICA (PocketBase):
+     * El campo photoEvidence debe almacenar IDs de PocketBase en el formato:
+     * ["recordId:filename", "recordId:filename", ...]
+     * 
+     * Para generar las URLs dinámicamente, usar el endpoint:
+     * GET /api/web/orders/uploads?recordId=xxx&filename=yyy
+     * 
+     * O directamente con el SDK de PocketBase:
+     * const record = await pb.collection('evidencias').getOne(recordId);
+     * const url = pb.files.getUrl(record, filename);
+     */
+    
     // INTEGRACIÓN DE INVENTARIO: Si la orden se está completando con materiales usados
     // procesar el consumo automáticamente
     if (

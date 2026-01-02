@@ -47,6 +47,7 @@ export default function OrderEditPage() {
                         status: order.status || 'pending',
                         assignedTo: order.assignedTo?._id || order.assignedTo || undefined,
                         materialsUsed: order.materialsUsed || [],
+                        photoEvidence: order.photoEvidence || [],
                     };
 
                     setOrderData(formData);

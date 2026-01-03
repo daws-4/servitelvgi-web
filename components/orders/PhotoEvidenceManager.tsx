@@ -150,76 +150,81 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
 
     const uploadFiles = async (imagesToUpload: ImageItem[]) => {
         try {
-            // Upload each image
-            const uploadResults = await Promise.all(
-                imagesToUpload.map(async (imageItem) => {
-                    try {
-                        const formData = new FormData();
-                        formData.append('imagen', imageItem.file!); // Campo 'imagen' en PocketBase
-                        formData.append('order_id', orderId);
-                        if (installerId) formData.append('installer_id', installerId);
-                        if (crewId) formData.append('crew_id', crewId);
+            // Subir imágenes SECUENCIALMENTE para evitar auto-cancelación de PocketBase
+            // Esto evita el error ABORT_ERR cuando hay muchas peticiones simultáneas
+            const uploadResults = [];
 
-                        console.log('Uploading image...');
-                        const response = await fetch('/api/web/orders/uploads', {
-                            method: 'POST',
-                            body: formData,
-                        });
+            for (const imageItem of imagesToUpload) {
+                try {
+                    const formData = new FormData();
+                    formData.append('imagen', imageItem.file!); // Campo 'imagen' en PocketBase
+                    formData.append('order_id', orderId);
+                    if (installerId) formData.append('installer_id', installerId);
+                    if (crewId) formData.append('crew_id', crewId);
 
-                        if (!response.ok) {
-                            throw new Error('Failed to upload image');
-                        }
+                    console.log('Uploading image...');
+                    const response = await fetch('/api/web/orders/uploads', {
+                        method: 'POST',
+                        body: formData,
+                    });
 
-                        const data = await response.json();
-                        console.log('Upload response:', data);
-                        const imageId = `${data.recordId}:${data.filename}`;
-                        console.log('Image ID:', imageId);
-
-                        // Usar la URL que viene directamente del POST (Optimización #2)
-                        const url = data.url;
-                        console.log('Image URL from response:', url);
-
-                        return {
-                            tempId: imageItem.id,
-                            success: true,
-                            imageId,
-                            url,
-                        };
-                    } catch (error) {
-                        console.error('Error uploading image:', error);
-                        return {
-                            tempId: imageItem.id,
-                            success: false,
-                            error,
-                        };
+                    if (!response.ok) {
+                        throw new Error('Failed to upload image');
                     }
-                })
-            );
 
-            // Update images state with final URLs
-            setImages((prev) =>
-                prev.map((img) => {
-                    const result = uploadResults.find((r) => r.tempId === img.id);
-                    if (result) {
-                        if (result.success) {
-                            // Revoke blob URL to free memory
-                            URL.revokeObjectURL(img.thumbUrl);
-                            return {
-                                id: result.imageId!,
-                                thumbUrl: result.url!,
-                                isUploading: false,
-                            };
-                        } else {
-                            // Upload failed, mark as error but keep preview
-                            return {
-                                ...img,
-                                isUploading: false,
-                            };
-                        }
-                    }
-                    return img;
-                })
-            );
+                    const data = await response.json();
+                    console.log('Upload response:', data);
+                    const imageId = `${data.recordId}:${data.filename}`;
+                    console.log('Image ID:', imageId);
+
+                    // Usar la URL que viene directamente del POST (Optimización #2)
+                    const url = data.url;
+                    console.log('Image URL from response:', url);
+
+                    uploadResults.push({
+                        tempId: imageItem.id,
+                        success: true,
+                        imageId,
+                        url,
+                    });
+
+                    // Actualizar estado inmediatamente después de cada subida exitosa
+                    setImages((prev) =>
+                        prev.map((img) => {
+                            if (img.id === imageItem.id) {
+                                // Revoke blob URL to free memory
+                                URL.revokeObjectURL(img.thumbUrl);
+                                return {
+                                    id: imageId,
+                                    thumbUrl: url,
+                                    isUploading: false,
+                                };
+                            }
+                            return img;
+                        })
+                    );
+                } catch (error) {
+                    console.error('Error uploading image:', error);
+                    uploadResults.push({
+                        tempId: imageItem.id,
+                        success: false,
+                        error,
+                    });
+
+                    // Marcar como fallida
+                    setImages((prev) =>
+                        prev.map((img) => {
+                            if (img.id === imageItem.id) {
+                                return {
+                                    ...img,
+                                    isUploading: false,
+                                };
+                            }
+                            return img;
+                        })
+                    );
+                }
+            }
 
             // Ya no es necesario llamar onChange aquí
             // El backend actualiza automáticamente el campo photoEvidence de la orden
@@ -310,9 +315,17 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                 <i className="fa-solid fa-camera text-secondary"></i>
                 <h3 className="font-semibold text-secondary">Evidencia Fotográfica</h3>
                 {isAnyUploading && (
-                    <span className="ml-auto text-xs text-primary font-medium">
-                        <i className="fa-solid fa-spinner fa-spin mr-1"></i>
-                        Subiendo...
+                    <span className="ml-auto text-xs text-primary font-medium flex items-center gap-2">
+                        <i className="fa-solid fa-spinner fa-spin"></i>
+                        <span>
+                            Subiendo {images.filter(img => img.isUploading).length}
+                            {images.filter(img => img.isUploading).length === 1 ? ' imagen' : ' imágenes'}...
+                        </span>
+                    </span>
+                )}
+                {!isAnyUploading && images.length > 0 && (
+                    <span className="ml-auto text-xs text-gray-500">
+                        {images.length} {images.length === 1 ? 'imagen' : 'imágenes'}
                     </span>
                 )}
             </div>
@@ -324,14 +337,24 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                     <label
                         htmlFor="photo-upload"
                         className={`
-              flex items-center justify-center gap-2 px-4 py-3 
+              flex flex-col items-center justify-center gap-2 px-6 py-4 
               border-2 border-dashed border-gray-300 rounded-lg 
               hover:border-primary hover:bg-primary/5 
-              transition-all cursor-pointer
+              transition-all cursor-pointer relative group
             `}
                     >
-                        <i className="fa-solid fa-cloud-upload-alt text-primary"></i>
-                        <span className="text-sm font-medium text-primary">Seleccionar imágenes</span>
+                        <div className="flex items-center gap-2">
+                            <i className="fa-solid fa-images text-primary text-xl"></i>
+                            <span className="text-sm font-semibold text-primary">Seleccionar Imágenes</span>
+                        </div>
+                        <p className="text-xs text-gray-500 text-center">
+                            <i className="fa-solid fa-info-circle mr-1"></i>
+                            Selecciona <strong>una o varias imágenes</strong> para subirlas automáticamente
+                        </p>
+                        <div className="text-xs text-gray-400 flex items-center gap-2 mt-1">
+                            <i className="fa-solid fa-compress-alt"></i>
+                            <span>Auto-compresión · Max 1920px · JPEG 85%</span>
+                        </div>
                     </label>
                     <input
                         id="photo-upload"
@@ -341,9 +364,6 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                         onChange={handleFileSelect}
                         className="hidden"
                     />
-                    <p className="text-xs text-gray-500 text-center">
-                        Puedes seleccionar múltiples imágenes a la vez
-                    </p>
                 </div>
 
                 {/* Thumbnail Gallery */}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import pb from "@/lib/pocketBase";
+import pb, { ensureAuth } from "@/lib/pocketBase";
+import { updateOrder, getOrderById } from "@/lib/orderService";
 
 // GET: Obtener URL de imagen usando el SDK de PocketBase
 export async function GET(req: NextRequest) {
@@ -16,11 +17,8 @@ export async function GET(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Autenticación como superusuario (PocketBase v0.23.0+)
-    await pb.collection("_superusers").authWithPassword(
-        process.env.PB_ADMIN_EMAIL!, 
-        process.env.PB_ADMIN_PASS!
-    );
+    // Usar autenticación cacheada
+    await ensureAuth();
 
     // Obtener el registro de PocketBase
     const record = await pb.collection('evidencias').getOne(recordId);
@@ -75,21 +73,10 @@ export async function POST(req: NextRequest) {
     // PocketBase espera un FormData directamente
     // El formData debe contener: order_id, installer_id, crew_id y imagen (el archivo)
     
+    // Usar autenticación cacheada (optimización #1)
     console.log('Authenticating with PocketBase...');
-    // Autenticación como superusuario (PocketBase v0.23.0+)
-    try {
-      await pb.collection("_superusers").authWithPassword(
-          process.env.PB_ADMIN_EMAIL!, 
-          process.env.PB_ADMIN_PASS!
-      );
-      console.log('Authentication successful');
-    } catch (authError: any) {
-      console.error('Authentication failed:', authError);
-      return NextResponse.json({ 
-        error: 'Failed to authenticate with PocketBase',
-        details: authError.message 
-      }, { status: 500 });
-    }
+    await ensureAuth();
+    console.log('Authentication successful (cached)');
 
     console.log('Creating record in PocketBase...');
     const record = await pb.collection('evidencias').create(formData);
@@ -102,12 +89,43 @@ export async function POST(req: NextRequest) {
 
     console.log('Extracted filename:', filename);
 
-    // Retornar el ID del registro y el nombre del archivo
+    // Generar la URL de la imagen (optimización #2 - devolver URL directamente)
+    const imageUrl = `${process.env.NEXT_PUBLIC_PB_URL}/api/files/${record.collectionId}/${record.id}/${filename}`;
+    console.log('Generated image URL:', imageUrl);
+
+    // Auto-actualizar el campo photoEvidence de la orden
+    const orderId = formData.get('order_id') as string;
+    if (orderId) {
+      try {
+        console.log('Auto-updating order photoEvidence...');
+        const imageId = `${record.id}:${filename}`;
+        
+        // Obtener la orden actual
+        const currentOrder = await getOrderById(orderId) as any;
+        if (currentOrder) {
+          // Agregar el nuevo imageId al array photoEvidence
+          const updatedPhotoEvidence = [
+            ...(currentOrder.photoEvidence || []),
+            imageId
+          ];
+          
+          // Actualizar la orden
+          await updateOrder(orderId, { photoEvidence: updatedPhotoEvidence });
+          console.log('Order photoEvidence updated successfully');
+        }
+      } catch (updateError) {
+        console.error('Error updating order photoEvidence:', updateError);
+        // No falla la subida si falla la actualización de la orden
+      }
+    }
+
+    // Retornar el ID del registro, el nombre del archivo Y la URL
     return NextResponse.json({ 
       success: true, 
       recordId: record.id,
       collectionId: record.collectionId,
       filename: filename,
+      url: imageUrl, // ← NUEVA: URL directa
       // También incluimos los IDs guardados
       order_id: record.order_id,
       installer_id: record.installer_id,
@@ -138,8 +156,9 @@ export async function DELETE(req: NextRequest) {
   try {
     const url = new URL(req.url);
     const recordId = url.searchParams.get("recordId");
+    const orderId = url.searchParams.get("orderId"); // NEW: orderId parameter
 
-    console.log('DELETE /api/web/orders/uploads - Request:', { recordId });
+    console.log('DELETE /api/web/orders/uploads - Request:', { recordId, orderId });
 
     if (!recordId) {
       return NextResponse.json({ 
@@ -147,15 +166,42 @@ export async function DELETE(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Autenticación como superusuario (PocketBase v0.23.0+)
-    await pb.collection("_superusers").authWithPassword(
-        process.env.PB_ADMIN_EMAIL!, 
-        process.env.PB_ADMIN_PASS!
-    );
+    // Usar autenticación cacheada
+    await ensureAuth();
+
+    // Obtener el registro antes de eliminarlo para obtener el filename
+    const record = await pb.collection('evidencias').getOne(recordId);
+    const filename = Array.isArray(record.imagen) && record.imagen.length > 0 
+      ? record.imagen[0] 
+      : record.imagen;
+    const imageId = `${recordId}:${filename}`;
 
     // Eliminar el registro de PocketBase
     await pb.collection('evidencias').delete(recordId);
     console.log('Deleted PocketBase record:', recordId);
+
+    // Auto-actualizar el campo photoEvidence de la orden
+    if (orderId) {
+      try {
+        console.log('Auto-updating order photoEvidence after deletion...');
+        
+        // Obtener la orden actual
+        const currentOrder = await getOrderById(orderId) as any;
+        if (currentOrder && currentOrder.photoEvidence) {
+          // Remover el imageId del array photoEvidence
+          const updatedPhotoEvidence = currentOrder.photoEvidence.filter(
+            (id: string) => id !== imageId
+          );
+          
+          // Actualizar la orden
+          await updateOrder(orderId, { photoEvidence: updatedPhotoEvidence });
+          console.log('Order photoEvidence updated after deletion');
+        }
+      } catch (updateError) {
+        console.error('Error updating order photoEvidence:', updateError);
+        // No falla la eliminación si falla la actualización de la orden
+      }
+    }
 
     return NextResponse.json({ 
       success: true,

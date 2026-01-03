@@ -66,8 +66,72 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
+        // Helper function to compress image (Optimización #3)
+        const compressImage = async (file: File): Promise<File> => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d')!;
+
+                        // Max dimensions
+                        const MAX_WIDTH = 1920;
+                        const MAX_HEIGHT = 1920;
+
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Calculate new dimensions
+                        if (width > height) {
+                            if (width > MAX_WIDTH) {
+                                height = Math.round((height * MAX_WIDTH) / width);
+                                width = MAX_WIDTH;
+                            }
+                        } else {
+                            if (height > MAX_HEIGHT) {
+                                width = Math.round((width * MAX_HEIGHT) / height);
+                                height = MAX_HEIGHT;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        // Draw and compress
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob(
+                            (blob) => {
+                                if (blob) {
+                                    const compressedFile = new File([blob], file.name, {
+                                        type: 'image/jpeg',
+                                        lastModified: Date.now(),
+                                    });
+                                    console.log(`Compressed: ${(file.size / 1024).toFixed(2)}KB → ${(compressedFile.size / 1024).toFixed(2)}KB`);
+                                    resolve(compressedFile);
+                                } else {
+                                    resolve(file); // Fallback to original
+                                }
+                            },
+                            'image/jpeg',
+                            0.85 // Quality 85%
+                        );
+                    };
+                    img.src = event.target?.result as string;
+                };
+                reader.readAsDataURL(file);
+            });
+        };
+
+        // Compress all images
+        const compressedFiles = await Promise.all(
+            Array.from(files).map(file => compressImage(file))
+        );
+
         // Create blob URLs immediately for preview
-        const newImages: ImageItem[] = Array.from(files).map((file) => ({
+        const newImages: ImageItem[] = compressedFiles.map((file) => ({
             id: `temp-${Date.now()}-${Math.random()}`, // Temporary ID
             thumbUrl: URL.createObjectURL(file), // Local blob URL for immediate preview
             isUploading: true,
@@ -111,15 +175,9 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                         const imageId = `${data.recordId}:${data.filename}`;
                         console.log('Image ID:', imageId);
 
-                        // Get the URL for the uploaded image
-                        console.log('Fetching URL for recordId:', data.recordId);
-                        const urlResponse = await fetch(
-                            `/api/web/orders/uploads?recordId=${data.recordId}`
-                        );
-                        const urlData = await urlResponse.json();
-                        console.log('URL response:', urlData);
-                        const { url } = urlData;
-                        console.log('Final image URL:', url);
+                        // Usar la URL que viene directamente del POST (Optimización #2)
+                        const url = data.url;
+                        console.log('Image URL from response:', url);
 
                         return {
                             tempId: imageItem.id,
@@ -163,16 +221,9 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                 })
             );
 
-            // Update parent with final IDs (only successful uploads)
-            const successfulIds = uploadResults
-                .filter((r) => r.success)
-                .map((r) => r.imageId!);
-
-            const allIds = [
-                ...initialPhotoIds,
-                ...successfulIds,
-            ];
-            onChange(allIds);
+            // Ya no es necesario llamar onChange aquí
+            // El backend actualiza automáticamente el campo photoEvidence de la orden
+            // onChange solo se mantiene para compatibilidad pero puede ser removido en el futuro
         } catch (error) {
             console.error('Error in upload process:', error);
             alert('Error al subir algunas imágenes. Por favor, intenta de nuevo.');
@@ -196,8 +247,8 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
 
                     console.log('Deleting image from backend:', recordId);
 
-                    // Call DELETE endpoint
-                    const response = await fetch(`/api/web/orders/uploads?recordId=${recordId}`, {
+                    // Call DELETE endpoint with orderId for auto-update
+                    const response = await fetch(`/api/web/orders/uploads?recordId=${recordId}&orderId=${orderId}`, {
                         method: 'DELETE',
                     });
 
@@ -217,7 +268,8 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                 const updatedImages = images.filter((_, i) => i !== index);
                 setImages(updatedImages);
 
-                // Update parent with final IDs only
+                // Ya no es necesario llamar onChange aquí porque el backend actualizó la orden
+                // pero lo mantenemos para sincronización de UI
                 const finalIds = updatedImages
                     .filter((img) => !img.isUploading && !img.id.startsWith('temp-'))
                     .map((img) => img.id);

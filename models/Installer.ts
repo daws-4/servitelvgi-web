@@ -46,6 +46,10 @@ const InstallerSchema = new mongoose.Schema(
       type:Boolean,
       default:false
     },
+    profilePicture:{
+      type:String,
+      default:null
+    },
     // Referencia a la cuadrilla actual. Si es null, trabaja solo.
     currentCrew: {
       type: mongoose.Schema.Types.ObjectId,

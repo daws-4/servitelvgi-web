@@ -16,6 +16,7 @@ interface Installer {
     onDuty: boolean;
     showInventory: boolean;
     currentCrew?: string | null;
+    profilePicture?: string | null;
 }
 
 interface Crew {
@@ -171,9 +172,9 @@ export default function InstallerEditPage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50">
+        <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
             {/* HEADER */}
-            <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-200 sticky top-0 z-10">
+            <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-200 flex-shrink-0 z-10">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleCancel}
@@ -197,14 +198,16 @@ export default function InstallerEditPage() {
                 </div>
             </header>
 
-            {/* MAIN CONTENT */}
-            <main className="flex-1 p-6 max-w-6xl mx-auto w-full">
-                <InstallerEditForm
-                    installer={installer}
-                    crews={crews}
-                    onSubmit={handleSubmit}
-                    onCancel={handleCancel}
-                />
+            {/* MAIN CONTENT - Scrollable */}
+            <main className="flex-1 overflow-y-auto">
+                <div className="p-6 max-w-6xl mx-auto w-full">
+                    <InstallerEditForm
+                        installer={installer}
+                        crews={crews}
+                        onSubmit={handleSubmit}
+                        onCancel={handleCancel}
+                    />
+                </div>
             </main>
         </div>
     );

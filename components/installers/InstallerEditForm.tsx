@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { FormInput } from "@/components/interactiveForms/Input";
 import { ToggleSwitch } from "@/components/interactiveForms/ToggleSwitch";
 import { InstallerStatusBadge } from "@/components/installers/InstallerStatusBadge";
+import { ProfilePhotoManager } from "@/components/installers/ProfilePhotoManager";
 
 interface Crew {
     _id: string;
@@ -21,6 +22,7 @@ interface InstallerData {
     onDuty: boolean;
     showInventory: boolean;
     currentCrew?: string | null;
+    profilePicture?: string | null;
 }
 
 interface InstallerEditFormProps {
@@ -89,6 +91,7 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* LEFT COLUMN (2/3): PERSONAL INFORMATION */}
                 <div className="lg:col-span-2 space-y-6">
+
                     {/* PERSONAL INFORMATION CARD */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="bg-gray-50/50 border-b border-gray-100 px-6 py-4 flex items-center gap-2">
@@ -214,11 +217,23 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                             </div>
                         </div>
                     </div>
+
+                    {/* PROFILE PHOTO SECTION */}
+                    <ProfilePhotoManager
+                        installerId={installer._id}
+                        initialPhotoUrl={installer.profilePicture || undefined}
+                        onChange={(url) => {
+                            // La foto se actualiza automáticamente en el backend
+                            // pero podemos refrescar localmente si es necesario
+                            console.log('Profile photo updated:', url);
+                        }}
+                    />
+
                 </div>
 
                 {/* RIGHT COLUMN (1/3): OPERATIONAL MANAGEMENT */}
                 <div className="space-y-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-fit sticky top-24">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-fit sticky top-0">
                         <div className="bg-background/40 border-b border-background px-6 py-4">
                             <h3 className="font-semibold text-secondary">Gestión Operativa</h3>
                         </div>

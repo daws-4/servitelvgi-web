@@ -236,7 +236,7 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-fit sticky top-0">
                         <div className="bg-background/40 border-b border-background px-6 py-4">
                             <h3 className="font-semibold text-secondary">Gestión Operativa</h3>
-                        </div>
+                        </div> 
                         <div className="p-6 space-y-6">
                             {/* Status */}
                             <div>

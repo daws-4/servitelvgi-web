@@ -19,7 +19,7 @@ interface InstallerData {
     email: string;
     phone: string;
     status: "active" | "inactive";
-    onDuty: boolean;
+    onDuty: "active" | "inactive" | "onDuty";
     showInventory: boolean;
     currentCrew?: string | null;
     profilePicture?: string | null;
@@ -236,7 +236,7 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-fit sticky top-0">
                         <div className="bg-background/40 border-b border-background px-6 py-4">
                             <h3 className="font-semibold text-secondary">Gestión Operativa</h3>
-                        </div> 
+                        </div>
                         <div className="p-6 space-y-6">
                             {/* Status */}
                             <div>
@@ -256,15 +256,24 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                                 </p>
                             </div>
 
-                            {/* On Duty Toggle */}
-                            <ToggleSwitch
-                                id="onDuty"
-                                name="onDuty"
-                                checked={formData.onDuty}
-                                onChange={(checked) => handleInputChange("onDuty", checked)}
-                                label="En Guardia (On Duty)"
-                                description="Disponible para emergencias"
-                            />
+                            {/* On Duty Status */}
+                            <div>
+                                <label className="form-label">ESTADO DE GUARDIA</label>
+                                <select
+                                    value={formData.onDuty}
+                                    onChange={(e) =>
+                                        handleInputChange("onDuty", e.target.value as "active" | "inactive" | "onDuty")
+                                    }
+                                    className="form-input appearance-none cursor-pointer font-medium"
+                                >
+                                    <option value="inactive">Inactivo</option>
+                                    <option value="active">Activo</option>
+                                    <option value="onDuty">En Guardia (On Duty)</option>
+                                </select>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Define el estado de disponibilidad del instalador
+                                </p>
+                            </div>
 
                             {/* Show Inventory Toggle */}
                             <ToggleSwitch

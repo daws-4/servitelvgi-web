@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { InstallerEditForm } from "@/components/installers/InstallerEditForm";
 import { InstallerStatusBadge } from "@/components/installers/InstallerStatusBadge";
+import { InstallerOnDutyBadge } from "@/components/installers/InstallerOnDutyBadge";
 
 interface Installer {
     _id: string;
@@ -13,7 +14,7 @@ interface Installer {
     email: string;
     phone: string;
     status: "active" | "inactive";
-    onDuty: boolean;
+    onDuty: "active" | "inactive" | "onDuty";
     showInventory: boolean;
     currentCrew?: string | null;
     profilePicture?: string | null;
@@ -190,6 +191,7 @@ export default function InstallerEditPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <InstallerStatusBadge status={installer.status} />
+                    <InstallerOnDutyBadge onDuty={installer.onDuty} />
                     <img
                         src={`https://ui-avatars.com/api/?name=${installer.name}+${installer.surname}&background=004ba8&color=fff`}
                         className="w-8 h-8 rounded-full"

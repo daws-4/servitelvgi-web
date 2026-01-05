@@ -43,8 +43,9 @@ const InstallerSchema = new mongoose.Schema(
       default:false
     },
     onDuty:{
-      type:Boolean,
-      default:false
+      type: String,
+      enum: ["active", "inactive", "onDuty"],
+      default: "inactive"
     },
     profilePicture:{
       type:String,

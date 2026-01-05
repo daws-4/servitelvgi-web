@@ -16,7 +16,8 @@ export interface InstallerAuthData {
   email: string;
   phone: string;
   status: string;
-  onDuty: boolean;
+  showInventory: boolean;
+  onDuty: "active" | "inactive" | "onDuty";
   crew: {
     _id: string;
     name: string;

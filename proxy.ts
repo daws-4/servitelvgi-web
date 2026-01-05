@@ -12,8 +12,10 @@ import { ROUTES, LOGIN_ROUTE, DEFAULT_REDIRECT } from "@/lib/routes";
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Read session token cookie. Adjust the cookie name if you use a different one.
-  const token = req.cookies.get("token")?.value ?? null;
+  // Leer token de cookie O del header Authorization
+  const token = req.cookies.get("token")?.value ?? 
+                req.headers.get("authorization")?.replace("Bearer ", "") ?? 
+                null;
 
   // Compatibility redirect: old login path -> new login root
   if (pathname === "/login" || pathname === "/login/") {

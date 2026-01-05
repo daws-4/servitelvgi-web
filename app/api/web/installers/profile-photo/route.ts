@@ -10,6 +10,13 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const imagen = formData.get('imagen') as File;
     const installerId = formData.get('installer_id') as string;
+    const isMobile = formData.get('mobile') === 'true'; // Detectar si viene de mobile
+
+    console.log('Request parameters:', {
+      installerId,
+      isMobile,
+      hasImage: !!imagen
+    });
 
     if (!imagen || !installerId) {
       return NextResponse.json({ 
@@ -22,6 +29,34 @@ export async function POST(req: NextRequest) {
       size: imagen.size,
       type: imagen.type
     });
+
+    // Si viene de mobile, omitir PocketBase y solo retornar éxito
+    if (isMobile) {
+      console.log('Mobile mode detected - skipping PocketBase upload');
+      
+      // Auto-actualizar el campo profilePicture del instalador si es necesario
+      try {
+        const currentInstaller = await getInstallerById(installerId) as any;
+        
+        if (currentInstaller) {
+          // Para mobile, podríamos guardar una URL temporal o dejar el campo como está
+          // Por ahora solo confirmamos que el instalador existe
+          console.log('Mobile: Installer exists, skipping profilePicture update');
+        }
+      } catch (updateError) {
+        console.error('Error checking installer:', updateError);
+      }
+
+      return NextResponse.json({ 
+        success: true,
+        mobile: true,
+        message: 'Image received (mobile mode - not uploaded to PocketBase)',
+        installer_id: installerId
+      });
+    }
+
+    // Flujo normal (web): subir a PocketBase
+    console.log('Web mode - uploading to PocketBase...');
 
     // Usar autenticación cacheada
     console.log('Authenticating with PocketBase...');
@@ -81,13 +116,19 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error("Error en PocketBase:", error);
+    console.error("========================================");
+    console.error("ERROR in POST /api/web/installers/profile-photo");
+    console.error("========================================");
+    console.error("Error completo:", error);
     console.error("Error details:", {
       message: error.message,
       status: error.status,
       response: error.response,
-      url: error.url
+      url: error.url,
+      stack: error.stack,
+      name: error.name
     });
+    console.error("========================================");
     
     return NextResponse.json({ 
       error: error.message || 'Unknown error',

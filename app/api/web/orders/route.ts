@@ -159,8 +159,44 @@ export async function PUT(request: NextRequest) {
           });
       }
       
-      // 2. Check for removed Generic Materials (Quantity) - ONLY IF COMPLETED
-      // If order WAS completed, generic materials were deducted. If we remove/reduce them, we must restore.
+      // 2. Check for removed Bobbins (batchCode) - ALWAYS restore since consumed early
+      // Bobbins are consumed when assigned to order, so they must be restored when removed regardless of order status
+      currentMaterials.forEach((curr: any) => {
+          // Only handle bobbins here (identified by batchCode)
+          if (!curr.batchCode) return;
+          // Skip if it was an equipment instance (already handled above)
+          if (curr.instanceIds && curr.instanceIds.length > 0) return;
+          
+          const currInvId = (curr.item && typeof curr.item === 'object') ? curr.item._id.toString() : (curr.item || curr.inventoryId).toString();
+          const currBatch = curr.batchCode;
+          
+          const match = newMaterials.find((newMat: any) => {
+              const newInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
+              return newInvId === currInvId && newMat.batchCode === currBatch;
+          });
+          
+          if (!match) {
+              // Bobbin completely removed - restore full quantity
+              materialsToRestore.push({
+                  inventoryId: currInvId,
+                  quantity: curr.quantity,
+                  batchCode: currBatch
+              });
+          } else {
+              // Bobbin exists, check quantity reduction
+              if (curr.quantity > match.quantity) {
+                  const delta = curr.quantity - match.quantity;
+                  materialsToRestore.push({
+                      inventoryId: currInvId,
+                      quantity: delta,
+                      batchCode: currBatch
+                  });
+              }
+          }
+      });
+      
+      // 3. Check for removed Generic Materials (Quantity) - ONLY IF COMPLETED
+      // Regular materials are only deducted when order is completed
       if (currentOrder.status === 'completed') {
            // Map current Generic items
            // We need to compare by inventoryId (or batchCode)
@@ -170,15 +206,16 @@ export async function PUT(request: NextRequest) {
            
            // Simplified logic: Iterate current, find match in new.
            currentMaterials.forEach((curr: any) => {
+               // Skip bobbins (already handled above)
+               if (curr.batchCode) return;
                // Skip if it was an equipment instance (already handled above)
                if (curr.instanceIds && curr.instanceIds.length > 0) return;
                
                const currInvId = (curr.item && typeof curr.item === 'object') ? curr.item._id.toString() : (curr.item || curr.inventoryId).toString();
-               const currBatch = curr.batchCode;
                
                const match = newMaterials.find((newMat: any) => {
                    const newInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
-                   return newInvId === currInvId && newMat.batchCode === currBatch;
+                   return newInvId === currInvId && !newMat.batchCode; // Match regular materials only
                });
                
                if (!match) {
@@ -186,7 +223,7 @@ export async function PUT(request: NextRequest) {
                    materialsToRestore.push({
                        inventoryId: currInvId,
                        quantity: curr.quantity,
-                       batchCode: currBatch
+                       batchCode: undefined
                    });
                } else {
                    // Item exists, check quantity reduction
@@ -195,7 +232,7 @@ export async function PUT(request: NextRequest) {
                        materialsToRestore.push({
                            inventoryId: currInvId,
                            quantity: delta,
-                           batchCode: currBatch
+                           batchCode: undefined
                        });
                    }
                }

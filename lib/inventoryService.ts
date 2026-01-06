@@ -779,13 +779,17 @@ export async function restoreInventoryFromOrder(
                     continue;
                 }
 
-                console.log(`[RESTORE] Verificando instancia ${uniqueId}: Status=${instance.status}, InstalledAt=${instance.installedAt?.orderId}, TargetOrder=${orderId}`);
+                console.log(`[RESTORE] Verificando instancia ${uniqueId}: Status=${instance.status}, InstalledAt=${instance.installedAt?.orderId}, AssignedTo=${instance.assignedTo?.crewId}, TargetOrder=${orderId}`);
 
-                // Solo restaurar si realmente estaba installed en esta orden
-                // Usamos loose equality para orderId por si acaso (String vs ObjectId)
+                // Case 1: Instance was INSTALLED in this order - restore to 'assigned'
                 const isInstalledInThisOrder = instance.status === 'installed' && instance.installedAt?.orderId?.toString() === orderId.toString();
                 
+                // Case 2: Instance is ASSIGNED to this crew (equipment added to order but order not completed yet)
+                // In this case, instance is already 'assigned' to crew, so we just need to update the crew inventory count
+                const isAssignedToThisCrew = instance.status === 'assigned' && instance.assignedTo?.crewId?.toString() === crewId.toString();
+                
                 if (isInstalledInThisOrder) {
+                    // Restore from installed -> assigned
                     instance.status = 'assigned';
                     instance.assignedTo = {
                         crewId: new mongoose.Types.ObjectId(crewId),
@@ -794,9 +798,15 @@ export async function restoreInventoryFromOrder(
                     instance.installedAt = undefined;
                     restoredCount++;
                     restoredInstances.push(uniqueId);
-                    console.log(`[RESTORE] Instancia ${uniqueId} marcada para restaurar.`);
+                    console.log(`[RESTORE] Instancia ${uniqueId} restaurada de 'installed' a 'assigned'.`);
+                } else if (isAssignedToThisCrew) {
+                    // Instance is already assigned to crew, we just need to restore the crew inventory count
+                    // No change to instance status needed, but we increment the count
+                    restoredCount++;
+                    restoredInstances.push(uniqueId);
+                    console.log(`[RESTORE] Instancia ${uniqueId} ya está 'assigned' a la cuadrilla, restaurando conteo.`);
                 } else {
-                    console.warn(`[RESTORE] Instancia ${uniqueId} saltada. No cumple condiciones.`);
+                    console.warn(`[RESTORE] Instancia ${uniqueId} saltada. Status=${instance.status}, no cumple condiciones.`);
                 }
             }
             

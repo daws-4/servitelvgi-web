@@ -88,16 +88,33 @@ export async function PUT(request: NextRequest) {
         );
       }
       
-      if (!currentOrder.assignedTo) {
+      // Determine the effective crew for this operation
+      // Priority: New assignment from data > Existing assignment from DB
+      let effectiveCrewId = data.assignedTo 
+        ? (typeof data.assignedTo === 'object' ? data.assignedTo._id : data.assignedTo)
+        : (currentOrder.assignedTo 
+            ? (typeof currentOrder.assignedTo === 'object' ? currentOrder.assignedTo._id : currentOrder.assignedTo) 
+            : null);
+
+      // Normalize to string
+      if (effectiveCrewId && typeof effectiveCrewId === 'object') effectiveCrewId = effectiveCrewId.toString();
+      if (effectiveCrewId) effectiveCrewId = String(effectiveCrewId);
+
+      // Validate: Must have a crew to consume materials
+      if (!effectiveCrewId && hasMaterials) {
         return NextResponse.json(
           { error: "La orden debe tener una cuadrilla asignada para consumir materiales" },
           { status: 400, headers: CORS_HEADERS }
         );
       }
 
-      const crewId = (currentOrder.assignedTo && typeof currentOrder.assignedTo === 'object' && '_id' in currentOrder.assignedTo) 
+      // Crew ID for restoration (Previous Crew)
+      const previousCrewId = (currentOrder.assignedTo && typeof currentOrder.assignedTo === 'object' && '_id' in currentOrder.assignedTo) 
         ? (currentOrder.assignedTo as any)._id.toString() 
-        : currentOrder.assignedTo.toString();
+        : (currentOrder.assignedTo ? currentOrder.assignedTo.toString() : null);
+
+      // Crew ID for deduction (Target/Effective Crew)
+      const targetCrewId = effectiveCrewId;
 
       // --- LOGIC FOR RESTORING REMOVED MATERIALS ---
       // Compare currentOrder.materialsUsed vs data.materialsUsed
@@ -240,10 +257,10 @@ export async function PUT(request: NextRequest) {
       }
       
       // Execute Restoration if needed
-      if (materialsToRestore.length > 0) {
+      if (materialsToRestore.length > 0 && previousCrewId) {
           try {
               console.log("Restoring materials:", JSON.stringify(materialsToRestore));
-              await restoreInventoryFromOrder(id, crewId, materialsToRestore, sessionUser || undefined);
+              await restoreInventoryFromOrder(id, previousCrewId, materialsToRestore, sessionUser || undefined);
           } catch (restoreErr) {
               console.error("Error restoring inventory:", restoreErr);
               // We log but maybe shouldn't block the update? 
@@ -322,9 +339,13 @@ export async function PUT(request: NextRequest) {
        // Procesar consumo de materiales del inventario de la cuadrilla
        try {
         
+        if (!targetCrewId) {
+             throw new Error("No se puede procesar materiales sin una cuadrilla asignada");
+        }
+
         await processOrderUsage(
           id,
-          crewId,
+          targetCrewId,
           materialsToProcess.map((m: any) => ({
             inventoryId: (m.item && typeof m.item === 'object') ? m.item._id : (m.item || m.inventoryId),
             quantity: (m.instanceIds && m.instanceIds.length > 0) ? m.instanceIds.length : m.quantity,

@@ -2,6 +2,38 @@
 
 import mongoose from "mongoose";
 
+export interface IInventoryInstance {
+  uniqueId: string;
+  serialNumber?: string;
+  macAddress?: string;
+  status: "in-stock" | "assigned" | "installed" | "damaged" | "retired";
+  assignedTo?: {
+    crewId?: mongoose.Schema.Types.ObjectId;
+    orderId?: mongoose.Schema.Types.ObjectId;
+    assignedAt?: Date;
+  };
+  installedAt?: {
+    orderId?: mongoose.Schema.Types.ObjectId;
+    installedDate?: Date;
+    location?: string;
+  };
+  notes?: string;
+  createdAt?: Date;
+}
+
+export interface IInventory {
+  _id?: string;
+  code: string;
+  description: string;
+  unit: string;
+  currentStock: number;
+  minimumStock: number;
+  type: "material" | "equipment" | "tool";
+  instances?: IInventoryInstance[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 const InventorySchema = new mongoose.Schema(
   {
     // Identificadores del ítem, basados en tu archivo Excel

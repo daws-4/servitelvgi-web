@@ -33,25 +33,46 @@ export async function POST(req: NextRequest) {
     // Si viene de mobile, omitir PocketBase y solo retornar éxito
     if (isMobile) {
       console.log('Mobile mode detected - skipping PocketBase upload');
+      const profilePictureUrl = formData.get('profilePicture') as string;
+
+      if (!profilePictureUrl) {
+           console.error('Mobile mode: profilePicture URL is missing');
+           return NextResponse.json({ 
+            error: "profilePicture URL es requerido en modo mobile" 
+          }, { status: 400 });
+      }
+
+      console.log('Mobile: Received profilePicture URL:', profilePictureUrl);
       
-      // Auto-actualizar el campo profilePicture del instalador si es necesario
+      // Auto-actualizar el campo profilePicture del instalador
       try {
         const currentInstaller = await getInstallerById(installerId) as any;
         
         if (currentInstaller) {
-          // Para mobile, podríamos guardar una URL temporal o dejar el campo como está
-          // Por ahora solo confirmamos que el instalador existe
-          console.log('Mobile: Installer exists, skipping profilePicture update');
+          // Actualizar el instalador con la URL recibida
+          await updateInstaller(installerId, { 
+            profilePicture: profilePictureUrl 
+          });
+          console.log('Mobile: Installer profilePicture updated successfully with URL:', profilePictureUrl);
+        } else {
+             console.warn('Mobile: Installer not found with ID:', installerId);
+             return NextResponse.json({ 
+                error: "Instalador no encontrado" 
+              }, { status: 404 });
         }
       } catch (updateError) {
-        console.error('Error checking installer:', updateError);
+        console.error('Error updating installer profilePicture:', updateError);
+        return NextResponse.json({ 
+            error: "Error actualizando el instalador" 
+          }, { status: 500 });
       }
 
       return NextResponse.json({ 
         success: true,
         mobile: true,
-        message: 'Image received (mobile mode - not uploaded to PocketBase)',
-        installer_id: installerId
+        message: 'Profile picture updated successfully (mobile mode)',
+        installer_id: installerId,
+        url: profilePictureUrl
       });
     }
 
@@ -92,8 +113,22 @@ export async function POST(req: NextRequest) {
       const currentInstaller = await getInstallerById(installerId) as any;
       
       if (currentInstaller) {
-        // Si ya tenía una foto, podríamos eliminar la vieja de PocketBase aquí
-        // pero por ahora solo actualizamos con la nueva
+        // Si ya tenía una foto, eliminarla de PocketBase para no dejar basura
+        if (currentInstaller.profilePicture) {
+            console.log('Found existing profile picture, attempting to delete from PocketBase...');
+            try {
+                // URL format: ${PB_URL}/api/files/{collectionId}/{recordId}/{filename}
+                const urlParts = currentInstaller.profilePicture.split('/');
+                if (urlParts.length >= 3) {
+                    const recordId = urlParts[urlParts.length - 2];
+                    console.log('Deleting old record with ID:', recordId);
+                    await pb.collection('profile_installer').delete(recordId);
+                    console.log('Old profile picture deleted successfully');
+                }
+            } catch (deleteError) {
+                console.error('Error deleting old profile picture (non-blocking):', deleteError);
+            }
+        }
         
         // Actualizar el instalador con la nueva URL
         await updateInstaller(installerId, { 

@@ -15,6 +15,7 @@ export interface Material {
     quantity: number;
     batchCode?: string; // Optional: identifies specific bobbin used
     instanceIds?: string[]; // Optional: identifies specific equipment instances used
+    instanceDetails?: { uniqueId: string; serialNumber: string }[]; // Populated details
 }
 
 interface MaterialsManagerProps {
@@ -22,6 +23,7 @@ interface MaterialsManagerProps {
     assignedCrewId?: string;
     initialMaterials?: Material[];
     onChange?: (materials: Material[]) => void;
+    onImmediateSave?: (materials: Material[]) => Promise<void>;
 }
 
 interface CrewInventoryItem {
@@ -54,6 +56,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
     assignedCrewId,
     initialMaterials = [],
     onChange,
+    onImmediateSave,
 }) => {
     const [materials, setMaterials] = useState<Material[]>(initialMaterials);
     const [crewInventory, setCrewInventory] = useState<CrewInventoryItem[]>([]);
@@ -61,7 +64,8 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
     const [loading, setLoading] = useState(false);
     const [selectedMaterialId, setSelectedMaterialId] = useState("");
     const [selectedBatchCode, setSelectedBatchCode] = useState("");
-    const [quantity, setQuantity] = useState(1);
+    const [materialQuantity, setMaterialQuantity] = useState(1);
+    const [bobbinQuantity, setBobbinQuantity] = useState(1);
     const [returnModalOpen, setReturnModalOpen] = useState(false);
     const [materialToReturn, setMaterialToReturn] = useState<Material | null>(null);
     const [returningMaterial, setReturningMaterial] = useState(false);
@@ -101,7 +105,28 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         try {
             setLoading(true);
             const response = await axios.get(`/api/web/crews?id=${assignedCrewId}`);
-            setCrewInventory(response.data.assignedInventory || []);
+            let inventory = response.data.assignedInventory || [];
+
+            // Sync with local materials (deduct used quantities)
+            // This prevents "resetting" available counts if we refresh while editing
+            if (materials.length > 0) {
+                inventory = inventory.map((inv: any) => {
+                    const materialUsage = materials.find(m => {
+                        const mId = typeof m.item === 'string' ? m.item : m.item._id;
+                        return mId === inv.item._id;
+                    });
+
+                    if (materialUsage && !materialUsage.batchCode) { // Only generic materials
+                        return {
+                            ...inv,
+                            quantity: Math.max(0, inv.quantity - materialUsage.quantity)
+                        };
+                    }
+                    return inv;
+                });
+            }
+
+            setCrewInventory(inventory);
         } catch (error) {
             console.error("Error fetching crew inventory:", error);
             alert("Error al cargar el inventario de la cuadrilla");
@@ -117,7 +142,11 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             const response = await axios.get(
                 `/api/web/inventory/batches?crewId=${assignedCrewId}&status=active`
             );
-            setCrewBobbins(response.data || []);
+            const bobbins = response.data || [];
+
+            // Use server values directly - the server already reflects the correct state
+            // after processing. Local decrements in handleAddBobbin provide immediate UI feedback.
+            setCrewBobbins(bobbins);
         } catch (error) {
             console.error("Error fetching crew bobbins:", error);
         }
@@ -129,7 +158,14 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         try {
             setLoadingEquipment(true);
             const response = await axios.get(`/api/web/crews/${assignedCrewId}/equipment-instances`);
-            setCrewEquipment(response.data.instances || []);
+            let equipment = response.data.instances || [];
+
+            // Sync equipment? 
+            // Equipment handling typically relies on checking instanceIds in materials.
+            // But strict exclusion from list might be needed if we supported adding same type multiple times.
+            // For now, let's leave equipment logic as is since duplications are blocked in handleAddEquipment.
+
+            setCrewEquipment(equipment);
         } catch (error) {
             console.error("Error fetching crew equipment:", error);
         } finally {
@@ -157,12 +193,12 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             return;
         }
 
-        if (quantity <= 0) {
+        if (materialQuantity <= 0) {
             alert("La cantidad debe ser mayor a 0");
             return;
         }
 
-        if (quantity > selectedItem.quantity) {
+        if (materialQuantity > selectedItem.quantity) {
             alert(
                 `Cantidad no disponible. Máximo: ${selectedItem.quantity} ${selectedItem.item.unit}`
             );
@@ -178,7 +214,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         if (existingMaterialIndex >= 0) {
             // Material already exists, update quantity
             const existingMaterial = materials[existingMaterialIndex];
-            const newQuantity = existingMaterial.quantity + quantity;
+            const newQuantity = existingMaterial.quantity + materialQuantity;
 
             // Validate total quantity
             if (newQuantity > selectedItem.quantity) {
@@ -198,21 +234,32 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             );
 
             alert(
-                `Cantidad actualizada: ${existingMaterial.quantity} + ${quantity} = ${newQuantity} ${selectedItem.item.unit}`
+                `Cantidad actualizada: ${existingMaterial.quantity} + ${materialQuantity} = ${newQuantity} ${selectedItem.item.unit}`
             );
         } else {
             // Material doesn't exist, add new entry
             const newMaterial: Material = {
                 item: selectedItem.item,
-                quantity: quantity,
+                quantity: materialQuantity,
             };
 
             setMaterials((prev) => [...prev, newMaterial]);
         }
 
+        // DECREMENT LOCAL INVENTORY
+        setCrewInventory(prev => prev.map(inv => {
+            if (inv.item._id === selectedMaterialId) {
+                return {
+                    ...inv,
+                    quantity: inv.quantity - materialQuantity
+                };
+            }
+            return inv;
+        }));
+
         // Reset inputs
         setSelectedMaterialId("");
-        setQuantity(1);
+        setMaterialQuantity(1);
     };
 
     const handleAddBobbin = () => {
@@ -230,12 +277,18 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             return;
         }
 
-        if (quantity <= 0) {
+        // Validate that bobbin has a valid item reference
+        if (!selectedBobbin.item || !selectedBobbin.item._id) {
+            alert("Esta bobina tiene un item de inventario inválido o eliminado. No se puede usar.");
+            return;
+        }
+
+        if (bobbinQuantity <= 0) {
             alert("La cantidad debe ser mayor a 0");
             return;
         }
 
-        if (quantity > selectedBobbin.currentQuantity) {
+        if (bobbinQuantity > selectedBobbin.currentQuantity) {
             alert(
                 `Metros no disponibles. Máximo: ${selectedBobbin.currentQuantity}m`
             );
@@ -248,22 +301,41 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         );
 
         if (existingBobbin) {
-            alert("Esta bobina ya está en la lista. Modifica la cantidad existente.");
+            alert("Esta bobina ya está en la lista.");
             return;
         }
 
-        // Add bobbin as material
+        // Add bobbin as material with valid item data
         const newMaterial: Material = {
-            item: selectedBobbin.item,
-            quantity: quantity,
+            item: {
+                _id: selectedBobbin.item._id,
+                code: selectedBobbin.item.code,
+                description: selectedBobbin.item.description,
+                unit: selectedBobbin.item.unit,
+                type: 'bobbin',
+            },
+            quantity: bobbinQuantity,
             batchCode: selectedBatchCode,
         };
 
         setMaterials((prev) => [...prev, newMaterial]);
 
+        // DECREMENT LOCAL BOBBIN INVENTORY (Subtract quantity)
+        setCrewBobbins((prev) =>
+            prev.map((bob) => {
+                if (bob.batchCode === selectedBatchCode) {
+                    return {
+                        ...bob,
+                        currentQuantity: bob.currentQuantity - bobbinQuantity,
+                    };
+                }
+                return bob;
+            })
+        );
+
         // Reset inputs
         setSelectedBatchCode("");
-        setQuantity(1);
+        setBobbinQuantity(1);
     };
 
     const handleToggleInstance = (instanceId: string) => {
@@ -276,7 +348,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         setSelectedInstanceIds(newSelection);
     };
 
-    const handleAddEquipment = () => {
+    const handleAddEquipment = async () => {
         if (!selectedEquipmentId) {
             alert("Por favor selecciona un equipo.");
             return;
@@ -316,7 +388,18 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             instanceIds: Array.from(selectedInstanceIds),
         };
 
-        setMaterials((prev) => [...prev, newMaterial]);
+        const updatedMaterials = [...materials, newMaterial];
+        setMaterials(updatedMaterials);
+
+        // Immediate save for equipment
+        if (onImmediateSave) {
+            try {
+                await onImmediateSave(updatedMaterials);
+            } catch (error) {
+                console.error("Error auto-saving equipment:", error);
+                alert("Error al asignar equipo. Verifica la conexión.");
+            }
+        }
 
         // Reset
         setSelectedEquipmentId("");
@@ -324,7 +407,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
         setEquipmentInstances([]);
     };
 
-    const handleEquipmentModalAdd = (instances: any[]) => {
+    const handleEquipmentModalAdd = async (instances: any[]) => {
         // Group instances by inventoryId
         const grouped = instances.reduce((acc, inst) => {
             if (!acc[inst.inventoryId]) {
@@ -338,19 +421,156 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                     },
                     quantity: 0,
                     instanceIds: [],
+                    instanceDetails: []
                 };
             }
             acc[inst.inventoryId].quantity += 1;
             acc[inst.inventoryId].instanceIds.push(inst.uniqueId);
+            acc[inst.inventoryId].instanceDetails.push({
+                uniqueId: inst.uniqueId,
+                serialNumber: inst.serialNumber || 'N/A'
+            });
             return acc;
         }, {} as Record<string, Material>);
 
         // Add to materials
-        setMaterials((prev) => [...prev, ...Object.values(grouped) as Material[]]);
+        const newMaterialsList = [...materials, ...Object.values(grouped) as Material[]];
+        setMaterials(newMaterialsList);
+
+        // --- UPDATE LOCAL INVENTORY STATE ---
+        // Reduce quantity locally so it reflects immediately in UI
+        const usedInstanceIds = new Set(instances.map(i => i.uniqueId));
+
+        setCrewInventory(prev => prev.map(inv => {
+            // Check if this inventory item is one of the ones being added
+            if (grouped[inv.item._id]) {
+                const countUsedHere = grouped[inv.item._id].quantity;
+                return {
+                    ...inv,
+                    quantity: Math.max(0, inv.quantity - countUsedHere),
+                    item: {
+                        ...inv.item,
+                        instances: (inv.item as any).instances?.map((inst: any) => {
+                            if (usedInstanceIds.has(inst.uniqueId)) {
+                                return { ...inst, status: 'installed' };
+                            }
+                            return inst;
+                        })
+                    }
+                };
+            }
+            return inv;
+        }));
+
+        // Immediate save for equipment
+        if (onImmediateSave) {
+            try {
+                await onImmediateSave(newMaterialsList);
+            } catch (error) {
+                console.error("Error auto-saving equipment:", error);
+                alert("Error al asignar equipos. Verifica la conexión.");
+            }
+        }
     };
 
-    const handleRemoveMaterial = (index: number) => {
-        setMaterials((prev) => prev.filter((_, i) => i !== index));
+    const handleRemoveMaterial = async (index: number) => {
+        const materialToRemove = materials[index];
+        const updatedMaterials = materials.filter((_, i) => i !== index);
+        setMaterials(updatedMaterials);
+
+        console.log("Removing material:", materialToRemove);
+
+        // Case 1: Bobbin (identified by batchCode or type 'bobbin')
+        if (materialToRemove.batchCode || (typeof materialToRemove.item !== 'string' && materialToRemove.item.type === 'bobbin')) {
+            const batchCode = materialToRemove.batchCode;
+            const quantityToRestore = materialToRemove.quantity;
+
+            if (batchCode) {
+                setCrewBobbins(prev => prev.map(bob => {
+                    if (bob.batchCode === batchCode) {
+                        return {
+                            ...bob,
+                            currentQuantity: bob.currentQuantity + quantityToRestore
+                        };
+                    }
+                    return bob;
+                }));
+            }
+
+            // IMPORTANT: Save changes to server to persist bobbin restoration
+            if (onImmediateSave) {
+                try {
+                    console.log("Saving bobbin removal to backend...");
+                    await onImmediateSave(updatedMaterials);
+                    console.log("Bobbin removal saved successfully.");
+                } catch (error) {
+                    console.error("Error updating order after bobbin removal:", error);
+                    alert("Error al eliminar la bobina. Verifica la conexión.");
+                }
+            }
+            return;
+        }
+
+        // Case 2: Equipment (identified by instanceIds or type='equipment')
+        if (
+            (materialToRemove.instanceIds && materialToRemove.instanceIds.length > 0) ||
+            (typeof materialToRemove.item !== 'string' && materialToRemove.item.type === 'equipment')
+        ) {
+            // Restore to local inventory state
+            const itemId = typeof materialToRemove.item === 'string' ? materialToRemove.item : materialToRemove.item._id;
+            const quantityToRestore = materialToRemove.instanceIds?.length || materialToRemove.quantity || 0;
+            const instancesToRestore = new Set(materialToRemove.instanceIds || []);
+
+            console.log(`Restoring locally: Item=${itemId}, Qty=${quantityToRestore}, Instances=${Array.from(instancesToRestore).join(',')}`);
+
+            setCrewInventory(prev => prev.map(inv => {
+                // Loose comparison to avoid type mismatch
+                if (inv.item._id.toString() === itemId.toString()) {
+                    const newQuantity = inv.quantity + quantityToRestore;
+                    console.log(`Updated inventory item ${inv.item.description}: Old Qty=${inv.quantity}, New Qty=${newQuantity}`);
+                    return {
+                        ...inv,
+                        quantity: newQuantity,
+                        item: {
+                            ...inv.item,
+                            instances: (inv.item as any).instances?.map((inst: any) => {
+                                if (instancesToRestore.has(inst.uniqueId)) {
+                                    // Mark as assigned (available) locally
+                                    return { ...inst, status: 'assigned' };
+                                }
+                                return inst;
+                            })
+                        }
+                    };
+                }
+                return inv;
+            }));
+
+            if (onImmediateSave) {
+                try {
+                    console.log("Saving changes to backend...");
+                    await onImmediateSave(updatedMaterials);
+                    console.log("Changes saved successfully.");
+                } catch (error) {
+                    console.error("Error updating ordering after equipment removal:", error);
+                }
+            }
+            return;
+        }
+
+        // Case 3: Regular Material
+        const itemId = typeof materialToRemove.item === 'string' ? materialToRemove.item : materialToRemove.item._id;
+        const quantityToRestore = materialToRemove.quantity;
+
+        setCrewInventory(prev => prev.map(inv => {
+            if (inv.item._id.toString() === itemId.toString()) {
+                return {
+                    ...inv,
+                    quantity: inv.quantity + quantityToRestore
+                };
+            }
+            return inv;
+        }));
     };
 
     const handleQuantityChange = (index: number, newQuantity: number) => {
@@ -513,12 +733,26 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                     className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all cursor-pointer"
                                 >
                                     <option value="">-- Seleccionar Material --</option>
-                                    {crewInventory.map((inv) => (
-                                        <option key={inv.item._id} value={inv.item._id}>
-                                            {inv.item.code} - {inv.item.description} (Disp:{" "}
-                                            {inv.quantity} {inv.item.unit})
-                                        </option>
-                                    ))}
+                                    {crewInventory
+                                        .filter(inv => {
+                                            const type = (inv.item as any).type;
+
+                                            // 1. Check explicit type
+                                            if (type === 'bobbin' || type === 'equipment') return false;
+
+                                            // 2. Check if item exists in crewBobbins (Robust check)
+                                            // If an item ID is found in crewBobbins, it's a bobbin and should be excluded here
+                                            const isBobbin = crewBobbins.some(b => b.item && b.item._id === inv.item._id);
+                                            if (isBobbin) return false;
+
+                                            return true;
+                                        })
+                                        .map((inv) => (
+                                            <option key={inv.item._id} value={inv.item._id}>
+                                                {inv.item.code} - {inv.item.description} (Disp:{" "}
+                                                {inv.quantity} {inv.item.unit})
+                                            </option>
+                                        ))}
                                 </select>
                             </div>
                             <div className="w-24">
@@ -528,8 +762,8 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                 <input
                                     type="number"
                                     min="1"
-                                    value={quantity}
-                                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                                    value={materialQuantity}
+                                    onChange={(e) => setMaterialQuantity(parseInt(e.target.value) || 1)}
                                     className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
                                 />
                             </div>
@@ -553,16 +787,22 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                 </label>
                                 <select
                                     value={selectedBatchCode}
-                                    onChange={(e) => setSelectedBatchCode(e.target.value)}
+                                    onChange={(e) => {
+                                        const code = e.target.value;
+                                        setSelectedBatchCode(code);
+                                        setBobbinQuantity(1);
+                                    }}
                                     className="w-full px-3 py-2.5 border-2 border-blue-200 rounded-md bg-white text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
                                 >
                                     <option value="">-- Seleccionar Bobina --</option>
-                                    {crewBobbins.map((bobbin) => (
-                                        <option key={bobbin._id} value={bobbin.batchCode}>
-                                            {bobbin.batchCode} - {bobbin.item.description} (Disp:{" "}
-                                            {bobbin.currentQuantity}m)
-                                        </option>
-                                    ))}
+                                    {crewBobbins
+                                        .filter((bobbin) => bobbin.item && bobbin.item._id)
+                                        .map((bobbin) => (
+                                            <option key={bobbin._id} value={bobbin.batchCode}>
+                                                {bobbin.batchCode} - {bobbin.item.description} (Disp:{" "}
+                                                {bobbin.currentQuantity}m)
+                                            </option>
+                                        ))}
                                 </select>
                             </div>
                             <div className="w-24">
@@ -572,8 +812,8 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                 <input
                                     type="number"
                                     min="1"
-                                    value={quantity}
-                                    onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                                    value={bobbinQuantity}
+                                    onChange={(e) => setBobbinQuantity(parseInt(e.target.value) || 1)}
                                     className="w-full px-3 py-2.5 border-2 border-blue-200 rounded-md bg-white text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all"
                                 />
                             </div>
@@ -633,11 +873,14 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                         >
                                             <td className="px-4 py-3 font-medium text-gray-700">
                                                 <div className="flex items-center gap-2">
-                                                    {material.batchCode && (
+                                                    {/* Check for Bobbin FIRST */}
+                                                    {(material.batchCode || (typeof material.item !== 'string' && material.item.type === 'bobbin')) ? (
                                                         <i className="fa-solid fa-spool text-blue-600" title="Bobina"></i>
-                                                    )}
-                                                    {material.instanceIds && (
-                                                        <i className="fa-solid fa-microchip text-purple-600" title="Equipo"></i>
+                                                    ) : (
+                                                        /* Check for Equipment SECOND */
+                                                        (material.instanceIds && material.instanceIds.length > 0) || (typeof material.item !== 'string' && material.item.type === 'equipment') ? (
+                                                            <i className="fa-solid fa-microchip text-purple-600" title="Equipo"></i>
+                                                        ) : null
                                                     )}
                                                     <span>{renderMaterialDisplay(material)}</span>
                                                     {material.batchCode && (
@@ -645,12 +888,28 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                                             {material.batchCode}
                                                         </span>
                                                     )}
-                                                    {material.instanceIds && (
-                                                        <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                                                            {material.instanceIds.length} instancia{material.instanceIds.length > 1 ? 's' : ''}
-                                                        </span>
-                                                    )}
+                                                    {/* Only show instance count for equipment that has actual instances */}
+                                                    {material.instanceIds && material.instanceIds.length > 0 &&
+                                                        !material.batchCode &&
+                                                        (typeof material.item !== 'string' && material.item.type === 'equipment') && (
+                                                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                                                                {material.instanceIds.length} instancia{material.instanceIds.length > 1 ? 's' : ''}
+                                                            </span>
+                                                        )}
                                                 </div>
+                                                {/* Show instance details if available */}
+                                                {material.instanceDetails && material.instanceDetails.length > 0 && (
+                                                    <div className="mt-1 pl-6 text-xs text-gray-500">
+                                                        {material.instanceDetails.map((detail, idx) => (
+                                                            <div key={idx} className="flex gap-2">
+                                                                <span className="font-mono bg-gray-50 px-1 rounded border border-gray-100">ID: {detail.uniqueId}</span>
+                                                                {detail.serialNumber && detail.serialNumber !== 'N/A' && (
+                                                                    <span>S/N: {detail.serialNumber}</span>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <input
@@ -663,7 +922,11 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                                             parseInt(e.target.value) || 1
                                                         )
                                                     }
-                                                    className="w-16 text-center border rounded p-1 text-sm focus:border-primary outline-none"
+                                                    className={`w-16 text-center border rounded p-1 text-sm focus:border-primary outline-none ${(material.instanceIds && material.instanceIds.length > 0) || (typeof material.item !== 'string' && material.item && material.item.type === 'equipment')
+                                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                        : ""
+                                                        }`}
+                                                    readOnly={!!((material.instanceIds && material.instanceIds.length > 0) || (typeof material.item !== 'string' && material.item && material.item.type === 'equipment'))}
                                                 />
                                             </td>
                                             <td className="px-4 py-3 text-center text-gray-500">

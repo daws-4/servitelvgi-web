@@ -3,6 +3,53 @@
 
 import mongoose from "mongoose";
 
+export interface IOrder {
+  _id?: string;
+  subscriberNumber: string;
+  type: "instalacion" | "averia" | "otro";
+  status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
+  subscriberName: string;
+  address: string;
+  phones?: string[];
+  email?: string;
+  node?: string;
+  servicesToInstall?: string[];
+  assignedTo?: mongoose.Schema.Types.ObjectId | any;
+  receptionDate?: Date;
+  assignmentDate?: Date;
+  completionDate?: Date;
+  coordinates?: {
+    latitude?: number;
+    longitude?: number;
+  };
+  reportDetails?: string;
+  materialsUsed?: {
+    item: mongoose.Schema.Types.ObjectId | any;
+    quantity: number;
+    batchCode?: string;
+    instanceIds?: string[];
+    // Helper property for populated data (not in DB)
+    instanceDetails?: { uniqueId: string; serialNumber: string }[];
+  }[];
+  photoEvidence?: string[];
+  customerSignature?: string;
+  internetTest?: {
+    downloadSpeed?: number;
+    uploadSpeed?: number;
+    ping?: number;
+    provider?: string;
+    wifiSSID?: string;
+    frecuency?: string;
+    coordinates?: {
+      latitude?: number;
+      longitude?: number;
+    };
+  };
+  googleFormReported?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 const OrderSchema = new mongoose.Schema(
   {
     // --- Datos extraídos por la IA (de la imagen) ---
@@ -88,6 +135,7 @@ const OrderSchema = new mongoose.Schema(
         item: { type: mongoose.Schema.Types.ObjectId, ref: "Inventory" },
         quantity: { type: Number, required: true },
         batchCode: { type: String }, // Optional: identifies specific bobbin used
+        instanceIds: { type: [String], default: [] }, // Optional: identifies specific equipment instances used
       },
     ],
     

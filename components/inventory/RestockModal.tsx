@@ -647,12 +647,12 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                                 variant="bordered"
                                                 size="sm"
                                             >
-                                                {bobbins.map((bobbin) => (
+                                                {bobbins.filter(bobbin => bobbin.item).map((bobbin) => (
                                                     <AutocompleteItem key={bobbin._id} textValue={bobbin.batchCode}>
                                                         <div className="flex flex-col">
                                                             <span className="font-medium">{bobbin.batchCode}</span>
                                                             <span className="text-xs text-neutral">
-                                                                {bobbin.item.description} - {bobbin.currentQuantity}m disponibles
+                                                                {bobbin.item?.description || 'Item no disponible'} - {bobbin.currentQuantity}m disponibles
                                                             </span>
                                                         </div>
                                                     </AutocompleteItem>
@@ -705,12 +705,12 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-neutral/10">
-                                                    {bobbins.map((bobbin) => (
+                                                    {bobbins.filter(bobbin => bobbin.item).map((bobbin) => (
                                                         <tr key={bobbin._id}>
                                                             <td className="px-4 py-3 font-medium">{bobbin.batchCode}</td>
                                                             <td className="px-4 py-3">
-                                                                <div className="text-sm">{bobbin.item.description}</div>
-                                                                <div className="text-xs text-neutral">{bobbin.item.code}</div>
+                                                                <div className="text-sm">{bobbin.item?.description || 'Item eliminado'}</div>
+                                                                <div className="text-xs text-neutral">{bobbin.item?.code || '-'}</div>
                                                             </td>
                                                             <td className="px-4 py-3 text-right font-bold text-primary">
                                                                 {bobbin.currentQuantity}m

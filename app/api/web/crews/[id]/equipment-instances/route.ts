@@ -31,7 +31,8 @@ export async function GET(
     }
 
     // Get equipment types assigned to crew
-    const equipmentTypes = crew.assignedInventory
+    // Get equipment types assigned to crew
+    const equipmentTypes = (crew.assignedInventory || [])
       .filter((inv: any) => inv.item && inv.item.type === "equipment");
 
     const instances = [];

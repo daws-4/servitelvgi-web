@@ -23,16 +23,29 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
+    
+    console.log('GET /api/web/installers hit');
+    console.log('Query params:', { id });
+    
     if (id) {
+      console.log('Fetching installer by ID:', id);
       const item = await getInstallerById(id);
-      if (!item)
+      
+      console.log('getInstallerById result:', item ? 'Found' : 'Not found');
+      
+      if (!item) {
+        console.log('Returning 404 for ID:', id);
         return NextResponse.json(
           { error: "Not found" },
           { status: 404, headers: CORS_HEADERS }
         );
+      }
       return NextResponse.json(item, { status: 200, headers: CORS_HEADERS });
     }
+    
+    console.log('Fetching all installers');
     const items = await getInstallers();
+    console.log('Found installers count:', items.length);
     return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     console.error('Error in GET /api/web/installers:', err);

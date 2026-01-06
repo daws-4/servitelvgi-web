@@ -6,6 +6,8 @@ import { FormTextarea } from '@/components/interactiveForms/Textarea';
 import { MaterialsManager, Material } from './MaterialsManager';
 import { OrderStatusManager, OrderStatus, OrderType } from './OrderStatusManager';
 import { PhotoEvidenceManager } from './PhotoEvidenceManager';
+import { InternetTestCard } from './InternetTestCard';
+import { CustomerSignatureCard } from './CustomerSignatureCard';
 import { UserIcon } from '@/components/icons';
 
 // Microchip icon for technical section
@@ -20,6 +22,19 @@ const MicrochipIcon: React.FC<{ className?: string }> = ({ className }) => (
     </svg>
 );
 
+export interface InternetTestData {
+    downloadSpeed?: number;
+    uploadSpeed?: number;
+    ping?: number;
+    provider?: string;
+    wifiSSID?: string;
+    frecuency?: string;
+    coordinates?: {
+        latitude?: number;
+        longitude?: number;
+    };
+}
+
 export interface OrderEditData {
     subscriberNumber: string;
     subscriberName: string;
@@ -33,6 +48,8 @@ export interface OrderEditData {
     assignedTo?: string;
     materialsUsed?: Material[];
     photoEvidence?: string[]; // Image IDs in format "recordId:filename"
+    internetTest?: InternetTestData;
+    customerSignature?: string; // Base64 from react-native-signature-canvas
 }
 
 interface OrderEditFormProps {
@@ -118,6 +135,46 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
         }
     };
 
+    const handleMaterialsAutoSave = async (newMaterials: Material[]) => {
+        try {
+            // Send PUT request to update only materials
+            // Note: We send the current state of other important fields if needed, 
+            // but the API should handle partial updates if designed well. 
+            // Here we send minimal required fields + materials
+
+            const payload = {
+                id: orderId,
+                // Include other required fields if the API validation is strict, 
+                // but ideally a PATCH or relaxed PUT handles this.
+                // Re-sending current form data to be safe with the current PUT logic
+                ...formData,
+                materialsUsed: newMaterials, // Overwrite specifically
+                phones: formData.phones.split(',').map(p => p.trim()).filter(p => p),
+                servicesToInstall: formData.servicesToInstall.split(',').map(s => s.trim()).filter(s => s),
+            };
+
+            const response = await fetch('/api/web/orders', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to auto-save materials');
+            }
+
+            // If successful, update local state too just in case
+            setMaterials(newMaterials);
+
+        } catch (error) {
+            console.error("Auto-save materials failed:", error);
+            throw error; // Re-throw to be handled by the caller (MaterialsManager alert)
+        }
+    };
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* LEFT COLUMN (2/3) */}
@@ -197,6 +254,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     assignedCrewId={formData.assignedTo}
                     initialMaterials={materials}
                     onChange={setMaterials}
+                    onImmediateSave={handleMaterialsAutoSave}
                 />
 
                 {/* 4. Photo Evidence */}
@@ -207,6 +265,12 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     initialPhotoIds={photoIds}
                     onChange={setPhotoIds}
                 />
+
+                {/* 5. Internet Test Results (Read-only) */}
+                <InternetTestCard data={formData.internetTest} />
+
+                {/* 6. Customer Signature (Read-only) */}
+                <CustomerSignatureCard signature={formData.customerSignature} />
 
             </div>
 

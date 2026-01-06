@@ -1,6 +1,7 @@
-import OrderModel from "@/models/Order";
+import OrderModel, { IOrder } from "@/models/Order";
 import InstallerModel from "@/models/Installer"; // Registers Installer schema
 import CrewModel from "@/models/Crew"; // Registers Crew schema
+import InventoryModel, { IInventory } from "@/models/Inventory";
 import { connectDB } from "@/lib/db";
 import { createOrderHistory } from "@/lib/orderHistoryService";
 import { SessionUser } from "@/lib/authHelpers";
@@ -42,12 +43,44 @@ export async function getOrders(filters = {}) {
 }
 
 // Obtener una orden por id
-export async function getOrderById(id: string) {
+export async function getOrderById(id: string): Promise<IOrder | null> {
   await connectDB();
-  return await OrderModel.findById(id)
+  const order = await OrderModel.findById(id)
     .populate("assignedTo", "name")
-    .populate("materialsUsed.item", "code description unit")
-    .lean();
+    .populate("materialsUsed.item", "code description unit type")
+    .lean() as unknown as IOrder | null;
+
+  if (!order) return null;
+
+  // Manually populate instance details (serial numbers) for equipment
+  if (order.materialsUsed && order.materialsUsed.length > 0) {
+    for (const material of order.materialsUsed) {
+      // Check if material has instanceIds and item is populated (has _id)
+      if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
+        try {
+          // Find inventory item to look up instances
+          const inventory = await InventoryModel.findById((material.item as any)._id)
+            .select('instances')
+            .lean() as unknown as IInventory | null;
+
+          if (inventory && inventory.instances) {
+            // Map instanceIds to their details (serialNumber, etc.)
+            (material as any).instanceDetails = material.instanceIds.map((id: string) => {
+              const inst = inventory.instances?.find((i: any) => i.uniqueId === id);
+              return {
+                uniqueId: id,
+                serialNumber: inst?.serialNumber || 'N/A'
+              };
+            });
+          }
+        } catch (err) {
+          console.error(`Error populating instance details for material ${(material.item as any).code}:`, err);
+        }
+      }
+    }
+  }
+
+  return order;
 }
 
 // Helper function to compare and create history entries

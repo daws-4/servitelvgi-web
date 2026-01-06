@@ -48,6 +48,8 @@ export default function OrderEditPage() {
                         assignedTo: order.assignedTo?._id || order.assignedTo || undefined,
                         materialsUsed: order.materialsUsed || [],
                         photoEvidence: order.photoEvidence || [],
+                        internetTest: order.internetTest || undefined,
+                        customerSignature: order.customerSignature || undefined,
                     };
 
                     setOrderData(formData);

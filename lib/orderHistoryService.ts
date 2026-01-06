@@ -13,37 +13,44 @@ export async function getOrderHistories(filters: {
   crewId?: string;
   changeType?: string;
 } = {}) {
-  await connectDB();
-  
-  const query: any = {};
-  
-  // Filter by date range
-  if (filters.startDate || filters.endDate) {
-    query.createdAt = {};
-    if (filters.startDate) {
-      query.createdAt.$gte = new Date(filters.startDate);
+  try {
+    await connectDB();
+    
+    const query: any = {};
+    
+    // Filter by date range
+    if (filters.startDate || filters.endDate) {
+      query.createdAt = {};
+      if (filters.startDate) {
+        query.createdAt.$gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        // Add 23:59:59 to the last day
+        const endDate = new Date(filters.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = endDate;
+      }
     }
-    if (filters.endDate) {
-      // Add 23:59:59 to the last day
-      const endDate = new Date(filters.endDate);
-      endDate.setHours(23, 59, 59, 999);
-      query.createdAt.$lte = endDate;
-    }
+    
+    // Additional filters
+    if (filters.orderId) query.order = filters.orderId;
+    if (filters.crewId) query.crew = filters.crewId;
+    if (filters.changeType) query.changeType = filters.changeType;
+    
+    const results = await OrderHistoryModel.find(query)
+      .populate("order", "subscriberNumber subscriberName")
+      .populate("crew", "name")
+      .populate("changedBy", "name surname username")
+      .sort({ createdAt: -1 })
+      .lean(); // Use lean() for better performance and to avoid toObject issues
+    
+    // Return results or empty array
+    return results || [];
+  } catch (error) {
+    console.error("Error in getOrderHistories:", error);
+    // Return empty array on error to prevent crashes
+    return [];
   }
-  
-  // Additional filters
-  if (filters.orderId) query.order = filters.orderId;
-  if (filters.crewId) query.crew = filters.crewId;
-  if (filters.changeType) query.changeType = filters.changeType;
-  
-  const results = await OrderHistoryModel.find(query)
-    .populate("order", "subscriberNumber subscriberName")
-    .populate("crew", "name")
-    .populate("changedBy", "name surname username")
-    .sort({ createdAt: -1 });
-  
-  // Convert to plain objects after populate
-  return results.map(doc => doc.toObject());
 }
 
 export async function getOrderHistoryById(id: string) {

@@ -317,9 +317,11 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
     };
 
     // Filter out items that have bobbins from regular inventory list
-    const itemsWithBobbins = new Set(bobbins.map(b => {
-        return typeof b.item === 'object' ? b.item._id : b.item;
-    }));
+    const itemsWithBobbins = new Set(bobbins
+        .filter(b => b.item) // Filter out bobbins with null items
+        .map(b => {
+            return typeof b.item === 'object' ? b.item._id : b.item;
+        }));
 
     const regularInventoryItems = inventoryItems.filter(item =>
         !itemsWithBobbins.has(item._id) && item.type !== "equipment"
@@ -445,7 +447,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                                             variant="bordered"
                                             size="sm"
                                         >
-                                            {bobbins.map((batch) => (
+                                            {bobbins.filter(batch => batch.item).map((batch) => (
                                                 <AutocompleteItem key={batch.batchCode} textValue={batch.batchCode}>
                                                     <div className="flex flex-col">
                                                         <span className="font-medium">{batch.batchCode}</span>

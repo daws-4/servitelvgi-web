@@ -379,12 +379,19 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                                 className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 hover:border-primary transition-all"
                             >
                                 {/* Thumbnail Image */}
-                                <img
-                                    src={image.thumbUrl}
-                                    alt={`Evidencia ${index + 1}`}
-                                    className={`w-full h-full object-cover ${!image.isUploading ? 'cursor-pointer' : 'opacity-70'}`}
-                                    onClick={() => !image.isUploading && handleOpenViewer(index)}
-                                />
+                                {image.thumbUrl ? (
+                                    <img
+                                        src={image.thumbUrl}
+                                        alt={`Evidencia ${index + 1}`}
+                                        className={`w-full h-full object-cover ${!image.isUploading ? 'cursor-pointer' : 'opacity-70'}`}
+                                        onClick={() => !image.isUploading && handleOpenViewer(index)}
+                                    />
+                                ) : (
+                                    <div className="w-full h-full bg-gray-50 flex flex-col items-center justify-center text-gray-400 p-2 border-2 border-dashed border-gray-200">
+                                        <i className="fa-solid fa-image-slash text-2xl mb-1 text-gray-300"></i>
+                                        <span className="text-[10px] text-center font-medium">No disponible</span>
+                                    </div>
+                                )}
 
                                 {/* Upload Progress Overlay */}
                                 {image.isUploading && (
@@ -396,8 +403,8 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                                     </div>
                                 )}
 
-                                {/* Overlay with actions (only for uploaded images) */}
-                                {!image.isUploading && (
+                                {/* Overlay with actions (only for uploaded images with URLs) */}
+                                {!image.isUploading && image.thumbUrl && (
                                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-2">
                                         {/* View Button */}
                                         <button
@@ -419,8 +426,21 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
                                     </div>
                                 )}
 
+                                {/* Allow deleting broken images too */}
+                                {!image.isUploading && !image.thumbUrl && (
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
+                                        <button
+                                            onClick={() => handleDeleteImage(index)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-500 text-white flex items-center justify-center shadow-sm"
+                                            title="Eliminar imagen rota"
+                                        >
+                                            <i className="fa-solid fa-trash text-xs"></i>
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Image number badge */}
-                                <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-semibold">
+                                <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/60 text-white text-xs font-semibold z-10">
                                     {index + 1}
                                 </div>
                             </div>
@@ -438,7 +458,7 @@ export const PhotoEvidenceManager: React.FC<PhotoEvidenceManagerProps> = ({
             <ImageViewer
                 isOpen={viewerOpen}
                 onClose={() => setViewerOpen(false)}
-                images={images.filter(img => !img.isUploading).map(img => img.thumbUrl)}
+                images={images.filter(img => !img.isUploading && img.thumbUrl).map(img => img.thumbUrl)}
                 currentIndex={currentImageIndex}
                 onNavigate={setCurrentImageIndex}
             />

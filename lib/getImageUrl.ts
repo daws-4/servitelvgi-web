@@ -11,10 +11,19 @@
  */
 export async function getImageUrl(imageId: string, thumb?: string): Promise<string> {
   try {
-    const [recordId, filename] = imageId.split(':');
+    let recordId, filename;
     
-    if (!recordId || !filename) {
-      throw new Error('Invalid image ID format. Expected "recordId:filename"');
+    if (imageId.includes(':')) {
+        [recordId, filename] = imageId.split(':');
+    } else {
+        // Support for IDs that are just the recordId
+        recordId = imageId;
+        // filename is undefined, but that's fine as the API endpoint looks up the record by ID
+    }
+
+    if (!recordId) {
+      console.warn(`Invalid image ID components: "${imageId}"`);
+      return '';
     }
     
     let url = `/api/web/orders/uploads?recordId=${recordId}`;
@@ -25,14 +34,15 @@ export async function getImageUrl(imageId: string, thumb?: string): Promise<stri
     const response = await fetch(url);
     
     if (!response.ok) {
-      throw new Error('Failed to get image URL');
+        console.warn(`Failed to get image URL for ${imageId}: ${response.statusText}`);
+        return '';
     }
     
     const { url: imageUrl } = await response.json();
     return imageUrl;
   } catch (error) {
     console.error('Error getting image URL:', error);
-    throw error;
+    return ''; // Safely return empty string
   }
 }
 

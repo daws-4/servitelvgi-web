@@ -34,20 +34,13 @@ export default function OrderEditPage() {
 
                 if (response.data) {
                     const order = response.data;
-                    let signatureUrl = order.customerSignature;
+                    const signatureUrl = order.customerSignature;
 
-                    // Fetch signature from PocketBase
-                    try {
-                        const pb = new PocketBase(process.env.NEXT_PUBLIC_PB_URL || 'http://localhost:8090');
-                        const signatureRecord = await pb.collection('customers_signatures').getFirstListItem(`order_id="${orderId}"`);
-
-                        if (signatureRecord && signatureRecord.image) {
-                            signatureUrl = pb.files.getURL(signatureRecord, signatureRecord.image);
-                        }
-                    } catch (pbError) {
-                        // Signature not found or PB error - keep existing or undefined
-                        console.log("No signature found in PocketBase or error:", pbError);
-                    }
+                    console.log('Order loaded:', {
+                        id: order._id,
+                        hasSignature: !!signatureUrl,
+                        signatureUrl: signatureUrl
+                    });
 
                     // Transform API data to form data structure
                     const formData: OrderEditData = {

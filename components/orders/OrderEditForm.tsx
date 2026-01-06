@@ -270,7 +270,27 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                 <InternetTestCard data={formData.internetTest} />
 
                 {/* 6. Customer Signature (Read-only) */}
-                <CustomerSignatureCard signature={formData.customerSignature} />
+                <CustomerSignatureCard
+                    signature={formData.customerSignature}
+                    onDelete={async () => {
+                        try {
+                            const response = await fetch(`/api/web/upload/signature?orderId=${orderId}`, {
+                                method: 'DELETE',
+                            });
+
+                            if (response.ok) {
+                                setFormData(prev => ({ ...prev, customerSignature: undefined }));
+                                alert("Firma eliminada correctamente");
+                            } else {
+                                const err = await response.json();
+                                throw new Error(err.error || "Error al eliminar la firma");
+                            }
+                        } catch (error: any) {
+                            console.error("Error deleting signature:", error);
+                            alert(error.message);
+                        }
+                    }}
+                />
 
             </div>
 

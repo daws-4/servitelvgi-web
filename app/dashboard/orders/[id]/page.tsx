@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { OrderEditForm, OrderEditData } from '@/components/orders/OrderEditForm';
 import { OrderHistoryModal } from '@/components/orders/OrderHistoryModal';
 import axios from 'axios';
+import PocketBase from 'pocketbase';
 
 export default function OrderEditPage() {
     const router = useRouter();
@@ -27,10 +28,26 @@ export default function OrderEditPage() {
             try {
                 setLoading(true);
                 setError(null);
+
+                // Fetch order data
                 const response = await axios.get(`/api/web/orders?id=${orderId}`);
 
                 if (response.data) {
                     const order = response.data;
+                    let signatureUrl = order.customerSignature;
+
+                    // Fetch signature from PocketBase
+                    try {
+                        const pb = new PocketBase(process.env.NEXT_PUBLIC_PB_URL || 'http://localhost:8090');
+                        const signatureRecord = await pb.collection('customers_signatures').getFirstListItem(`order_id="${orderId}"`);
+
+                        if (signatureRecord && signatureRecord.image) {
+                            signatureUrl = pb.files.getURL(signatureRecord, signatureRecord.image);
+                        }
+                    } catch (pbError) {
+                        // Signature not found or PB error - keep existing or undefined
+                        console.log("No signature found in PocketBase or error:", pbError);
+                    }
 
                     // Transform API data to form data structure
                     const formData: OrderEditData = {
@@ -49,7 +66,7 @@ export default function OrderEditPage() {
                         materialsUsed: order.materialsUsed || [],
                         photoEvidence: order.photoEvidence || [],
                         internetTest: order.internetTest || undefined,
-                        customerSignature: order.customerSignature || undefined,
+                        customerSignature: signatureUrl || undefined,
                     };
 
                     setOrderData(formData);

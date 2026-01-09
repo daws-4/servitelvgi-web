@@ -31,13 +31,16 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/auth");
   const isAgentApi = pathname.startsWith("/api/agent");
   const isMobileApi = pathname.startsWith("/api/mobile");
+  const isPublicApi = pathname.startsWith("/api/public");
   const isRecoveryPath = pathname.startsWith("/recuperar-contrasena");
   const isCreateAdminPath = pathname.startsWith("/create-admin");
+  const isPublicApkPage = pathname === "/apk" || pathname === "/apk/";
 
   if (!token) {
-    // No session: allow only the login page, auth APIs, agent webhook API.
+    // No session: allow only the login page, auth APIs, agent webhook API, and public routes.
     // External services (N8N, webhooks) can call /api/agent/* without authentication.
-    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isRecoveryPath) {
+    // Public APK download page and public APIs are accessible to everyone.
+    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isPublicApi || isRecoveryPath || isPublicApkPage) {
       return NextResponse.next();
     }
 
@@ -67,6 +70,7 @@ export function proxy(req: NextRequest) {
     '/dashboard/installers',
     '/dashboard/crews',
     '/dashboard/inventory',
+    '/dashboard/apk',
     '/create-admin',
   ];
 

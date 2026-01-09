@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
-import Apk from '@/models/Apk';
+import Apk, { IApk } from '@/models/Apk';
 
 /**
  * GET /api/public/app-version
@@ -14,9 +14,9 @@ export async function GET() {
     // Obtener la última versión activa ordenada por version_code descendente
     const latestVersion = await Apk.findOne({ is_active: true })
       .sort({ version_code: -1 })
-      .lean();
+      .lean() as IApk | null;
 
-    if (!latestVersion) {
+    if (!latestVersion || Array.isArray(latestVersion)) {
       return NextResponse.json(
         { 
           success: false, 
@@ -29,7 +29,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       data: {
-        id: latestVersion._id.toString(),
+        id: String(latestVersion._id),
         version: latestVersion.version,
         versionCode: latestVersion.version_code,
         downloadUrl: latestVersion.download_url,

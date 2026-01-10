@@ -27,7 +27,7 @@ export async function exportReportToWord(
   // Header paragraphs
   const headerParagraphs = [
     new Paragraph({
-      text: "Servitel GI - Reporte",
+      text: "ENLARED GI - Reporte",
       heading: "Heading1",
       spacing: { after: 200 },
     }),
@@ -191,7 +191,7 @@ export async function exportReportToWord(
   // Generar blob y descargar
   const blob = await Packer.toBlob(doc);
   const dateStr = new Date().toISOString().split("T")[0];
-  const fileName = `Servitel_${reportType}_${dateStr}.docx`;
+  const fileName = `ENLARED_${reportType}_${dateStr}.docx`;
 
   saveAs(blob, fileName);
 }

@@ -45,6 +45,7 @@ export default function OrderEditPage() {
                     // Transform API data to form data structure
                     const formData: OrderEditData = {
                         subscriberNumber: order.subscriberNumber || '',
+                        ticket_id: order.ticket_id || '',
                         subscriberName: order.subscriberName || '',
                         phones: Array.isArray(order.phones) ? order.phones.join(', ') : (order.phones || ''),
                         email: order.email || '',
@@ -60,6 +61,7 @@ export default function OrderEditPage() {
                         photoEvidence: order.photoEvidence || [],
                         internetTest: order.internetTest || undefined,
                         customerSignature: signatureUrl || undefined,
+                        installerLog: order.installerLog || [],
                     };
 
                     setOrderData(formData);
@@ -132,6 +134,8 @@ export default function OrderEditPage() {
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 uppercase">Completada</span>;
             case 'cancelled':
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 uppercase">Cancelada</span>;
+            case 'hard':
+                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200 uppercase">Difícil</span>;
             default:
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800 border border-gray-200 uppercase">Cargando...</span>;
         }

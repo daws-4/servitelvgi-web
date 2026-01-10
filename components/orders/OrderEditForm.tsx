@@ -8,6 +8,7 @@ import { OrderStatusManager, OrderStatus, OrderType } from './OrderStatusManager
 import { PhotoEvidenceManager } from './PhotoEvidenceManager';
 import { InternetTestCard } from './InternetTestCard';
 import { CustomerSignatureCard } from './CustomerSignatureCard';
+import { InstallerLogManager, InstallerLogEntry } from './InstallerLogManager';
 import { UserIcon } from '@/components/icons';
 
 // Microchip icon for technical section
@@ -37,6 +38,7 @@ export interface InternetTestData {
 
 export interface OrderEditData {
     subscriberNumber: string;
+    ticket_id?: string;
     subscriberName: string;
     phones: string;
     email: string;
@@ -50,6 +52,7 @@ export interface OrderEditData {
     photoEvidence?: string[]; // Image IDs in format "recordId:filename"
     internetTest?: InternetTestData;
     customerSignature?: string; // Base64 from react-native-signature-canvas
+    installerLog?: InstallerLogEntry[];
 }
 
 interface OrderEditFormProps {
@@ -70,6 +73,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
     const [formData, setFormData] = useState<OrderEditData>(initialData);
     const [materials, setMaterials] = useState<Material[]>(initialData.materialsUsed || []);
     const [photoIds, setPhotoIds] = useState<string[]>(initialData.photoEvidence || []);
+    const [installerLog, setInstallerLog] = useState<InstallerLogEntry[]>(initialData.installerLog || []);
     const [isSaving, setIsSaving] = useState(false);
 
     const handleInputChange = (field: keyof OrderEditData, value: string) => {
@@ -80,8 +84,13 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
         status: OrderStatus;
         type: OrderType;
         assignedTo: string;
-        reportDetails?: string;
     }) => {
+        // Validate required fields
+        if (!formData.subscriberNumber.trim()) {
+            alert('El número de abonado es obligatorio');
+            return;
+        }
+
         setIsSaving(true);
 
         try {
@@ -92,6 +101,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                 assignedTo: data.assignedTo || undefined,
                 materialsUsed: materials,
                 photoEvidence: photoIds,
+                installerLog: installerLog,
             };
 
             if (onSave) {
@@ -193,10 +203,15 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                             label="N. Abonado"
                             value={formData.subscriberNumber}
                             onValueChange={(value) => handleInputChange('subscriberNumber', value)}
-                            isReadOnly
-                            classNames={{
-                                input: 'bg-gray-50 text-gray-500 cursor-not-allowed'
-                            }}
+                            isRequired
+                            description="Campo obligatorio"
+                        />
+                        <FormInput
+                            label="ID del Ticket"
+                            placeholder="Ej: TKT-2026-001"
+                            value={formData.ticket_id || ''}
+                            onValueChange={(value) => handleInputChange('ticket_id', value)}
+                            description="Opcional: ID del ticket asociado"
                         />
                         <FormInput
                             label="Nombre Completo"
@@ -257,6 +272,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     onImmediateSave={handleMaterialsAutoSave}
                 />
 
+
                 {/* 4. Photo Evidence */}
                 <PhotoEvidenceManager
                     orderId={orderId}
@@ -266,7 +282,14 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     onChange={setPhotoIds}
                 />
 
-                {/* 5. Internet Test Results (Read-only) */}
+                {/* 5. Installer Log */}
+                <InstallerLogManager
+                    initialLogs={installerLog}
+                    onChange={setInstallerLog}
+                    currentStatus={formData.status}
+                />
+
+                {/* 6. Internet Test Results (Read-only) */}
                 <InternetTestCard data={formData.internetTest} />
 
                 {/* 6. Customer Signature (Read-only) */}

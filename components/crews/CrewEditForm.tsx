@@ -11,6 +11,7 @@ interface Installer {
     name: string;
     surname: string;
     role?: string;
+    currentCrew?: string | null;
 }
 
 interface Vehicle {
@@ -58,6 +59,21 @@ export const CrewEditForm: React.FC<CrewEditFormProps> = ({
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Get IDs of current crew members (leader + members) to allow them in the dropdown
+    const currentCrewMemberIds = [formData.leader, ...formData.memberIds];
+
+    // Filter available installers: exclude those with currentCrew assigned (unless they're in this crew)
+    const filteredAvailableInstallers = availableInstallers.filter(installer => {
+        // If installer has no crew, they're available
+        if (!installer.currentCrew) return true;
+
+        // If installer is currently in THIS crew (leader or member), they're available
+        if (currentCrewMemberIds.includes(installer._id)) return true;
+
+        // Otherwise, they're assigned to another crew, so exclude them
+        return false;
+    });
 
     const handleInputChange = (field: string, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -163,7 +179,7 @@ export const CrewEditForm: React.FC<CrewEditFormProps> = ({
                                     required
                                 >
                                     <option value="">Seleccionar instalador...</option>
-                                    {availableInstallers.map((installer) => (
+                                    {filteredAvailableInstallers.map((installer) => (
                                         <option key={installer._id} value={installer._id}>
                                             {installer.name} {installer.surname}
                                             {installer.role ? ` (${installer.role})` : ""}
@@ -179,7 +195,7 @@ export const CrewEditForm: React.FC<CrewEditFormProps> = ({
                         {/* Miembros */}
                         <MemberList
                             members={formData.members}
-                            availableInstallers={availableInstallers}
+                            availableInstallers={filteredAvailableInstallers}
                             leaderId={formData.leader}
                             onChange={handleMembersChange}
                         />

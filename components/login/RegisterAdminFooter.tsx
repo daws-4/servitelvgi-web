@@ -15,7 +15,7 @@ export const RegisterAdminFooter: React.FC = () => {
                 <i className="fa-solid fa-arrow-left"></i> Volver al Login
             </Link>
             <p className="text-gray-400 text-xs">
-                Servitel SGO &copy; 2025
+                ENLARED SGO &copy; 2025
             </p>
         </div>
     );

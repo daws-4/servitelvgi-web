@@ -35,6 +35,7 @@ const SaveIcon: React.FC<{ className?: string }> = ({ className }) => (
 
 interface NewOrderFormData {
     subscriberNumber: string;
+    ticket_id: string;
     subscriberName: string;
     phones: string;
     email: string;
@@ -54,6 +55,7 @@ interface NewOrderFormProps {
 export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel }) => {
     const [formData, setFormData] = useState<NewOrderFormData>({
         subscriberNumber: '',
+        ticket_id: '',
         subscriberName: '',
         phones: '',
         email: '',
@@ -129,6 +131,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
             // Prepare order data
             const orderData = {
                 subscriberNumber: formData.subscriberNumber,
+                ticket_id: formData.ticket_id || undefined,
                 subscriberName: formData.subscriberName,
                 phones: formData.phones.split(',').map(p => p.trim()).filter(p => p),
                 email: formData.email,
@@ -152,6 +155,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
                 // Reset form
                 setFormData({
                     subscriberNumber: '',
+                    ticket_id: '',
                     subscriberName: '',
                     phones: '',
                     email: '',
@@ -211,6 +215,14 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
                                 value={formData.subscriberNumber}
                                 onValueChange={(value) => handleInputChange('subscriberNumber', value)}
                                 isRequired
+                            />
+
+                            <FormInput
+                                label="ID del Ticket"
+                                placeholder="Ej: TKT-2026-001"
+                                value={formData.ticket_id}
+                                onValueChange={(value) => handleInputChange('ticket_id', value)}
+                                description="Opcional: ID del ticket asociado"
                             />
 
                             <FormInput

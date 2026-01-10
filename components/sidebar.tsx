@@ -76,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ children }) => {
             <div className="h-16 flex items-center justify-center border-b border-secondary/30 bg-secondary/20">
                 <div className="flex items-center gap-2 font-bold text-xl tracking-wider">
                     <SatelliteIcon className="text-background" size={24} />
-                    <span>SERVITELV</span>
+                    <span>ENLARED</span>
                 </div>
             </div>
 

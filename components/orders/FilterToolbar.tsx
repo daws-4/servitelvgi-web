@@ -27,6 +27,7 @@ const statusOptions: SelectOption[] = [
     { key: "in_progress", label: "En Progreso" },
     { key: "completed", label: "Completada" },
     { key: "cancelled", label: "Cancelada" },
+    { key: "hard", label: "Difícil" },
 ];
 
 const typeOptions: SelectOption[] = [
@@ -132,20 +133,20 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     </select>
                     <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
                 </div>
-                </div>
+            </div>
 
-                {/* Filtro Rango de Fechas */}
-                <div className="w-80 mb-2">
-                    <DateFilter
-                        label="Filtrar por Fecha"
-                        onDateChange={onDateRangeChange}
-                        labelPlacement="outside"
-                        classNames={{
-                            base: "w-full",
-                            inputWrapper: "h-10",
-                        }}
-                    />
-                </div>
+            {/* Filtro Rango de Fechas */}
+            <div className="w-80 mb-2">
+                <DateFilter
+                    label="Filtrar por Fecha"
+                    onDateChange={onDateRangeChange}
+                    labelPlacement="outside"
+                    classNames={{
+                        base: "w-full",
+                        inputWrapper: "h-10",
+                    }}
+                />
+            </div>
 
             {/* Acciones Principales */}
             <button

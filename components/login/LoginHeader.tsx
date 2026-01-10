@@ -15,7 +15,7 @@ export const LoginHeader: React.FC = () => {
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30">
                     <SatelliteDishIcon className="text-background text-3xl" size={32} />
                 </div>
-                <h1 className="text-2xl font-bold text-white tracking-wide">SERVITELV</h1>
+                <h1 className="text-2xl font-bold text-white tracking-wide">ENLARED</h1>
                 <p className="text-blue-100 text-sm mt-1">Gestión de Operaciones</p>
             </div>
         </div>

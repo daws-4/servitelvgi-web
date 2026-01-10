@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 export interface IOrder {
   _id?: string;
   subscriberNumber: string;
+  ticket_id?: string;
   type: "instalacion" | "averia" | "otro";
   status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
   subscriberName: string;
@@ -22,7 +23,11 @@ export interface IOrder {
     latitude?: number;
     longitude?: number;
   };
-  reportDetails?: string;
+  installerLog?: {
+    timestamp: Date;
+    log: string;
+    status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
+  }[];
   materialsUsed?: {
     item: mongoose.Schema.Types.ObjectId | any;
     quantity: number;
@@ -57,9 +62,10 @@ const OrderSchema = new mongoose.Schema(
     subscriberNumber: {
       type: String, // "N. Abonado" de la imagen
       required: true,
-      unique: true, // Asumimos que este es el ID primario de esta orden
     },
-
+    ticket_id: {
+      type: String,
+    },
     // Tipo de orden (se puede deducir o inferir si no está explícito en el título)
     type: {
       type: String,
@@ -78,6 +84,7 @@ const OrderSchema = new mongoose.Schema(
         "in_progress",
         "completed",
         "cancelled",
+        "hard",
         // Aquí puedes añadir otros estados si aparecen en otras imágenes,
         // por ahora "Pendiente" es lo más claro
       ],
@@ -128,8 +135,18 @@ const OrderSchema = new mongoose.Schema(
       latitude: { type: Number },
       longitude: { type: Number },
     },
-    // Datos del cierre (a rellenar por el técnico)
-    reportDetails: { type: String },
+    // Bitácora de instaladores
+    installerLog: [
+      {
+        timestamp: { type: Date, default: Date.now },
+        log: { type: String, required: true },
+        status: {
+          type: String,
+          enum: ["pending", "assigned", "in_progress", "completed", "cancelled"],
+          required: true,
+        },
+      },
+    ],
     materialsUsed: [
       {
         item: { type: mongoose.Schema.Types.ObjectId, ref: "Inventory" },
@@ -145,7 +162,6 @@ const OrderSchema = new mongoose.Schema(
       default: [],
     },
     
-    // Firma del cliente (String Base64 exportado por react-native-signature-canvas)
     customerSignature: {
       type: String,
     },

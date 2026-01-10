@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
+export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard";
 export type OrderType = "instalacion" | "averia" | "otro";
 
 interface Crew {
@@ -20,7 +20,7 @@ interface OrderStatusManagerProps {
     onStatusChange?: (status: OrderStatus) => void;
     onTypeChange?: (type: OrderType) => void;
     onAssignedToChange?: (crewId: string) => void;
-    onSave?: (data: { status: OrderStatus; type: OrderType; assignedTo: string; reportDetails?: string }) => void;
+    onSave?: (data: { status: OrderStatus; type: OrderType; assignedTo: string }) => void;
     onCancel?: () => void;
     onDelete?: () => void | Promise<void>;
     isSaving?: boolean;
@@ -40,10 +40,20 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
     onDelete,
     isSaving = false
 }) => {
-    const [status, setStatus] = useState<OrderStatus>(initialStatus);
-    const [type, setType] = useState<OrderType>(initialType);
+    // Validate and normalize initialType to ensure it's a valid OrderType
+    // If type is not "instalacion" or "averia", treat it as "otro"
+    const normalizedType: OrderType =
+        initialType === "instalacion" || initialType === "averia"
+            ? initialType
+            : "otro";
+
+    // Validate and normalize initialStatus to ensure it's a valid OrderStatus
+    const validStatuses: OrderStatus[] = ["pending", "assigned", "in_progress", "completed", "cancelled", "hard"];
+    const normalizedStatus = validStatuses.includes(initialStatus) ? initialStatus : "pending";
+
+    const [status, setStatus] = useState<OrderStatus>(normalizedStatus);
+    const [type, setType] = useState<OrderType>(normalizedType);
     const [assignedTo, setAssignedTo] = useState(initialAssignedTo);
-    const [reportDetails, setReportDetails] = useState("");
     const [crews, setCrews] = useState<Crew[]>([]);
     const [isLoadingCrews, setIsLoadingCrews] = useState(false);
 
@@ -94,8 +104,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
             onSave({
                 status,
                 type,
-                assignedTo,
-                ...(status === "completed" && { reportDetails })
+                assignedTo
             });
         }
     };
@@ -144,6 +153,19 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                     badgeClass: "bg-red-100 text-red-800 border-red-200",
                     description: "Orden cancelada por el operador."
                 };
+            case 'hard':
+                return {
+                    colorClass: "text-orange-500",
+                    badgeClass: "bg-orange-100 text-orange-800 border-orange-200",
+                    description: "Orden difícil o complicada. Requiere atención especial."
+                };
+            default:
+                // Fallback for any unexpected status values
+                return {
+                    colorClass: "text-yellow-500",
+                    badgeClass: "bg-yellow-100 text-yellow-800 border-yellow-200",
+                    description: "Orden creada, pendiente de asignación."
+                };
         }
     };
 
@@ -172,6 +194,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                             <option value="in_progress">En Progreso</option>
                             <option value="completed">Completada</option>
                             <option value="cancelled">Cancelada</option>
+                            <option value="hard">Hard</option>
                         </select>
                         {/* Status Icon */}
                         <div className="absolute inset-y-0 left-0 flex items-center px-3 pointer-events-none">
@@ -233,20 +256,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                     </select>
                 </div>
 
-                {/* Closure Details - Only visible when completed */}
-                {status === "completed" && (
-                    <div className="animate-pulse bg-green-50 p-3 rounded border border-green-100">
-                        <label className="block text-xs font-semibold text-green-800 uppercase tracking-wide mb-1">
-                            Detalles de Cierre
-                        </label>
-                        <textarea
-                            value={reportDetails}
-                            onChange={(e) => setReportDetails(e.target.value)}
-                            placeholder="Comentarios finales del técnico..."
-                            className="w-full px-3 py-2 border-2 border-green-200 rounded-md bg-white text-sm focus:border-green-400 focus:outline-none resize-y min-h-[80px]"
-                        />
-                    </div>
-                )}
+
 
                 {/* Action Buttons */}
                 <div className="pt-4 flex flex-col gap-3">

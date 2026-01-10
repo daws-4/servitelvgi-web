@@ -107,7 +107,7 @@ export default function ApkDownloadPage() {
                             </svg>
                         </div>
                         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-4">
-                            Servitelv App
+                            ENLARED App
                         </h1>
                         <p className="text-xl text-gray-600">
                             Descarga la aplicación móvil oficial

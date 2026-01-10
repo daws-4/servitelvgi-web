@@ -8,6 +8,7 @@ interface Installer {
     name: string;
     surname: string;
     role?: string;
+    currentCrew?: string | null;
 }
 
 interface MemberListProps {

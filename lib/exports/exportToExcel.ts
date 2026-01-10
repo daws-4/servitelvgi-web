@@ -123,7 +123,7 @@ export function exportReportToExcel(
 
   // Generar nombre de archivo
   const dateStr = new Date().toISOString().split("T")[0];
-  const fileName = `Servitel_${reportType}_${dateStr}.xlsx`;
+  const fileName = `ENLARED_${reportType}_${dateStr}.xlsx`;
 
   // Descargar archivo
   XLSX.writeFile(workbook, fileName);

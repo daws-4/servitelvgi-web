@@ -22,7 +22,7 @@ export function exportReportToPDF(
 
   // Header
   doc.setFontSize(18);
-  doc.text("Servitel GI - Reporte", 14, 15);
+  doc.text("ENLARED GI - Reporte", 14, 15);
 
   doc.setFontSize(11);
   doc.text(`Tipo: ${getReportTypeName(reportType)}`, 14, 22);
@@ -138,7 +138,7 @@ export function exportReportToPDF(
 
   // Generar nombre de archivo
   const dateStr = new Date().toISOString().split("T")[0];
-  const fileName = `Servitel_${reportType}_${dateStr}.pdf`;
+  const fileName = `ENLARED_${reportType}_${dateStr}.pdf`;
 
   // Descargar PDF
   doc.save(fileName);

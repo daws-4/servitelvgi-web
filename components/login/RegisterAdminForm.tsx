@@ -79,7 +79,7 @@ export const RegisterAdminForm: React.FC<RegisterAdminFormProps> = ({ onSubmit, 
                         label="Correo Electrónico"
                         name="email"
                         type="email"
-                        placeholder="admin@servitel.com"
+                        placeholder="admin@enlared.com"
                         required
                         value={formData.email}
                         onChange={handleChange}
@@ -118,7 +118,7 @@ export const RegisterAdminForm: React.FC<RegisterAdminFormProps> = ({ onSubmit, 
                     <div className="bg-background/40 p-3 rounded-lg border border-background flex items-start gap-2 mt-4">
                         <i className="fa-solid fa-circle-info text-green-700 mt-1"></i>
                         <p className="text-xs text-green-800 leading-tight">
-                            <span className="font-bold">Información:</span> El usuario creado tendrá privilegios de <strong>Administrador</strong> y acceso completo al sistema Servitel.
+                            <span className="font-bold">Información:</span> El usuario creado tendrá privilegios de <strong>Administrador</strong> y acceso completo al sistema ENLARED.
                         </p>
                     </div>
                 </div>

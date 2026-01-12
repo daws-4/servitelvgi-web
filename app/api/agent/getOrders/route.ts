@@ -84,24 +84,41 @@ export async function POST(request: Request) {
       services: string[],
       textFields: string[]
     ) => {
-      if (explicit && typeof explicit === "string") return explicit;
+      // Si viene explícito, normalizarlo primero
+      if (explicit && typeof explicit === "string") {
+        const normalized = explicit.toLowerCase().trim();
+        // Detectar "installation" o "instalacion" (con/sin acento)
+        if (/^instalaci[oó]n$|^installation$/.test(normalized)) return "instalacion";
+        // Detectar "averia" o "avería" o "fault" o "repair"
+        if (/^aver[ií]a$|^fault$|^repair$/.test(normalized)) return "averia";
+        // Detectar "otro" u "other"
+        if (/^otro$|^other$/.test(normalized)) return "otro";
+      }
+      
+      // Si no es explícito o no coincidió, deducir del contexto
       const joined = [...services, ...textFields].join(" ").toLowerCase();
-      if (/instal|instalaci|instalar/.test(joined)) return "instalacion";
-      if (/averi|fallo|no funciona|repar|reparaci/.test(joined))
+      // Detectar instalación (español e inglés)
+      if (/instal|instalaci|instalar|installation|install/.test(joined)) return "instalacion";
+      // Detectar avería (español e inglés)
+      if (/averi|fallo|no funciona|repar|reparaci|fault|repair|breakdown|failure/.test(joined))
         return "averia";
       return "otro";
     };
 
     const mapStatus = (s: any) => {
       if (!s) return "pending";
-      const str = String(s).toLowerCase();
-      if (/pendiente|pending/.test(str)) return "pending";
+      const str = String(s).toLowerCase().trim();
+      
+      // Mapear estados en español e inglés
+      if (/pendiente|pending|baja/.test(str)) return "pending";
       if (/asignado|assigned/.test(str)) return "assigned";
-      if (/en[_ ]?progreso|in_progress|in progress/.test(str))
-        return "in_progress";
-      if (/completado|completed/.test(str)) return "completed";
-      if (/cancelado|cancelled/.test(str)) return "cancelled";
-      return str;
+      if (/en[_ ]?progreso|in[_ ]?progress/.test(str)) return "in_progress";
+      if (/completado|completed|finalizado|finished/.test(str)) return "completed";
+      if (/cancelado|cancelled|canceled/.test(str)) return "cancelled";
+      
+      // Si no coincide con ninguno, devolver pending por defecto
+      console.warn("⚠️ Status no reconocido:", s, "→ usando 'pending'");
+      return "pending";
     };
 
     // Extraer campos exactamente según el modelo JSON que diste

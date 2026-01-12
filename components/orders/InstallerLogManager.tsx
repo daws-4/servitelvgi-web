@@ -66,7 +66,7 @@ export const InstallerLogManager: React.FC<InstallerLogManagerProps> = ({
             in_progress: { class: 'bg-purple-100 text-purple-800 border-purple-200', label: 'En Progreso' },
             completed: { class: 'bg-green-100 text-green-800 border-green-200', label: 'Completada' },
             cancelled: { class: 'bg-red-100 text-red-800 border-red-200', label: 'Cancelada' },
-            hard: { class: 'bg-orange-100 text-orange-800 border-orange-200', label: 'Difícil' }
+            hard: { class: 'bg-orange-100 text-orange-800 border-orange-200', label: 'Hard' }
         };
         const config = configs[status];
         return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${config.class}`}>{config.label}</span>;

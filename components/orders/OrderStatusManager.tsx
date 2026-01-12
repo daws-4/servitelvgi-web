@@ -157,7 +157,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                 return {
                     colorClass: "text-orange-500",
                     badgeClass: "bg-orange-100 text-orange-800 border-orange-200",
-                    description: "Orden difícil o complicada. Requiere atención especial."
+                    description: "Orden Hard. Requiere atención especial."
                 };
             default:
                 // Fallback for any unexpected status values

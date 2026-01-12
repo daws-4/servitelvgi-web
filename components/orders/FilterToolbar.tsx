@@ -27,7 +27,7 @@ const statusOptions: SelectOption[] = [
     { key: "in_progress", label: "En Progreso" },
     { key: "completed", label: "Completada" },
     { key: "cancelled", label: "Cancelada" },
-    { key: "hard", label: "Difícil" },
+    { key: "hard", label: "Hard" },
 ];
 
 const typeOptions: SelectOption[] = [

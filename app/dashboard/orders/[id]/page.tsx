@@ -135,7 +135,7 @@ export default function OrderEditPage() {
             case 'cancelled':
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 uppercase">Cancelada</span>;
             case 'hard':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200 uppercase">Difícil</span>;
+                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200 uppercase">Hard</span>;
             default:
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800 border border-gray-200 uppercase">Cargando...</span>;
         }

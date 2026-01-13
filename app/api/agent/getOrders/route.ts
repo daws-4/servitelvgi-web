@@ -3,6 +3,8 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import OrderModel from "@/models/Order";
+import CrewModel from "@/models/Crew"; // ✅ NUEVO: para asignación automática de cuadrilla
+
 
 // Cabeceras CORS útiles para integración (p. ej. N8N). Ajusta según necesidad.
 const CORS_HEADERS = {
@@ -143,16 +145,48 @@ export async function POST(request: Request) {
       data.status || data.orderStatus || data.estado || "pending"
     );
 
+    // ============================================
+    // ASIGNACIÓN AUTOMÁTICA DE CUADRILLA
+    // ============================================
+    const crewNumber = data.crewNumber || null;
+    let assignedCrew: any = null;
+    
+    if (crewNumber) {
+      // Construir el nombre de la cuadrilla en el formato esperado: "Cuadrilla ${number}"
+      const crewName = `Cuadrilla ${crewNumber}`;
+      console.log("👷 Buscando cuadrilla:", crewName);
+      
+      try {
+        // Buscar la cuadrilla por nombre (debe estar activa)
+        const foundCrew = await CrewModel.findOne({
+          name: crewName,
+          isActive: true
+        }).lean();
+        
+        if (foundCrew && !Array.isArray(foundCrew)) {
+          assignedCrew = foundCrew;
+          console.log("✅ Cuadrilla encontrada:", assignedCrew.name, "ID:", assignedCrew._id);
+        } else {
+          console.warn("⚠️ Cuadrilla no encontrada:", crewName);
+          console.warn("💡 Asegúrate de que existe una cuadrilla con nombre exacto:", crewName);
+        }
+      } catch (error) {
+        console.error("❌ Error al buscar cuadrilla:", error);
+      }
+    }
+
     const update = {
       subscriberNumber: String(subscriberNumber),
       type,
-      status,
+      status: assignedCrew ? "assigned" : status, // ✅ Si se asigna cuadrilla, cambiar a "assigned"
       subscriberName,
       address,
       phones,
       email,
       node,
       servicesToInstall,
+      assignedTo: assignedCrew ? assignedCrew._id : undefined, // ✅ Asignar cuadrilla si existe
+      assignmentDate: assignedCrew ? new Date() : undefined, // ✅ Registrar fecha de asignación
     } as Record<string, any>;
 
     // Verificaciones previas al guardado

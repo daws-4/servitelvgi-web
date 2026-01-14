@@ -31,7 +31,7 @@ export interface OrderSummary {
   assignmentDate?: Date;
   assignedTo?: {
     _id: string;
-    name: string;
+    number: number | null;
   };
   node?: string;
   servicesToInstall?: string[];
@@ -88,7 +88,7 @@ export interface NetunoReportData {
 
 export interface CrewPerformanceData {
   crewId: string;
-  crewName: string;
+  crewNumber: number;
   totalOrders: number;
   instalaciones: number;
   averias: number;
@@ -97,7 +97,7 @@ export interface CrewPerformanceData {
 
 export interface CrewInventoryData {
   crewId: string;
-  crewName: string;
+  crewNumber: number;
   inventory: Array<{
     itemId: string;
     code: string;

@@ -37,13 +37,13 @@ export async function GET(request: NextRequest) {
     let crewData = null;
     if (installer.currentCrew) {
       const crew = await CrewModel.findById(installer.currentCrew)
-        .select("name")
+        .select("number")
         .lean() as any;
       
       if (crew) {
         crewData = {
           _id: crew._id.toString(),
-          name: crew.name
+          number: crew.number
         };
       }
     }

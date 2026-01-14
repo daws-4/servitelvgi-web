@@ -80,7 +80,7 @@ export const NewInstallerForm: React.FC<NewInstallerFormProps> = ({ onSuccess, o
         { key: '', label: 'Sin Cuadrilla' },
         ...crews.map(crew => ({
             key: crew._id,
-            label: crew.name
+            label: `Cuadrilla ${crew.number}`
         }))
     ];
 

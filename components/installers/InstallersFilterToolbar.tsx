@@ -74,8 +74,8 @@ export const InstallersFilterToolbar: React.FC<InstallersFilterToolbarProps> = (
                     >
                         <option value="all">Todas</option>
                         {crews.map((crew) => (
-                            <option key={crew._id} value={crew.name}>
-                                {crew.name}
+                            <option key={crew._id} value={String(crew.number)}>
+                                Cuadrilla {crew.number}
                             </option>
                         ))}
                     </select>

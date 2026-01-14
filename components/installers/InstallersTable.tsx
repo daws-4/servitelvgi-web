@@ -11,7 +11,7 @@ export interface Installer {
     phone: string;
     surname: string;
     status: "active" | "inactive";
-    currentCrew: string | null;
+    currentCrew: number | null;
 }
 
 interface InstallersTableProps {
@@ -116,7 +116,7 @@ export const InstallersTable: React.FC<InstallersTableProps> = ({
                                     <InstallerStatusBadge status={installer.status} />
                                 </td>
                                 <td className="p-4 text-sm">
-                                    <InstallerCrewBadge crewName={installer.currentCrew} />
+                                    <InstallerCrewBadge crewNumber={installer.currentCrew} />
                                 </td>
                                 <td className="p-4 text-right">
                                     <div className="flex justify-end gap-2 transition-opacity">

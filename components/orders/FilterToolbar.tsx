@@ -50,7 +50,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     onCrewChange,
     onNewOrder,
 }) => {
-    const [crews, setCrews] = useState<{ _id: string; name: string }[]>([]);
+    const [crews, setCrews] = useState<{ _id: string; number: number }[]>([]);
 
     // Load crews on mount
     useEffect(() => {
@@ -127,7 +127,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                         <option value="all">Cuadrilla: Todas</option>
                         {crews.map(crew => (
                             <option key={crew._id} value={crew._id}>
-                                {crew.name}
+                                Cuadrilla {crew.number}
                             </option>
                         ))}
                     </select>

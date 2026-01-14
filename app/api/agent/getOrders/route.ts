@@ -135,6 +135,7 @@ export async function POST(request: Request) {
     const servicesToInstall = splitToArray(
       data.servicesToInstall || data.services || data.servicios
     );
+    const ticketId = data.ticket_id || data.ticketId || data.ticketNumber || "";
 
     const type = deduceType(
       data.type,
@@ -152,23 +153,21 @@ export async function POST(request: Request) {
     let assignedCrew: any = null;
     
     if (crewNumber) {
-      // Construir el nombre de la cuadrilla en el formato esperado: "Cuadrilla ${number}"
-      const crewName = `Cuadrilla ${crewNumber}`;
-      console.log("👷 Buscando cuadrilla:", crewName);
+      console.log("👷 Buscando cuadrilla por número:", crewNumber);
       
       try {
-        // Buscar la cuadrilla por nombre (debe estar activa)
+        // Buscar la cuadrilla por número (debe estar activa)
         const foundCrew = await CrewModel.findOne({
-          name: crewName,
+          number: Number(crewNumber),
           isActive: true
         }).lean();
         
         if (foundCrew && !Array.isArray(foundCrew)) {
           assignedCrew = foundCrew;
-          console.log("✅ Cuadrilla encontrada:", assignedCrew.name, "ID:", assignedCrew._id);
+          console.log("✅ Cuadrilla encontrada: Cuadrilla", assignedCrew.number, "ID:", assignedCrew._id);
         } else {
-          console.warn("⚠️ Cuadrilla no encontrada:", crewName);
-          console.warn("💡 Asegúrate de que existe una cuadrilla con nombre exacto:", crewName);
+          console.warn("⚠️ Cuadrilla no encontrada con número:", crewNumber);
+          console.warn("💡 Asegúrate de que existe una cuadrilla activa con número:", crewNumber);
         }
       } catch (error) {
         console.error("❌ Error al buscar cuadrilla:", error);
@@ -177,6 +176,7 @@ export async function POST(request: Request) {
 
     const update = {
       subscriberNumber: String(subscriberNumber),
+      ticket_id: ticketId || undefined, // ✅ Agregar ticket_id si existe
       type,
       status: assignedCrew ? "assigned" : status, // ✅ Si se asigna cuadrilla, cambiar a "assigned"
       subscriberName,
@@ -189,12 +189,27 @@ export async function POST(request: Request) {
       assignmentDate: assignedCrew ? new Date() : undefined, // ✅ Registrar fecha de asignación
     } as Record<string, any>;
 
-    // Verificaciones previas al guardado
+    // ============================================
+    // VERIFICACIONES DE DUPLICADOS
+    // ============================================
     const now = new Date();
     const weekAgo = new Date(now);
     weekAgo.setDate(now.getDate() - 7);
 
-    // Regla 1: si es instalación y existe otra orden con la misma dirección EXACTA -> siempre indicar que ya existe (302)
+    // Verificación 1: Si viene ticket_id y ya existe en el sistema → rechazar
+    if (ticketId) {
+      const existingTicket = await OrderModel.findOne({
+        ticket_id: ticketId,
+      }).lean();
+      if (existingTicket) {
+        return NextResponse.json(
+          { error: "Order already exists (duplicate ticket_id)" },
+          { status: 302, headers: CORS_HEADERS }
+        );
+      }
+    }
+
+    // Verificación 2: Si es instalación y existe otra orden con la misma dirección EXACTA → rechazar
     if (update.type === "instalacion" && update.address) {
       const existingInstall = await OrderModel.findOne({
         address: update.address,
@@ -207,44 +222,27 @@ export async function POST(request: Request) {
       }
     }
 
-    // Regla general: buscar órdenes con mismos datos creadas en la última semana
-    // Consideramos "mismos datos" si coincide el subscriberNumber, o subscriberName + address
-    const sameDataFilter: any = {
-      $and: [
-        {
-          $or: [
-            { subscriberNumber: update.subscriberNumber },
-            { subscriberName: update.subscriberName, address: update.address },
-          ],
-        },
-        { createdAt: { $gte: weekAgo } },
-      ],
-    };
+    // Verificación 3: Si es avería, verificar si existe una orden similar en la última semana
+    // Consideramos "similar" si coincide subscriberName + address
+    if (update.type === "averia") {
+      const existingRecentFault = await OrderModel.findOne({
+        type: "averia",
+        subscriberName: update.subscriberName,
+        address: update.address,
+        createdAt: { $gte: weekAgo },
+      }).lean();
 
-    const existingRecent = await OrderModel.findOne(sameDataFilter).lean();
-
-    if (existingRecent) {
-      // Regla 2: si es avería, indicar que ya existe sólo si los datos son los mismos y la fecha de creación es de la última semana
-      if (update.type === "averia") {
+      if (existingRecentFault) {
         return NextResponse.json(
           { error: "Order already exists (fault reported within last week)" },
           { status: 302, headers: CORS_HEADERS }
         );
       }
-
-      // Para otros tipos (no instalación, porque instalaciones ya se manejaron), también considerarlo duplicado
-      return NextResponse.json(
-        { error: "Order already exists (same data within last week)" },
-        { status: 302, headers: CORS_HEADERS }
-      );
     }
 
-    // Si no hay conflicto, hacer upsert: si existe por subscriberNumber actualizar; si no crear
-    const order = await OrderModel.findOneAndUpdate(
-      { subscriberNumber: update.subscriberNumber },
-      { $set: update },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
-    ).lean();
+    // ✅ PERMITIR MÚLTIPLES ÓRDENES CON EL MISMO subscriberNumber
+    // Crear siempre una nueva orden en lugar de actualizar una existente
+    const order = await OrderModel.create(update);
 
     return NextResponse.json(
       { message: "Order saved", order },

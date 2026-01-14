@@ -20,7 +20,7 @@ export interface OrderData {
     status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard";
     assignedTo?: {
         _id: string;
-        name?: string;
+        number?: number;
     };
     phones?: string[];
     node?: string;
@@ -342,7 +342,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                         <tbody className="text-sm divide-y divide-gray-50">
                             {orders?.map((order) => {
                                 const isSelected = selectedOrders.has(order._id);
-                                const crewName = order.assignedTo?.name || null;
+                                const crewNumber = order.assignedTo?.number || null;
 
                                 return (
                                     <tr
@@ -360,7 +360,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                                 className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
                                             />
                                         </td>
-                                        <td className="p-4 font-medium text-dark cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.ticketNumber?order.ticketNumber:"Sin ticket"}</td>
+                                        <td className="p-4 font-medium text-dark cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.ticketNumber ? order.ticketNumber : "Sin ticket"}</td>
                                         <td className="p-4">
                                             <div className="font-medium text-dark cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.subscriberName}</div>
                                             {order.email && <div className="text-xs text-gray-400 cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.email}</div>}
@@ -369,13 +369,13 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                         <td className="p-4 text-gray-500 max-w-xs truncate">{order.address}</td>
                                         <td className="p-4">{getStatusBadge(order.status)}</td>
                                         <td className="p-4">
-                                            {order.assignedTo && crewName ? (
+                                            {order.assignedTo && crewNumber !== null ? (
                                                 <div className="flex items-center gap-2">
                                                     <Link href={`/dashboard/crews/${order.assignedTo._id}`}>
                                                         <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs">
                                                             <i className="fa-solid fa-users text-[10px]"></i>
                                                         </div>
-                                                        <span className="text-xs font-medium">{crewName}</span>
+                                                        <span className="text-xs font-medium">Cuadrilla {crewNumber}</span>
                                                     </Link>
                                                 </div>
                                             ) : (

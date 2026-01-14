@@ -16,7 +16,7 @@ interface CrewMember {
 
 interface Crew {
   _id: string;
-  name: string;
+  number: number;
   zone?: string;
   leader: CrewMember;
   members: CrewMember[];
@@ -61,7 +61,8 @@ export default function CrewsPage() {
     if (searchQuery) {
       filtered = filtered.filter(
         (crew) =>
-          crew.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          `Cuadrilla ${crew.number}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          crew.number.toString().includes(searchQuery) ||
           `${crew.leader.name} ${crew.leader.surname}`
             .toLowerCase()
             .includes(searchQuery.toLowerCase()) ||

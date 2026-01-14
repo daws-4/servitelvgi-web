@@ -37,7 +37,7 @@ interface InventoryItem {
 
 interface CrewData {
     _id: string;
-    name: string;
+    number: number;
     leader: Installer;
     members: Installer[];
     vehiclesAssigned: Vehicle[];
@@ -101,7 +101,7 @@ export default function CrewEditPage() {
     };
 
     const handleSubmit = async (data: {
-        name: string;
+        number: number;
         leader: string;
         members: string[];
         vehiclesAssigned: Vehicle[];
@@ -183,7 +183,7 @@ export default function CrewEditPage() {
 
                 {/* Form Header */}
                 <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-dark">Editar {crew.name}</h2>
+                    <h2 className="text-2xl font-bold text-dark">Editar Cuadrilla {crew.number}</h2>
                 </div>
 
                 {/* Form Content */}
@@ -245,7 +245,7 @@ export default function CrewEditPage() {
                     isOpen={equipmentModalOpen}
                     onClose={() => setEquipmentModalOpen(false)}
                     crewId={crew._id}
-                    crewName={crew.name}
+                    crewNumber={crew.number}
                     onSuccess={async () => {
                         setEquipmentModalOpen(false);
                         await fetchData();

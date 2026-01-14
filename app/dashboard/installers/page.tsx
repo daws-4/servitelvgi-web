@@ -68,7 +68,7 @@ export default function InstallersPage() {
 
       const matchesStatus = statusFilter === 'all' || installer.status === statusFilter;
 
-      const matchesCrew = crewFilter === 'all' || installer.currentCrew === crewFilter;
+      const matchesCrew = crewFilter === 'all' || String(installer.currentCrew) === crewFilter;
 
       return matchesSearch && matchesStatus && matchesCrew;
     });

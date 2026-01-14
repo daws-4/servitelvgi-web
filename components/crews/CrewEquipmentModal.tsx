@@ -26,7 +26,7 @@ interface CrewEquipmentModalProps {
     isOpen: boolean;
     onClose: () => void;
     crewId: string;
-    crewName: string;
+    crewNumber: number;
     onSuccess: () => void;
 }
 
@@ -34,7 +34,7 @@ export const CrewEquipmentModal: React.FC<CrewEquipmentModalProps> = ({
     isOpen,
     onClose,
     crewId,
-    crewName,
+    crewNumber,
     onSuccess,
 }) => {
     const [equipment, setEquipment] = useState<EquipmentInstance[]>([]);
@@ -132,7 +132,7 @@ export const CrewEquipmentModal: React.FC<CrewEquipmentModalProps> = ({
                 {/* Header */}
                 <ModalHeader className="bg-purple-50 border-b border-purple-200 flex items-center gap-2">
                     <i className="fa-solid fa-microchip text-purple-600"></i>
-                    <span className="text-purple-900">Equipos Asignados - {crewName}</span>
+                    <span className="text-purple-900">Equipos Asignados - Cuadrilla {crewNumber}</span>
                 </ModalHeader>
 
                 <ModalBody className="py-6">

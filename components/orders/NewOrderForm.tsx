@@ -81,7 +81,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
                     const json = await res.json();
                     const mappedData: Item[] = json.map((crew: any) => ({
                         id: crew._id,
-                        name: crew.name,
+                        name: `Cuadrilla ${crew.number}`,
                         description: crew.leader ? `Líder: ${crew.leader.name} ${crew.leader.surname}` : 'Sin líder'
                     }));
                     setCrews(mappedData);

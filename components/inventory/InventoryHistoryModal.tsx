@@ -22,7 +22,7 @@ interface HistoryEntry {
     reason?: string;
     crew?: {
         _id: string;
-        name: string;
+        number: number;
     };
     order?: {
         _id: string;
@@ -294,10 +294,10 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
                                                             {entry.quantityChange}
                                                         </span>
                                                     </p>
-                                                    {entry.crew?.name && (
+                                                    {entry.crew?.number && (
                                                         <p className="text-xs text-neutral mt-1">
                                                             <i className="fa-solid fa-users mr-1"></i>
-                                                            Cuadrilla: {entry.crew.name}
+                                                            Cuadrilla {entry.crew.number}
                                                         </p>
                                                     )}
                                                     {entry.order?.subscriberNumber && (

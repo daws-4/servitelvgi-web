@@ -23,7 +23,7 @@ interface HistoryEntry {
     description: string;
     crew?: {
         _id: string;
-        name: string;
+        number: number;
     };
     changedBy?: {
         _id: string;
@@ -303,10 +303,10 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
                                                             Orden: {entry.order.subscriberNumber} - {entry.order.subscriberName}
                                                         </p>
                                                     )}
-                                                    {entry.crew?.name && (
+                                                    {entry.crew?.number && (
                                                         <p className="text-xs text-neutral mt-1">
                                                             <i className="fa-solid fa-users mr-1"></i>
-                                                            Cuadrilla: {entry.crew.name}
+                                                            Cuadrilla {entry.crew.number}
                                                         </p>
                                                     )}
                                                     {entry.changedBy && (

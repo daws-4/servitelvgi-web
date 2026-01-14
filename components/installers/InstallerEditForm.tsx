@@ -8,7 +8,7 @@ import { ProfilePhotoManager } from "@/components/installers/ProfilePhotoManager
 
 interface Crew {
     _id: string;
-    name: string;
+    number: number;
 }
 
 interface InstallerData {
@@ -301,7 +301,7 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                                         <option value="">-- Trabajo Individual (Sin Cuadrilla) --</option>
                                         {crews.map((crew) => (
                                             <option key={crew._id} value={crew._id}>
-                                                {crew.name}
+                                                Cuadrilla {crew.number}
                                             </option>
                                         ))}
                                     </select>

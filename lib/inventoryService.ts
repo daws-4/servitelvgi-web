@@ -165,7 +165,7 @@ export async function assignMaterialToCrew(
               batch: batch._id,
               type: "assignment",
               quantityChange: -batch.currentQuantity,
-              reason: `Bobina ${item.batchCode} asignada a cuadrilla ${crew.name}`,
+              reason: `Bobina ${item.batchCode} asignada a cuadrilla Cuadrilla ${crew.number}`,
               crew: crewId,
               performedBy: sessionUser?.userId,
               performedByModel: sessionUser?.userModel,
@@ -239,7 +239,7 @@ export async function assignMaterialToCrew(
               item: item.inventoryId,
               type: "assignment",
               quantityChange: -instanceIds.length,
-              reason: `${instanceIds.length} instancia(s) de ${inventoryItem.description} asignada(s) a cuadrilla ${crew.name}`,
+              reason: `${instanceIds.length} instancia(s) de ${inventoryItem.description} asignada(s) a Cuadrilla ${crew.number}`,
               crew: crewId,
               performedBy: sessionUser?.userId,
               performedByModel: sessionUser?.userModel,
@@ -305,7 +305,7 @@ export async function assignMaterialToCrew(
               item: item.inventoryId,
               type: "assignment",
               quantityChange: -item.quantity,
-              reason: `Asignado a cuadrilla ${crew.name}`,
+              reason: `Asignado a Cuadrilla ${crew.number}`,
               crew: crewId,
               performedBy: sessionUser?.userId,
               performedByModel: sessionUser?.userModel,
@@ -1019,7 +1019,7 @@ export async function createDailySnapshot() {
       .filter((crew: any) => crew.assignedInventory && crew.assignedInventory.length > 0)
       .map((crew: any) => ({
         crew: crew._id,
-        crewName: crew.name,
+        crewNumber: crew.number,
         items: crew.assignedInventory.map((inv: any) => ({
           item: inv.item._id,
           quantity: inv.quantity,
@@ -1407,7 +1407,7 @@ export async function assignEquipmentInstances(
           item: inventoryId,
           type: "assignment",
           quantityChange: -instanceIds.length,
-          reason: `Instancias asignadas a cuadrilla ${crew.name}: ${instanceIds.join(", ")}`,
+          reason: `Instancias asignadas a Cuadrilla ${crew.number}: ${instanceIds.join(", ")}`,
           crew: crewId,
           performedBy: sessionUser?.userId,
           performedByModel: sessionUser?.userModel,
@@ -1422,7 +1422,7 @@ export async function assignEquipmentInstances(
       success: true,
       assignedInstances: instanceIds,
       crewId,
-      crewName: crew.name,
+      crewNumber: crew.number,
     };
   } catch (error) {
     await session.abortTransaction();
@@ -1998,7 +1998,7 @@ export async function returnEquipmentInstances(
             item: inventoryId,
             type: "return",
             quantityChange: itemInstanceIds.length,
-            reason: `${itemInstanceIds.length} instancia(s) devuelta(s) por ${crew.name}: ${reason}`,
+            reason: `${itemInstanceIds.length} instancia(s) devuelta(s) por Cuadrilla ${crew.number}: ${reason}`,
             crew: crewId,
             performedBy: sessionUser?.userId,
             performedByModel: sessionUser?.userModel,

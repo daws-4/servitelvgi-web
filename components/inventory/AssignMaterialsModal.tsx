@@ -331,7 +331,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
 
     const crewOptions: SelectOption[] = crews.map((crew) => ({
         key: crew._id,
-        label: `${crew.name} - ${crew.leader?.name || "Sin líder"}`,
+        label: `Cuadrilla ${crew.number} - ${crew.leader?.name || "Sin líder"}`,
     }));
 
     return (

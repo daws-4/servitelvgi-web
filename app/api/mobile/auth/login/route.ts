@@ -55,13 +55,13 @@ export async function POST(request: Request) {
     let crewData = null;
     if (installer.currentCrew) {
       const crew = await CrewModel.findById(installer.currentCrew)
-        .select("name")
+        .select("number")
         .lean() as any;
       
       if (crew) {
         crewData = {
           _id: crew._id.toString(),
-          name: crew.name
+          number: crew.number
         };
       }
     }
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       surname: installer.surname,
       role: "installer",
       crewId: crewData?._id || null,
-      crewName: crewData?.name || null,
+      crewNumber: crewData?.number || null,
       showInventory: installer.showInventory || false,
     };
 

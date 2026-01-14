@@ -38,7 +38,7 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
             .then((res) => res.json())
             .then((data) => {
                 if (data && Array.isArray(data)) {
-                    setCrews(data.map((c: any) => ({ id: c._id, name: c.name })));
+                    setCrews(data.map((c: any) => ({ id: c._id, name: `Cuadrilla ${c.number}` })));
                 }
             })
             .catch((err) => console.error("Error cargando cuadrillas:", err));

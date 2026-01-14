@@ -7,7 +7,7 @@ import { connectDB } from "@/lib/db";
 // Type for lean() Crew documents
 interface CrewLeanDocument {
   _id: any;
-  name: string;
+  number: number;
   leader?: any;
   members?: any[];
   vehiclesAssigned?: Array<{ id: string; name: string }>;
@@ -196,8 +196,8 @@ export async function deleteCrew(id: string) {
     // Step 3: Delete the crew document
     const deletedCrew = await CrewModel.findByIdAndDelete(id).lean();
     
-    if (deletedCrew && 'name' in deletedCrew) {
-      console.log(`[deleteCrew] Successfully deleted crew: ${deletedCrew.name} (ID: ${id})`);
+    if (deletedCrew && 'number' in deletedCrew) {
+      console.log(`[deleteCrew] Successfully deleted crew: Cuadrilla ${deletedCrew.number} (ID: ${id})`);
     }
     
     return deletedCrew;

@@ -5,7 +5,7 @@ import axios from "axios";
 
 interface Crew {
     _id: string;
-    name: string;
+    number: number;
     leader?: {
         _id: string;
         name: string;
@@ -55,7 +55,8 @@ export const AssignCrewModal: React.FC<AssignCrewModalProps> = ({
 
     // Filter crews based on search
     const filteredCrews = crews.filter(crew =>
-        crew.name.toLowerCase().includes(searchValue.toLowerCase())
+        `Cuadrilla ${crew.number}`.toLowerCase().includes(searchValue.toLowerCase()) ||
+        crew.number.toString().includes(searchValue)
     );
 
     const handleConfirm = () => {
@@ -159,7 +160,7 @@ export const AssignCrewModal: React.FC<AssignCrewModalProps> = ({
                                             <i className="fa-solid fa-users"></i>
                                         </div>
                                         <div className="flex-1 text-left">
-                                            <div className="font-medium text-dark text-sm">{crew.name}</div>
+                                            <div className="font-medium text-dark text-sm">Cuadrilla {crew.number}</div>
                                             {leaderName && (
                                                 <div className="text-xs text-gray-500">
                                                     Líder: {leaderName}

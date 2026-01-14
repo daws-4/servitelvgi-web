@@ -55,22 +55,22 @@ export async function createInstaller(data: any) {
 export async function getInstallers(filters = {}) {
   await connectDB();
   const installers = await InstallerModel.find(filters)
-    .populate('currentCrew', 'name') // Populate crew reference with name
+    .populate('currentCrew', 'number') // Populate crew reference with number
     .sort({ createdAt: -1 })
     .lean();
   // Transform _id to id for frontend compatibility
   return installers.map((installer: any) => ({
     ...installer,
     id: installer._id.toString(),
-    // Transform currentCrew to just the name if it exists
-    currentCrew: installer.currentCrew?.name || null,
+    // Transform currentCrew to just the number if it exists
+    currentCrew: installer.currentCrew?.number || null,
   }));
 }
 
 export async function getInstallerById(id: string) {
   await connectDB();
   const installer = await InstallerModel.findById(id)
-    .populate('currentCrew', 'name') // Populate crew reference with name
+    .populate('currentCrew', 'number') // Populate crew reference with number
     .lean();
   if (!installer) return null;
   
@@ -108,7 +108,7 @@ export async function updateInstaller(id: string, data: any) {
       { new: true, runValidators: true } // Added runValidators to catch validation errors
     ).lean();
     
-    if (!updatedInstaller) return null;
+    if (!updatedInstaller) return null;     
     
     // Cast to ensure TypeScript knows this is a single document, not an array
     const installerDoc = updatedInstaller as any;

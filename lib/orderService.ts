@@ -37,7 +37,7 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
 export async function getOrders(filters = {}) {
   await connectDB();
   return await OrderModel.find(filters)
-    .populate('assignedTo', 'name phone')
+    .populate('assignedTo', 'number')
     .sort({ createdAt: -1 })
     .lean();
 }
@@ -46,7 +46,7 @@ export async function getOrders(filters = {}) {
 export async function getOrderById(id: string): Promise<IOrder | null> {
   await connectDB();
   const order = await OrderModel.findById(id)
-    .populate("assignedTo", "name")
+    .populate("assignedTo", "number")
     .populate("materialsUsed.item", "code description unit type")
     .lean() as unknown as IOrder | null;
 
@@ -103,13 +103,13 @@ async function trackChanges(orderId: string, oldOrder: any, newData: any, sessio
 
   // Track crew assignment
   if (newData.assignedTo && String(oldOrder.assignedTo) !== String(newData.assignedTo)) {
-    const crewName = await CrewModel.findById(newData.assignedTo).select('name').lean() as { name: string } | null;
+    const crew = await CrewModel.findById(newData.assignedTo).select('number').lean() as { number: number } | null;
     historyEntries.push({
       order: orderId,
       changeType: "crew_assignment",
       previousValue: oldOrder.assignedTo,
       newValue: newData.assignedTo,
-      description: `Cuadrilla asignada: ${crewName?.name || 'Desconocida'}`,
+      description: `Cuadrilla asignada: ${crew?.number ? `Cuadrilla ${crew.number}` : 'Desconocida'}`,
       crew: newData.assignedTo,
       changedBy: sessionUser?.userId,
       changedByModel: sessionUser?.userModel,

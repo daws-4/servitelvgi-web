@@ -4,8 +4,8 @@ import IndividualInventorySchema from "@/models/IndividualInventorySchema";
 
 const CrewSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
+    number: {
+      type: Number,
       required: true,
       unique: true, // Ej: "Cuadrilla Norte 1"
     },

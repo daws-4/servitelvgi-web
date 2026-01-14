@@ -21,7 +21,7 @@ interface Vehicle {
 
 interface CrewData {
     _id: string;
-    name: string;
+    number: number;
     leader: Installer;
     members: Installer[];
     vehiclesAssigned: Vehicle[];
@@ -34,7 +34,7 @@ interface CrewEditFormProps {
     crew: CrewData;
     availableInstallers: Installer[];
     onSubmit: (data: {
-        name: string;
+        number: number;
         leader: string;
         members: string[];
         vehiclesAssigned: Vehicle[];
@@ -50,7 +50,7 @@ export const CrewEditForm: React.FC<CrewEditFormProps> = ({
     onCancel,
 }) => {
     const [formData, setFormData] = useState({
-        name: crew.name,
+        number: crew.number,
         leader: crew.leader._id,
         members: crew.members,
         memberIds: crew.members.map(m => m._id),
@@ -96,7 +96,7 @@ export const CrewEditForm: React.FC<CrewEditFormProps> = ({
 
         try {
             await onSubmit({
-                name: formData.name,
+                number: Number(formData.number),
                 leader: formData.leader,
                 members: formData.memberIds,
                 vehiclesAssigned: formData.vehiclesAssigned,
@@ -124,14 +124,15 @@ export const CrewEditForm: React.FC<CrewEditFormProps> = ({
                             {/* Nombre */}
                             <div className="col-span-1 md:col-span-2">
                                 <label className="block text-sm font-medium text-dark mb-1">
-                                    Nombre de la Cuadrilla <span className="text-red-500">*</span>
+                                    Número de Cuadrilla <span className="text-red-500">*</span>
                                 </label>
                                 <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => handleInputChange("name", e.target.value)}
+                                    type="number"
+                                    value={formData.number}
+                                    onChange={(e) => handleInputChange("number", e.target.value)}
                                     className="w-full px-4 py-2 rounded-lg border border-neutral/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                                     required
+                                    min="1"
                                 />
                             </div>
 

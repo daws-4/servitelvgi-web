@@ -20,7 +20,7 @@ export interface InstallerAuthData {
   onDuty: "active" | "inactive" | "onDuty";
   crew: {
     _id: string;
-    name: string;
+    number: number;
   } | null;
 }
 
@@ -48,7 +48,7 @@ export interface InstallerTokenPayload {
   surname: string;
   role: 'installer';
   crewId: string | null;
-  crewName: string | null;
+  crewNumber: number | null;
   showInventory: boolean;
   iat?: number;
   exp?: number;

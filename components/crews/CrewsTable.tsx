@@ -14,7 +14,7 @@ interface CrewMember {
 
 interface Crew {
     _id: string;
-    name: string;
+    number: number;
     zone?: string;
     leader: CrewMember;
     members: CrewMember[];
@@ -90,7 +90,7 @@ export const CrewsTable: React.FC<CrewsTableProps> = ({
                                         />
                                     </td>
                                     <td className="px-6 py-4 font-medium text-dark cursor-pointer" onClick={() => router.push(`/dashboard/crews/${crew._id}`)}>
-                                        {crew.name}
+                                        Cuadrilla {crew.number}
                                         {/* {crew.zone && (
                                             <span className="block text-xs text-neutral font-normal mt-0.5">
                                                 Zona: {crew.zone}

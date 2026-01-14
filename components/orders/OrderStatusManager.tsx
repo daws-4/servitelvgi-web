@@ -8,7 +8,7 @@ export type OrderType = "instalacion" | "averia" | "otro";
 
 interface Crew {
     _id: string;
-    name: string;
+    number: number;
 }
 
 interface OrderStatusManagerProps {
@@ -229,7 +229,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                             <option value="">-- Sin Asignar --</option>
                             {crews.map(crew => (
                                 <option key={crew._id} value={crew._id}>
-                                    {crew.name}
+                                    Cuadrilla {crew.number}
                                 </option>
                             ))}
                         </select>

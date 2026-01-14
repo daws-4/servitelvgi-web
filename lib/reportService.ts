@@ -23,7 +23,7 @@ import type {
 // Type for lean Crew document
 interface CrewDocument {
   _id: Types.ObjectId;
-  name: string;
+  number: number;
   leader: Types.ObjectId;
   members: Types.ObjectId[];
   vehiclesAssigned?: Array<{ id: string; name: string }>;
@@ -57,7 +57,7 @@ function transformToOrderSummary(order: any): OrderSummary {
     assignmentDate: order.assignmentDate,
     assignedTo: order.assignedTo ? {
       _id: order.assignedTo._id?.toString() || order.assignedTo.toString(),
-      name: order.assignedTo.name || '',
+      number: order.assignedTo.number || null,
     } : undefined,
     node: order.node,
     servicesToInstall: order.servicesToInstall,
@@ -495,12 +495,12 @@ export async function getCrewPerformanceReport(
   // Populate crew names
   const populatedPerformance = await CrewModel.populate(performance, {
     path: "_id",
-    select: "name",
+    select: "number",
   });
 
   return populatedPerformance.map((crew) => ({
     crewId: crew._id._id.toString(),
-    crewName: crew._id.name,
+    crewNumber: crew._id.number,
     totalOrders: crew.totalOrders,
     instalaciones: crew.instalaciones,
     averias: crew.averias,
@@ -528,7 +528,7 @@ export async function getCrewInventoryReport(
 
   return crews.map((crew) => ({
     crewId: crew._id.toString(),
-    crewName: crew.name,
+    crewNumber: crew.number,
     inventory: (crew.assignedInventory || []).map((inv) => ({
       itemId: inv.item._id.toString(),
       code: inv.item.code,

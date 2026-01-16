@@ -23,6 +23,7 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
+    
     if (id) {
       const item = await getOrderById(id);
       if (!item)
@@ -32,7 +33,18 @@ export async function GET(request: Request) {
         );
       return NextResponse.json(item, { status: 200, headers: CORS_HEADERS });
     }
-    const items = await getOrders();
+    
+    // Extract filter parameters from query string
+    const filters: any = {};
+    const assignedTo = url.searchParams.get("assignedTo");
+    const status = url.searchParams.get("status");
+    const type = url.searchParams.get("type");
+    
+    if (assignedTo) filters.assignedTo = assignedTo;
+    if (status) filters.status = status;
+    if (type) filters.type = type;
+    
+    const items = await getOrders(filters);
     return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     console.error("Error fetching orders:", err);

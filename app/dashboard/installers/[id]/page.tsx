@@ -22,7 +22,7 @@ interface Installer {
 
 interface Crew {
     _id: string;
-    name: string;
+    number: number;
 }
 
 export default function InstallerEditPage() {

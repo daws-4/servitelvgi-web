@@ -6,13 +6,13 @@ import bcrypt from "bcryptjs";
 // Función reutilizable para CREAR instalador
 export async function createInstaller(data: any) {
   await connectDB();
-  
+
   const { username, password, email, surname, name, phone, status, currentCrew, showInventory } = data;
-  
+
   try {
     // 1. Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     // 2. Create Installer with all fields including credentials
     const installer = await InstallerModel.create({
       username,
@@ -25,7 +25,7 @@ export async function createInstaller(data: any) {
       showInventory,
       currentCrew: currentCrew
     });
-    
+
     return installer;
   } catch (error: any) {
     // Handle MongoDB duplicate key error
@@ -39,13 +39,13 @@ export async function createInstaller(data: any) {
         throw new Error('Ya existe un registro con estos datos');
       }
     }
-    
+
     // Handle Mongoose validation errors
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map((err: any) => err.message);
       throw new Error(messages.join(', '));
     }
-    
+
     // Re-throw any other errors
     throw error;
   }
@@ -73,10 +73,10 @@ export async function getInstallerById(id: string) {
     .populate('currentCrew', 'number') // Populate crew reference with number
     .lean();
   if (!installer) return null;
-  
+
   // Cast to ensure TypeScript knows this is a single document, not an array
   const installerDoc = installer as any;
-  
+
   // Transform _id to id for frontend compatibility
   // Keep the currentCrew._id for the edit form to work properly
   return {
@@ -90,10 +90,19 @@ export async function getInstallerById(id: string) {
 
 export async function updateInstaller(id: string, data: any) {
   await connectDB();
-  
+
   try {
     const updateData = { ...data };
-    
+
+    // Validate push token if provided
+    if (updateData.pushToken !== undefined) {
+      if (updateData.pushToken !== null &&
+        !updateData.pushToken.startsWith('ExponentPushToken[') &&
+        !updateData.pushToken.startsWith('ExpoPushToken[')) {
+        throw new Error('Invalid Expo push token format');
+      }
+    }
+
     // Hash password if it's being updated
     if (updateData.password) {
       updateData.password = await bcrypt.hash(updateData.password, 10);
@@ -101,18 +110,18 @@ export async function updateInstaller(id: string, data: any) {
       // Remove password from update if not provided
       delete updateData.password;
     }
-    
+
     const updatedInstaller = await InstallerModel.findByIdAndUpdate(
       id,
       { $set: updateData },
       { new: true, runValidators: true } // Added runValidators to catch validation errors
     ).lean();
-    
-    if (!updatedInstaller) return null;     
-    
+
+    if (!updatedInstaller) return null;
+
     // Cast to ensure TypeScript knows this is a single document, not an array
     const installerDoc = updatedInstaller as any;
-    
+
     // Transform _id to id for frontend compatibility
     return {
       ...installerDoc,
@@ -130,13 +139,13 @@ export async function updateInstaller(id: string, data: any) {
         throw new Error('Ya existe un registro con estos datos');
       }
     }
-    
+
     // Handle Mongoose validation errors
     if (error.name === 'ValidationError') {
       const messages = Object.values(error.errors).map((err: any) => err.message);
       throw new Error(messages.join(', '));
     }
-    
+
     // Re-throw any other errors
     throw error;
   }

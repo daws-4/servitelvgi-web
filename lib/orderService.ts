@@ -5,7 +5,8 @@ import InventoryModel, { IInventory } from "@/models/Inventory";
 import { connectDB } from "@/lib/db";
 import { createOrderHistory } from "@/lib/orderHistoryService";
 import { SessionUser } from "@/lib/authHelpers";
-
+import { notifyNewOrderAssigned } from '@/lib/pushNotificationService';
+import { notifyOrderReassigned } from '@/lib/pushNotificationService';
 // Ensure Installer and Crew models are registered for populate
 void InstallerModel;
 void CrewModel;
@@ -15,7 +16,23 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
   await connectDB();
   // Aquí validas lógica de negocio (ej: verificar si el técnico existe)
   const newOrder = await OrderModel.create(data);
-  
+  if (newOrder.assignedTo) {
+    try {
+      await notifyNewOrderAssigned(
+        newOrder._id.toString(),
+        newOrder.assignedTo.toString(),
+        {
+          subscriberName: newOrder.subscriberName,
+          address: newOrder.address,
+          type: newOrder.type
+        }
+      );
+    } catch (err) {
+      // Log but don't fail order creation
+      console.error('Push notification failed:', err);
+    }
+  }
+
   // Create initial history entry with user info
   await createOrderHistory({
     order: newOrder._id,
@@ -29,7 +46,7 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
     changedBy: sessionUser?.userId,
     changedByModel: sessionUser?.userModel,
   });
-  
+
   return newOrder;
 }
 
@@ -139,30 +156,57 @@ async function trackChanges(orderId: string, oldOrder: any, newData: any, sessio
 // Actualizar orden por id
 export async function updateOrder(id: string, data: any, sessionUser?: SessionUser) {
   await connectDB();
-  
+
   // Get the old order first
-  const oldOrder = await OrderModel.findById(id).lean();
+  const oldOrder = await OrderModel.findById(id).lean() as unknown as IOrder | null;
   if (!oldOrder) {
     throw new Error("Order not found");
   }
-  
+
+
+
   // Automatically set dates based on status changes
   if (data.status === 'assigned' && !data.assignmentDate) {
     data.assignmentDate = new Date();
   }
-  
+
   if (data.status === 'completed' && !data.completionDate) {
     data.completionDate = new Date();
   }
-  
+
   // Track changes before updating
   await trackChanges(id, oldOrder, data, sessionUser);
-  
-  return await OrderModel.findByIdAndUpdate(
+
+  // Update the order
+  const updatedOrder = await OrderModel.findByIdAndUpdate(
     id,
     { $set: data },
     { new: true }
-  ).lean();
+  ).lean() as unknown as IOrder | null;
+
+  if (!updatedOrder) {
+    throw new Error("Order not found after update");
+  }
+
+  // Check if order was reassigned to a different crew
+  if (data.assignedTo && oldOrder.assignedTo &&
+    String(data.assignedTo) !== String(oldOrder.assignedTo)) {
+
+    try {
+      await notifyOrderReassigned(
+        id,
+        String(data.assignedTo),
+        {
+          subscriberName: updatedOrder.subscriberName,
+          address: updatedOrder.address
+        }
+      );
+    } catch (err) {
+      console.error('Push notification failed:', err);
+    }
+  }
+
+  return updatedOrder;
 }
 
 // Eliminar orden por id

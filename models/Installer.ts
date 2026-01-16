@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 
 const InstallerSchema = new mongoose.Schema(
   {
-        // Credenciales de acceso
+    // Credenciales de acceso
     username: {
       type: String,
       required: true,
@@ -16,7 +16,7 @@ const InstallerSchema = new mongoose.Schema(
     },
 
     // Información y rol del usuario
-     name: {
+    name: {
       type: String,
       required: true,
     },
@@ -38,18 +38,18 @@ const InstallerSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
-    showInventory:{
-      type:Boolean,
-      default:false
+    showInventory: {
+      type: Boolean,
+      default: false
     },
-    onDuty:{
+    onDuty: {
       type: String,
       enum: ["active", "inactive", "onDuty"],
       default: "inactive"
     },
-    profilePicture:{
-      type:String,
-      default:null
+    profilePicture: {
+      type: String,
+      default: null
     },
     // Referencia a la cuadrilla actual. Si es null, trabaja solo.
     currentCrew: {
@@ -57,6 +57,15 @@ const InstallerSchema = new mongoose.Schema(
       ref: "Crew",
       default: null
     },
+    pushToken: {
+      type: String,
+      default: null,
+      index: true // Index for faster lookups
+    },
+    pushTokenUpdatedAt: {
+      type: Date,
+      default: null
+    }
   },
   { timestamps: true }
 );

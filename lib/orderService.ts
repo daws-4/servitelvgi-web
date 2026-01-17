@@ -5,8 +5,7 @@ import InventoryModel, { IInventory } from "@/models/Inventory";
 import { connectDB } from "@/lib/db";
 import { createOrderHistory } from "@/lib/orderHistoryService";
 import { SessionUser } from "@/lib/authHelpers";
-import { notifyNewOrderAssigned } from '@/lib/pushNotificationService';
-import { notifyOrderReassigned } from '@/lib/pushNotificationService';
+import { notifyNewOrderAssigned, notifyOrderReassigned, notifyOrderStatusChanged } from '@/lib/pushNotificationService';
 // Ensure Installer and Crew models are registered for populate
 void InstallerModel;
 void CrewModel;
@@ -177,6 +176,12 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
   // Track changes before updating
   await trackChanges(id, oldOrder, data, sessionUser);
 
+  // Send notification for status changes (before update so we have old status)
+  if (data.status && oldOrder.status !== data.status && (data.assignedTo || oldOrder.assignedTo)) {
+    // We'll send this after the update to ensure we have the latest order data
+    // Store the flag to send notification after update
+  }
+
   // Update the order
   const updatedOrder = await OrderModel.findByIdAndUpdate(
     id,
@@ -188,10 +193,36 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
     throw new Error("Order not found after update");
   }
 
-  // Check if order was reassigned to a different crew
-  if (data.assignedTo && oldOrder.assignedTo &&
-    String(data.assignedTo) !== String(oldOrder.assignedTo)) {
+  // Send notifications based on what changed
+  const crewChanged = data.assignedTo && oldOrder.assignedTo &&
+    String(data.assignedTo) !== String(oldOrder.assignedTo);
+  const statusChanged = data.status && oldOrder.status !== data.status;
+  const currentCrewId = data.assignedTo || updatedOrder.assignedTo;
 
+  // Determine if we should exclude the current user from notifications
+  const excludeInstallerId = sessionUser?.role === 'installer' ? sessionUser.userId : undefined;
+
+  // Priority: If both changed, send status change notification (more relevant)
+  // Otherwise send whichever one changed
+  if (statusChanged && currentCrewId) {
+    // Status changed - notify current crew
+    try {
+      await notifyOrderStatusChanged(
+        id,
+        currentCrewId,  // Only notify the NEW/CURRENT crew
+        oldOrder.status,
+        data.status,
+        {
+          subscriberName: updatedOrder.subscriberName,
+          address: updatedOrder.address
+        },
+        excludeInstallerId  // Exclude installer who made the change
+      );
+    } catch (err) {
+      console.error('Status change notification failed:', err);
+    }
+  } else if (crewChanged && !statusChanged) {
+    // Only crew changed (no status change) - send reassignment notification
     try {
       await notifyOrderReassigned(
         id,
@@ -202,8 +233,11 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
         }
       );
     } catch (err) {
-      console.error('Push notification failed:', err);
+      console.error('Crew reassignment notification failed:', err);
     }
+  } else if (!currentCrewId && statusChanged) {
+    // Status changed but no crew assigned - skip notification
+    console.log(`Order ${id} has no crew assigned, skipping status change notification`);
   }
 
   return updatedOrder;

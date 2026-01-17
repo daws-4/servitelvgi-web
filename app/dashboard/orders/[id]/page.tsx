@@ -214,7 +214,7 @@ export default function OrderEditPage() {
                         <h1 className="text-xl font-bold text-primary flex items-center gap-2">
                             Editar Orden
                             <span className="text-gray-400 font-normal">
-                                #{orderData.subscriberNumber}
+                                #{orderData.ticket_id}
                             </span>
                         </h1>
                     </div>

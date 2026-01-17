@@ -52,9 +52,40 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
 
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSendingNotification, setIsSendingNotification] = useState(false);
 
     const handleInputChange = (field: string, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const handleSendTestNotification = async () => {
+        setIsSendingNotification(true);
+        try {
+            const response = await fetch("/api/test/push-notification", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    installerId: installer._id,
+                    title: "🧪 Notificación de Prueba",
+                    body: "Esta es una notificación de prueba enviada desde el panel de administración",
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert(`✅ ${data.message}\nEnviado a: ${data.recipients.join(", ")}`);
+            } else {
+                alert(`❌ Error: ${data.error}`);
+            }
+        } catch (error: any) {
+            console.error("Error sending test notification:", error);
+            alert(`❌ Error al enviar la notificación: ${error.message}`);
+        } finally {
+            setIsSendingNotification(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -312,6 +343,31 @@ export const InstallerEditForm: React.FC<InstallerEditFormProps> = ({
                                 <p className="text-xs text-gray-400 mt-2">
                                     Al asignar una cuadrilla, el inventario personal podría fusionarse con
                                     el de la cuadrilla.
+                                </p>
+                            </div>
+
+                            {/* Test Push Notification */}
+                            <div className="pt-4 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={handleSendTestNotification}
+                                    disabled={isSendingNotification}
+                                    className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all flex items-center justify-center gap-2 shadow-md shadow-purple-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                    {isSendingNotification ? (
+                                        <>
+                                            <i className="fa-solid fa-circle-notch fa-spin"></i>
+                                            Enviando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fa-solid fa-bell"></i>
+                                            Enviar Notificación de Prueba
+                                        </>
+                                    )}
+                                </button>
+                                <p className="text-[10px] text-gray-400 mt-2 text-center">
+                                    Envía una notificación push de prueba a este instalador
                                 </p>
                             </div>
 

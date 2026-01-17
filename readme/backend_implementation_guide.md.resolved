@@ -1,0 +1,336 @@
+# Backend Implementation Guide - Push Notifications
+
+## 📁 Files Created
+
+### 1. API Route: Push Token Registration
+**Path**: `app/api/web/installers/push-token/route.ts`
+
+Handles registration and removal of Expo push tokens.
+
+**Endpoints**:
+- `POST /api/web/installers/push-token` - Register token
+- `DELETE /api/web/installers/push-token` - Unregister token
+
+---
+
+### 2. Service: Push Notification Service
+**Path**: [lib/pushNotificationService.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/pushNotificationService.ts)
+
+Core service for sending push notifications via Expo Push Service.
+
+**Functions**:
+- [sendPushNotification()](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/pushNotificationService.ts#70-110) - Send to specific tokens
+- [sendNotificationToCrew()](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/pushNotificationService.ts#111-185) - Send to all crew members
+- [notifyNewOrderAssigned()](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/pushNotificationService.ts#186-215) - Helper for new order notifications
+- [notifyOrderReassigned()](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/pushNotificationService.ts#216-243) - Helper for reassignment notifications
+
+---
+
+## 🔧 Integration Points
+
+### 1. Order Creation (New Order Assigned)
+
+**File**: [lib/orderService.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/orderService.ts) or `app/api/web/orders/route.ts`
+
+Add notification after order is created:
+
+```typescript
+import { notifyNewOrderAssigned } from '@/lib/pushNotificationService';
+
+export async function createOrder(data: any, sessionUser?: any) {
+  // ... existing order creation logic
+  
+  const newOrder = await OrderModel.create(data);
+  
+  // Send push notification if order is assigned to a crew
+  if (newOrder.assignedTo) {
+    try {
+      await notifyNewOrderAssigned(
+        newOrder._id.toString(),
+        newOrder.assignedTo.toString(),
+        {
+          subscriberName: newOrder.subscriberName,
+          address: newOrder.address,
+          type: newOrder.type
+        }
+      );
+    } catch (err) {
+      // Log but don't fail order creation
+      console.error('Push notification failed:', err);
+    }
+  }
+  
+  return newOrder;
+}
+```
+
+---
+
+### 2. Order Reassignment
+
+**File**: [lib/orderService.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/orderService.ts) or `app/api/web/orders/route.ts`
+
+Add notification when `assignedTo` changes:
+
+```typescript
+import { notifyOrderReassigned } from '@/lib/pushNotificationService';
+
+export async function updateOrder(id: string, data: any, sessionUser?: any) {
+  const currentOrder = await OrderModel.findById(id);
+  
+  // ... existing update logic
+  
+  const updatedOrder = await OrderModel.findByIdAndUpdate(id, data, { new: true });
+  
+  // Check if order was reassigned to a different crew
+  if (data.assignedTo && currentOrder.assignedTo && 
+      data.assignedTo !== currentOrder.assignedTo.toString()) {
+    
+    try {
+      await notifyOrderReassigned(
+        id,
+        data.assignedTo,
+        {
+          subscriberName: updatedOrder.subscriberName,
+          address: updatedOrder.address
+        }
+      );
+    } catch (err) {
+      console.error('Push notification failed:', err);
+    }
+  }
+  
+  return updatedOrder;
+}
+```
+
+---
+
+### 3. Update Installer Model
+
+**File**: [models/Installer.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/models/Installer.ts)
+
+Add fields for push token:
+
+```typescript
+const InstallerSchema = new Schema({
+  // ... existing fields
+  
+  pushToken: {
+    type: String,
+    default: null,
+    index: true // Index for faster lookups
+  },
+  
+  pushTokenUpdatedAt: {
+    type: Date,
+    default: null
+  }
+});
+```
+
+**Migration**: Run this in MongoDB shell or via migration script:
+
+```javascript
+db.installers.updateMany(
+  { pushToken: { $exists: false } },
+  { $set: { pushToken: null, pushTokenUpdatedAt: null } }
+);
+```
+
+---
+
+### 4. Update Installer Service
+
+**File**: [lib/installerService.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/installerService.ts)
+
+Ensure [updateInstaller](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/installerService.ts#91-144) supports push token fields:
+
+```typescript
+export async function updateInstaller(id: string, data: any) {
+  await connectDB();
+  
+  // Validate push token if provided
+  if (data.pushToken !== undefined) {
+    if (data.pushToken !== null && 
+        !data.pushToken.startsWith('ExponentPushToken[') && 
+        !data.pushToken.startsWith('ExpoPushToken[')) {
+      throw new Error('Invalid Expo push token format');
+    }
+  }
+  
+  return await InstallerModel.findByIdAndUpdate(
+    id,
+    data,
+    { new: true, runValidators: true }
+  ).lean();
+}
+```
+
+---
+
+## 🧪 Testing Push Notifications
+
+### Manual Test (Postman/curl)
+
+**1. Register a test token:**
+```bash
+curl -X POST http://localhost:3000/api/web/installers/push-token \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "pushToken": "ExponentPushToken[YOUR_TEST_TOKEN]"
+  }'
+```
+
+**2. Send a test notification:**
+```bash
+curl -X POST https://exp.host/--/api/v2/push/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "ExponentPushToken[YOUR_TEST_TOKEN]",
+    "title": "Test Notification",
+    "body": "This is a test message",
+    "data": { "type": "test" }
+  }'
+```
+
+---
+
+### Programmatic Test
+
+Create a test endpoint `app/api/test/push-notification/route.ts`:
+
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { sendNotificationToCrew } from "@/lib/pushNotificationService";
+
+export async function POST(request: NextRequest) {
+  try {
+    const { crewId } = await request.json();
+    
+    const count = await sendNotificationToCrew(
+      crewId,
+      "🧪 Test Notification",
+      "This is a test from the backend",
+      { type: "test", timestamp: new Date().toISOString() }
+    );
+    
+    return NextResponse.json({
+      success: true,
+      sent: count,
+      message: `Sent to ${count} devices`
+    });
+    
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message },
+      { status: 500 }
+    );
+  }
+}
+```
+
+Test:
+```bash
+curl -X POST http://localhost:3000/api/test/push-notification \
+  -H "Content-Type: application/json" \
+  -d '{ "crewId": "YOUR_CREW_ID" }'
+```
+
+---
+
+## 📊 Monitoring & Logging
+
+Add logging to track notification delivery:
+
+```typescript
+// In pushNotificationService.ts
+
+export async function sendPushNotification(message: PushNotificationMessage) {
+  const startTime = Date.now();
+  
+  try {
+    const receipts = await fetch(/* ... */);
+    
+    const duration = Date.now() - startTime;
+    console.log(`✅ Push sent in ${duration}ms to ${Array.isArray(message.to) ? message.to.length : 1} devices`);
+    
+    // Log any errors from Expo
+    receipts.forEach((receipt, index) => {
+      if (receipt.status === 'error') {
+        console.error(`Push error for token ${index}:`, receipt.message);
+      }
+    });
+    
+    return receipts;
+    
+  } catch (error) {
+    console.error('Push notification failed:', error);
+    throw error;
+  }
+}
+```
+
+---
+
+## 🔒 Security Considerations
+
+1. **Token Validation**: Always validate Expo token format before storing
+2. **Rate Limiting**: Implement on `/push-token` endpoint to prevent abuse
+3. **Authentication**: Ensure only authenticated installers can register tokens
+4. **Token Expiry**: Consider removing tokens older than 90 days (optional)
+
+---
+
+## ⚡ Performance Tips
+
+1. **Batch Notifications**: Expo supports up to 100 tokens per request
+2. **Async Processing**: Send notifications asynchronously to avoid blocking requests
+3. **Error Handling**: Don't let notification failures break order creation
+4. **Caching**: Cache crew member lists to reduce DB queries
+
+---
+
+## 🐛 Common Issues
+
+### Issue: "Invalid Expo push token"
+**Solution**: Ensure token starts with `ExponentPushToken[` or `ExpoPushToken[`
+
+### Issue: "DeviceNotRegistered"
+**Solution**: Token expired - mobile app will re-register automatically
+
+### Issue: "MessageTooBig"
+**Solution**: Reduce notification body to <4096 bytes
+
+### Issue: Notifications not received
+**Check**:
+1. Token is correctly stored in database
+2. Mobile app has notification permissions
+3. Device is not in Do Not Disturb mode
+4. Check Expo push notification status page
+
+---
+
+## 📱 Mobile App Side
+
+The mobile app is already configured to:
+- ✅ Auto-register push tokens on launch
+- ✅ Listen for notifications
+- ✅ Refresh orders when notification received
+- ✅ Handle notification taps
+
+No additional mobile changes needed!
+
+---
+
+## 🚀 Deployment Checklist
+
+- [ ] Add `pushToken` and `pushTokenUpdatedAt` fields to Installer model
+- [ ] Run database migration if needed
+- [ ] Deploy [/api/web/installers/push-token/route.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/api/web/installers/push-token/route.ts)
+- [ ] Deploy [/lib/pushNotificationService.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/web_references/api_reference/lib/pushNotificationService.ts)
+- [ ] Integrate notification calls in order creation/update
+- [ ] Test with a real device
+- [ ] Monitor logs for any errors
+- [ ] Set up alerts for high failure rates (optional)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserFromRequest } from "@/lib/authHelpers";
+import { getInstallerFromBearerToken } from "@/lib/authHelpers";
 import { updateInstaller } from "@/lib/installerService";
+import rateLimiter, { getClientIp } from "@/lib/rateLimiter";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -14,11 +15,37 @@ export async function OPTIONS() {
 
 /**
  * POST /api/web/installers/push-token
- * Register or update an installer's Expo push token
+ * Register or update an installer's push token (Expo or FCM)
  */
 export async function POST(request: NextRequest) {
   try {
-    const sessionUser = await getUserFromRequest(request);
+    // Apply rate limiting (10 requests per minute per IP)
+    const clientIp = getClientIp(request);
+    const rateLimit = rateLimiter.check(clientIp, 10, 60 * 1000);
+
+    const rateLimitHeaders = {
+      ...CORS_HEADERS,
+      "X-RateLimit-Limit": "10",
+      "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+      "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+    };
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            ...rateLimitHeaders,
+            "Retry-After": rateLimit.retryAfter?.toString() || "60",
+          },
+        }
+      );
+    }
+
+    // Get installer from Bearer token (mobile app authentication)
+    const authHeader = request.headers.get('Authorization');
+    const sessionUser = await getInstallerFromBearerToken(authHeader);
 
     if (!sessionUser || sessionUser.role !== 'installer') {
       return NextResponse.json(
@@ -37,10 +64,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate Expo push token format
-    if (!pushToken.startsWith('ExponentPushToken[') && !pushToken.startsWith('ExpoPushToken[')) {
+    // Validate push token format (support both Expo and native FCM tokens)
+    // Expo tokens: ExponentPushToken[...] or ExpoPushToken[...]
+    // FCM tokens: alphanumeric string with colons (e.g., "abc123:APA91b...")
+    const isExpoToken = pushToken.startsWith('ExponentPushToken[') || pushToken.startsWith('ExpoPushToken[');
+    const isFCMToken = /^[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+/.test(pushToken);
+
+    if (!isExpoToken && !isFCMToken) {
       return NextResponse.json(
-        { error: "Invalid Expo push token format" },
+        { error: "Invalid push token format. Expected Expo or FCM token." },
         { status: 400, headers: CORS_HEADERS }
       );
     }
@@ -66,7 +98,7 @@ export async function POST(request: NextRequest) {
         token: pushToken,
         message: "Push token registered successfully"
       },
-      { status: 200, headers: CORS_HEADERS }
+      { status: 200, headers: rateLimitHeaders }
     );
 
   } catch (err: any) {
@@ -84,7 +116,33 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const sessionUser = await getUserFromRequest(request);
+    // Apply rate limiting
+    const clientIp = getClientIp(request);
+    const rateLimit = rateLimiter.check(clientIp, 10, 60 * 1000);
+
+    const rateLimitHeaders = {
+      ...CORS_HEADERS,
+      "X-RateLimit-Limit": "10",
+      "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+      "X-RateLimit-Reset": new Date(rateLimit.resetTime).toISOString(),
+    };
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            ...rateLimitHeaders,
+            "Retry-After": rateLimit.retryAfter?.toString() || "60",
+          },
+        }
+      );
+    }
+
+    // Get installer from Bearer token (mobile app authentication)
+    const authHeader = request.headers.get('Authorization');
+    const sessionUser = await getInstallerFromBearerToken(authHeader);
 
     if (!sessionUser || sessionUser.role !== 'installer') {
       return NextResponse.json(
@@ -113,7 +171,7 @@ export async function DELETE(request: NextRequest) {
         success: true,
         message: "Push token unregistered successfully"
       },
-      { status: 200, headers: CORS_HEADERS }
+      { status: 200, headers: rateLimitHeaders }
     );
 
   } catch (err: any) {

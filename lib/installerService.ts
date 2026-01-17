@@ -94,12 +94,14 @@ export async function updateInstaller(id: string, data: any) {
   try {
     const updateData = { ...data };
 
-    // Validate push token if provided
-    if (updateData.pushToken !== undefined) {
-      if (updateData.pushToken !== null &&
-        !updateData.pushToken.startsWith('ExponentPushToken[') &&
-        !updateData.pushToken.startsWith('ExpoPushToken[')) {
-        throw new Error('Invalid Expo push token format');
+    // Validate push token if provided (support both Expo and native FCM tokens)
+    if (updateData.pushToken !== undefined && updateData.pushToken !== null) {
+      const isExpoToken = updateData.pushToken.startsWith('ExponentPushToken[') ||
+        updateData.pushToken.startsWith('ExpoPushToken[');
+      const isFCMToken = /^[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+/.test(updateData.pushToken);
+
+      if (!isExpoToken && !isFCMToken) {
+        throw new Error('Invalid push token format. Expected Expo or FCM token.');
       }
     }
 

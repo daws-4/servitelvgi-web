@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
   try {
     // Get Authorization header
     const authHeader = request.headers.get("authorization");
-    
+
     // Verify token and get installer info
     const sessionUser = await getInstallerFromBearerToken(authHeader);
-    
+
     if (!sessionUser) {
       return NextResponse.json(
         { message: "No autorizado" },
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const installer = await InstallerModel.findById(sessionUser.userId)
       .select("-password") // Exclude password field
       .lean() as any;
-    
+
     if (!installer) {
       return NextResponse.json(
         { message: "Instalador no encontrado" },
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       const crew = await CrewModel.findById(installer.currentCrew)
         .select("number")
         .lean() as any;
-      
+
       if (crew) {
         crewData = {
           _id: crew._id.toString(),
@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
           status: installer.status,
           onDuty: installer.onDuty,
           showInventory: installer.showInventory || false,
+          pushToken: installer.pushToken, // Push notification token
           crew: crewData
         }
       },

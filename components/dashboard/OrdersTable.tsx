@@ -12,7 +12,7 @@ import { Link } from "@heroui/link";
 export interface OrderData {
     _id: string;
     subscriberNumber: string;
-    ticketNumber?: string;
+    ticket_id?: string;
     subscriberName: string;
     email?: string;
     type: "instalacion" | "averia" | "otro";
@@ -360,7 +360,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                                 className="w-4 h-4 rounded text-primary focus:ring-primary border-gray-300 cursor-pointer"
                                             />
                                         </td>
-                                        <td className="p-4 font-medium text-dark cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.ticketNumber ? order.ticketNumber : "Sin ticket"}</td>
+                                        <td className="p-4 font-medium text-dark cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.ticket_id ? order.ticket_id : "Sin ticket"}</td>
                                         <td className="p-4">
                                             <div className="font-medium text-dark cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.subscriberName}</div>
                                             {order.email && <div className="text-xs text-gray-400 cursor-pointer" onClick={() => handleEditRedirect(order._id)}>{order.email}</div>}

@@ -226,7 +226,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                             disabled={isLoadingCrews}
                             className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-md bg-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer disabled:opacity-50"
                         >
-                            <option value="">-- Sin Asignar --</option>
+                            <option value="">SIN CUADRILLA</option>
                             {crews.map(crew => (
                                 <option key={crew._id} value={crew._id}>
                                     Cuadrilla {crew.number}

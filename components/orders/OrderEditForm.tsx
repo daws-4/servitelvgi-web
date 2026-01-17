@@ -47,7 +47,7 @@ export interface OrderEditData {
     servicesToInstall: string;
     type: OrderType;
     status: OrderStatus;
-    assignedTo?: string;
+    assignedTo?: string | null;
     materialsUsed?: Material[];
     photoEvidence?: string[]; // Image IDs in format "recordId:filename"
     internetTest?: InternetTestData;
@@ -98,7 +98,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                 ...formData,
                 status: data.status,
                 type: data.type,
-                assignedTo: data.assignedTo || undefined,
+                assignedTo: data.assignedTo || null,
                 materialsUsed: materials,
                 photoEvidence: photoIds,
                 installerLog: installerLog,
@@ -266,7 +266,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                 {/* 3. Materials Used */}
                 <MaterialsManager
                     orderId={orderId}
-                    assignedCrewId={formData.assignedTo}
+                    assignedCrewId={formData.assignedTo || undefined}
                     initialMaterials={materials}
                     onChange={setMaterials}
                     onImmediateSave={handleMaterialsAutoSave}
@@ -276,8 +276,8 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                 {/* 4. Photo Evidence */}
                 <PhotoEvidenceManager
                     orderId={orderId}
-                    installerId={formData.assignedTo} // Using assignedTo as installer for now
-                    crewId={formData.assignedTo}
+                    installerId={formData.assignedTo || undefined} // Using assignedTo as installer for now
+                    crewId={formData.assignedTo || undefined}
                     initialPhotoIds={photoIds}
                     onChange={setPhotoIds}
                 />
@@ -324,7 +324,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     orderName={formData.subscriberName}
                     initialStatus={formData.status}
                     initialType={formData.type}
-                    initialAssignedTo={formData.assignedTo}
+                    initialAssignedTo={formData.assignedTo || undefined}
                     onStatusChange={(status) => setFormData(prev => ({ ...prev, status }))}
                     onTypeChange={(type) => setFormData(prev => ({ ...prev, type }))}
                     onAssignedToChange={(assignedTo) => setFormData(prev => ({ ...prev, assignedTo }))}

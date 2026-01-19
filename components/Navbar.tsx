@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { SearchIcon, BellIcon, GearIcon, BarsIcon } from "@/components/dashboard-icons";
-
+//aló
 export default function Navbar() {
     return (
         <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 z-10 border-b border-neutral/20 w-full">

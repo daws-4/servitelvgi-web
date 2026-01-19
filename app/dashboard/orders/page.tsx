@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { FilterToolbar } from "@/components/orders/FilterToolbar";
-import { OrdersTable, OrderData } from "@/components/dashboard/OrdersTable";
+import { OrdersTable, OrderData } from "@/components/orders/OrdersTable";
 import { Pagination } from "@/components/orders/Pagination";
 import { NewOrderModal } from "@/components/orders/NewOrderModal";
 import axios from "axios";

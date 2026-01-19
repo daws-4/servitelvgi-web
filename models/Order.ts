@@ -7,14 +7,14 @@ export interface IOrder {
   _id?: string;
   subscriberNumber: string;
   ticket_id?: string;
-  type: "instalacion" | "averia" | "otro";
+  type: "instalacion" | "averia" | "recuperacion" | "otro";
   status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
   subscriberName: string;
   address: string;
   phones?: string[];
   email?: string;
   node?: string;
-  servicesToInstall?: string[];
+  servicesToInstall?: string[]; // Para instalación/avería
   assignedTo?: mongoose.Schema.Types.ObjectId | any;
   receptionDate?: Date;
   assignmentDate?: Date;
@@ -36,8 +36,17 @@ export interface IOrder {
     // Helper property for populated data (not in DB)
     instanceDetails?: { uniqueId: string; serialNumber: string }[];
   }[];
+  // Datos del equipo ONT recuperado (solo para type: "recuperacion")
+  equipmentRecovered?: {
+    ontId: string; // ID de la ONT ingresado por el instalador
+    serialNumber?: string;
+    macAddress?: string;
+    model?: string;
+    condition?: "good" | "damaged" | "defective";
+    notes?: string;
+  };
   photoEvidence?: string[];
-  customerSignature?: string;
+  customerSignature?: string; // No aplica para recuperación
   internetTest?: {
     downloadSpeed?: number;
     uploadSpeed?: number;
@@ -49,11 +58,14 @@ export interface IOrder {
       latitude?: number;
       longitude?: number;
     };
-  };
+  }; // No aplica para recuperación
   googleFormReported?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+// Removed duplicate fields below
+
 
 const OrderSchema = new mongoose.Schema(
   {
@@ -70,7 +82,7 @@ const OrderSchema = new mongoose.Schema(
     // Tipo de orden (se puede deducir o inferir si no está explícito en el título)
     type: {
       type: String,
-      enum: ["instalacion", "averia", "otro"], // "otro" por si no se deduce
+      enum: ["instalacion", "averia", "recuperacion", "otro"],
       default: "otro",
       required: true,
     },
@@ -117,7 +129,7 @@ const OrderSchema = new mongoose.Schema(
       type: String, // "Nodo: SCRVEG20112A-GPON TAR29A"
     },
     servicesToInstall: {
-      type: [String], // "Servicios a instalar: Internet, Streaming, FibraNet500_500Mb N°20469486, TelefoníaPon 2767400990, NetUnoGO Plus 3 N°20469487"
+      type: [String], // Para instalación/avería
     },
     // Nota: 'assignedTechnicianText' no está presente en la imagen
 
@@ -156,17 +168,34 @@ const OrderSchema = new mongoose.Schema(
         instanceIds: { type: [String], default: [] }, // Optional: identifies specific equipment instances used
       },
     ],
-    
+
+    // --- Datos del equipo ONT recuperado (solo para type: "recuperacion") ---
+    equipmentRecovered: {
+      ontId: {
+        type: String,
+        // Required when type is "recuperacion"
+      },
+      serialNumber: { type: String },
+      macAddress: { type: String },
+      model: { type: String },
+      condition: {
+        type: String,
+        enum: ["good", "damaged", "defective"],
+        default: "good",
+      },
+      notes: { type: String },
+    },
+
     // Evidencia fotográfica (Array de URLs de las imágenes subidas)
     photoEvidence: {
       type: [String],
       default: [],
     },
-    
+
     customerSignature: {
       type: String,
     },
-    internetTest:{
+    internetTest: {
       downloadSpeed: { type: Number },
       uploadSpeed: { type: Number },
       ping: { type: Number },
@@ -174,9 +203,9 @@ const OrderSchema = new mongoose.Schema(
       wifiSSID: { type: String },
       frecuency: { type: String },
       coordinates: {
-      latitude: { type: Number },
-      longitude: { type: Number },
-    },
+        latitude: { type: Number },
+        longitude: { type: Number },
+      },
     },
 
     // Control de reporte a Netuno

@@ -188,12 +188,14 @@ export async function sendPushNotification(
 
 /**
  * Send push notification to all installers in a crew
+ * @deprecated Use sendHybridNotificationToCrew for better support and installer exclusion
  */
 export async function sendNotificationToCrew(
   crewId: string,
   title: string,
   body: string,
-  data?: Record<string, any>
+  data?: Record<string, any>,
+  excludeInstallerId?: string  // ⭐ Added parameter
 ): Promise<number> {
   try {
     // Import here to avoid circular dependencies
@@ -212,20 +214,47 @@ export async function sendNotificationToCrew(
     const installerIds: string[] = [];
 
     if (crew.leader) {
-      installerIds.push(typeof crew.leader === 'string' ? crew.leader : crew.leader.toString());
+      // Handle both ObjectId and populated object
+      const leaderId = typeof crew.leader === 'object' && crew.leader._id
+        ? crew.leader._id.toString()
+        : typeof crew.leader === 'string'
+          ? crew.leader
+          : crew.leader.toString();
+      installerIds.push(leaderId);
     }
 
     if (crew.members && Array.isArray(crew.members)) {
       crew.members.forEach(member => {
-        const memberId = typeof member === 'string' ? member : member.toString();
-        if (memberId) installerIds.push(memberId);
+        // Handle both ObjectId and populated object
+        const memberId = typeof member === 'object' && member._id
+          ? member._id.toString()
+          : typeof member === 'string'
+            ? member
+            : member.toString();
+        if (memberId && memberId !== '[object Object]') {
+          installerIds.push(memberId);
+        }
       });
+    }
+
+    // Filter out excluded installer if provided (⭐ ADDED)
+    let filteredInstallerIds = installerIds;
+    if (excludeInstallerId) {
+      filteredInstallerIds = installerIds.filter(id => id !== excludeInstallerId);
+      if (filteredInstallerIds.length < installerIds.length) {
+        console.log(`🚫 Excluding installer ${excludeInstallerId} from notifications`);
+      }
+    }
+
+    if (filteredInstallerIds.length === 0) {
+      console.log(`No installers to notify in crew ${crewId} after exclusions`);
+      return 0;
     }
 
     // Fetch push tokens for all installers
     const pushTokens: string[] = [];
 
-    for (const installerId of installerIds) {
+    for (const installerId of filteredInstallerIds) {  // ⭐ Changed from installerIds
       try {
         const installer = await getInstallerById(installerId);
         if (installer?.pushToken) {
@@ -271,10 +300,14 @@ export async function notifyNewOrderAssigned(
     subscriberName: string;
     address: string;
     type: string;
-  }
+  },
+  excludeInstallerId?: string  // ⭐ Added parameter
 ): Promise<void> {
   try {
-    const sent = await sendNotificationToCrew(
+    // Import hybrid notification helper
+    const { sendHybridNotificationToCrew } = await import('@/lib/crewNotificationHelper');
+
+    const sent = await sendHybridNotificationToCrew(
       crewId,
       '📦 Nueva Orden Asignada',
       `${orderDetails.subscriberName} - ${orderDetails.address}`,
@@ -283,7 +316,8 @@ export async function notifyNewOrderAssigned(
         orderId,
         screen: '/orders',
         action: 'view_order'
-      }
+      },
+      excludeInstallerId  // ⭐ Pass exclusion parameter
     );
 
     // Record metrics (async, non-blocking)
@@ -307,10 +341,14 @@ export async function notifyOrderReassigned(
   orderDetails: {
     subscriberName: string;
     address: string;
-  }
+  },
+  excludeInstallerId?: string  // ⭐ Added parameter
 ): Promise<void> {
   try {
-    const sent = await sendNotificationToCrew(
+    // Import hybrid notification helper
+    const { sendHybridNotificationToCrew } = await import('@/lib/crewNotificationHelper');
+
+    const sent = await sendHybridNotificationToCrew(
       newCrewId,
       '🔄 Orden Reasignada',
       `${orderDetails.subscriberName} - ${orderDetails.address}`,
@@ -319,7 +357,8 @@ export async function notifyOrderReassigned(
         orderId,
         screen: '/orders',
         action: 'view_order'
-      }
+      },
+      excludeInstallerId  // ⭐ Pass exclusion parameter
     );
 
     // Record metrics (async, non-blocking)

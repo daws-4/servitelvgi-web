@@ -36,6 +36,15 @@ export interface InternetTestData {
     };
 }
 
+export interface EquipmentRecovered {
+    ontId: string;
+    serialNumber?: string;
+    macAddress?: string;
+    model?: string;
+    condition?: "good" | "damaged" | "defective";
+    notes?: string;
+}
+
 export interface OrderEditData {
     subscriberNumber: string;
     ticket_id?: string;
@@ -52,6 +61,7 @@ export interface OrderEditData {
     photoEvidence?: string[]; // Image IDs in format "recordId:filename"
     internetTest?: InternetTestData;
     customerSignature?: string; // Base64 from react-native-signature-canvas
+    equipmentRecovered?: EquipmentRecovered; // For recovery orders
     installerLog?: InstallerLogEntry[];
 }
 
@@ -74,7 +84,18 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
     const [materials, setMaterials] = useState<Material[]>(initialData.materialsUsed || []);
     const [photoIds, setPhotoIds] = useState<string[]>(initialData.photoEvidence || []);
     const [installerLog, setInstallerLog] = useState<InstallerLogEntry[]>(initialData.installerLog || []);
+    const [equipment, setEquipment] = useState<EquipmentRecovered>(initialData.equipmentRecovered || {
+        ontId: '',
+        serialNumber: '',
+        macAddress: '',
+        model: '',
+        condition: 'good',
+        notes: ''
+    });
     const [isSaving, setIsSaving] = useState(false);
+
+    // Check if this is a recovery order
+    const isRecoveryOrder = formData.type === 'recuperacion';
 
     const handleInputChange = (field: keyof OrderEditData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -101,6 +122,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                 assignedTo: data.assignedTo || null,
                 materialsUsed: materials,
                 photoEvidence: photoIds,
+                equipmentRecovered: isRecoveryOrder ? equipment : undefined,
                 installerLog: installerLog,
             };
 
@@ -263,14 +285,79 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     </div>
                 </div>
 
-                {/* 3. Materials Used */}
-                <MaterialsManager
-                    orderId={orderId}
-                    assignedCrewId={formData.assignedTo || undefined}
-                    initialMaterials={materials}
-                    onChange={setMaterials}
-                    onImmediateSave={handleMaterialsAutoSave}
-                />
+                {/* 3. Materials Used (Hidden for recovery orders) */}
+                {!isRecoveryOrder && (
+                    <MaterialsManager
+                        orderId={orderId}
+                        assignedCrewId={formData.assignedTo || undefined}
+                        initialMaterials={materials}
+                        onChange={setMaterials}
+                        onImmediateSave={handleMaterialsAutoSave}
+                    />
+                )}
+
+                {/* 3b. Equipment Recovered (Only for recovery orders) */}
+                {isRecoveryOrder && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="bg-blue-50/50 border-b border-blue-100 px-6 py-4 flex items-center gap-2">
+                            <i className="fa-solid fa-box-archive text-blue-600"></i>
+                            <h3 className="font-semibold text-blue-900">Equipo Recuperado (ONT)</h3>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormInput
+                                    label="ID de la ONT"
+                                    placeholder="Ingrese el ID de la ONT"
+                                    value={equipment.ontId}
+                                    onValueChange={(value) => setEquipment(prev => ({ ...prev, ontId: value }))}
+                                    isRequired
+                                    description="Campo obligatorio"
+                                />
+                                <FormInput
+                                    label="Número de Serie"
+                                    placeholder="Ej: SN123456789"
+                                    value={equipment.serialNumber || ''}
+                                    onValueChange={(value) => setEquipment(prev => ({ ...prev, serialNumber: value }))}
+                                />
+                                <FormInput
+                                    label="Dirección MAC"
+                                    placeholder="Ej: 00:1A:2B:3C:4D:5E"
+                                    value={equipment.macAddress || ''}
+                                    onValueChange={(value) => setEquipment(prev => ({ ...prev, macAddress: value }))}
+                                />
+                                <FormInput
+                                    label="Modelo"
+                                    placeholder="Ej: HG8546M"
+                                    value={equipment.model || ''}
+                                    onValueChange={(value) => setEquipment(prev => ({ ...prev, model: value }))}
+                                />
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Condición del Equipo
+                                    </label>
+                                    <select
+                                        value={equipment.condition}
+                                        onChange={(e) => setEquipment(prev => ({ ...prev, condition: e.target.value as 'good' | 'damaged' | 'defective' }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="good">Bueno</option>
+                                        <option value="damaged">Dañado</option>
+                                        <option value="defective">Defectuoso</option>
+                                    </select>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <FormTextarea
+                                        label="Notas Adicionales"
+                                        placeholder="Observaciones sobre el estado del equipo..."
+                                        value={equipment.notes || ''}
+                                        onChange={(e) => setEquipment(prev => ({ ...prev, notes: e.target.value }))}
+                                        minRows={3}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
 
                 {/* 4. Photo Evidence */}
@@ -289,31 +376,33 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     currentStatus={formData.status}
                 />
 
-                {/* 6. Internet Test Results (Read-only) */}
-                <InternetTestCard data={formData.internetTest} />
+                {/* 6. Internet Test Results (Hidden for recovery orders) */}
+                {!isRecoveryOrder && <InternetTestCard data={formData.internetTest} />}
 
-                {/* 6. Customer Signature (Read-only) */}
-                <CustomerSignatureCard
-                    signature={formData.customerSignature}
-                    onDelete={async () => {
-                        try {
-                            const response = await fetch(`/api/web/upload/signature?orderId=${orderId}`, {
-                                method: 'DELETE',
-                            });
+                {/* 7. Customer Signature (Hidden for recovery orders) */}
+                {!isRecoveryOrder && (
+                    <CustomerSignatureCard
+                        signature={formData.customerSignature}
+                        onDelete={async () => {
+                            try {
+                                const response = await fetch(`/api/web/upload/signature?orderId=${orderId}`, {
+                                    method: 'DELETE',
+                                });
 
-                            if (response.ok) {
-                                setFormData(prev => ({ ...prev, customerSignature: undefined }));
-                                alert("Firma eliminada correctamente");
-                            } else {
-                                const err = await response.json();
-                                throw new Error(err.error || "Error al eliminar la firma");
+                                if (response.ok) {
+                                    setFormData(prev => ({ ...prev, customerSignature: undefined }));
+                                    alert("Firma eliminada correctamente");
+                                } else {
+                                    const err = await response.json();
+                                    throw new Error(err.error || "Error al eliminar la firma");
+                                }
+                            } catch (error: any) {
+                                console.error("Error deleting signature:", error);
+                                alert(error.message);
                             }
-                        } catch (error: any) {
-                            console.error("Error deleting signature:", error);
-                            alert(error.message);
-                        }
-                    }}
-                />
+                        }}
+                    />
+                )}
 
             </div>
 

@@ -81,9 +81,26 @@ export async function sendHybridNotificationToCrew(
         // Filter out excluded installer if provided
         let filteredInstallerIds = installerIds;
         if (excludeInstallerId) {
-            filteredInstallerIds = installerIds.filter(id => id !== excludeInstallerId);
+            // Normalize excludeInstallerId to string
+            const normalizedExcludeId = excludeInstallerId.toString();
+
+            console.log(`🔍 [DEBUG] Attempting to exclude installer: ${normalizedExcludeId}`);
+            console.log(`🔍 [DEBUG] Installer IDs in crew before filtering:`, installerIds);
+
+            filteredInstallerIds = installerIds.filter(id => {
+                const normalizedId = id.toString();
+                const isMatch = normalizedId === normalizedExcludeId;
+                if (isMatch) {
+                    console.log(`🚫 [DEBUG] MATCHED - Excluding installer ${normalizedId}`);
+                }
+                return !isMatch;
+            });
+
             if (filteredInstallerIds.length < installerIds.length) {
-                console.log(`🚫 Excluding installer ${excludeInstallerId} from notifications`);
+                console.log(`🚫 Excluding installer ${normalizedExcludeId} from notifications`);
+                console.log(`🔍 [DEBUG] Remaining installers after exclusion:`, filteredInstallerIds);
+            } else {
+                console.log(`⚠️ [DEBUG] Installer ${normalizedExcludeId} NOT FOUND in crew - no exclusion happened`);
             }
         }
 

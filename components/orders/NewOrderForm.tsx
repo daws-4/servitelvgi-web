@@ -99,6 +99,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
     const orderTypeOptions: SelectOption[] = [
         { key: 'instalacion', label: 'Instalación' },
         { key: 'averia', label: 'Avería' },
+        { key: 'recuperacion', label: 'Recuperación' },
         { key: 'otro', label: 'Otro' },
     ];
 
@@ -280,7 +281,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
 
                             <div className="md:col-span-2">
                                 <FormTextarea
-                                    label="Servicios a Instalar / Reporte de Falla"
+                                    label="Servicios a Instalar / Reporte de Falla / Recuperación de equipo"
                                     placeholder="Ej: Internet, Streaming, FibraNet500..."
                                     value={formData.servicesToInstall}
                                     onChange={(e) => handleInputChange('servicesToInstall', e.target.value)}

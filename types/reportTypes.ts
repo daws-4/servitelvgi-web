@@ -1,7 +1,7 @@
 // types/reportTypes.ts
 // Definiciones de tipos para el módulo de reportes
 
-export type ReportType = 
+export type ReportType =
   | 'daily_installations'
   | 'daily_repairs'
   | 'monthly_installations'
@@ -25,7 +25,7 @@ export interface OrderSummary {
   subscriberNumber: string;
   subscriberName: string;
   address: string;
-  type: 'instalacion' | 'averia';
+  type: 'instalacion' | 'averia' | 'recuperacion';
   status: string;
   completionDate?: Date;
   assignmentDate?: Date;
@@ -40,8 +40,8 @@ export interface OrderSummary {
 export interface DailyReportData {
   finalizadas: OrderSummary[];
   asignadas: OrderSummary[];
-  totales: { 
-    finalizadas: number; 
+  totales: {
+    finalizadas: number;
     asignadas: number;
   };
   cached?: boolean;

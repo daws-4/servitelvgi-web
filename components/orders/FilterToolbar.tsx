@@ -34,6 +34,7 @@ const typeOptions: SelectOption[] = [
     { key: "all", label: "Tipo: Todos" },
     { key: "instalacion", label: "Instalación" },
     { key: "averia", label: "Avería" },
+    { key: "recuperacion", label: "Recuperación" },
     { key: "otro", label: "Otro" },
 ];
 

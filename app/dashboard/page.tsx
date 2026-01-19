@@ -4,7 +4,7 @@ import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
 import { RecentActivity } from "@/components/dashboard/RecentActivity";
-import { OrdersTable, OrderData } from "@/components/dashboard/OrdersTable";
+import { OrdersTable, OrderData } from "@/components/orders/OrdersTable";
 import {
   OrdersIcon,
   InstallersIcon,

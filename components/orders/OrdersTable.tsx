@@ -15,7 +15,7 @@ export interface OrderData {
     ticket_id?: string;
     subscriberName: string;
     email?: string;
-    type: "instalacion" | "averia" | "otro";
+    type: "instalacion" | "averia" | "recuperacion" | "otro";
     address: string;
     status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard";
     assignedTo?: {
@@ -240,6 +240,12 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
             return (
                 <span className="inline-flex items-center gap-1.5 py-1 px-2 rounded text-xs font-medium bg-red-50 text-red-700 border border-red-100">
                     <i className="fa-solid fa-triangle-exclamation text-[10px]"></i> Avería
+                </span>
+            );
+        } else if (normalizedType === "recuperacion") {
+            return (
+                <span className="inline-flex items-center gap-1.5 py-1 px-2 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                    <i className="fa-solid fa-box-archive text-[10px]"></i> Recuperación
                 </span>
             );
         }

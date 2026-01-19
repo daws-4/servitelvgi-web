@@ -17,6 +17,9 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
   const newOrder = await OrderModel.create(data);
   if (newOrder.assignedTo) {
     try {
+      // Determine if we should exclude an installer
+      const excludeInstallerId = sessionUser?.role === 'installer' ? sessionUser.userId : undefined;
+
       await notifyNewOrderAssigned(
         newOrder._id.toString(),
         newOrder.assignedTo.toString(),
@@ -24,7 +27,8 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
           subscriberName: newOrder.subscriberName,
           address: newOrder.address,
           type: newOrder.type
-        }
+        },
+        excludeInstallerId  // ⭐ Exclude installer who created/assigned the order
       );
     } catch (err) {
       // Log but don't fail order creation
@@ -202,6 +206,10 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
   // Determine if we should exclude the current user from notifications
   const excludeInstallerId = sessionUser?.role === 'installer' ? sessionUser.userId : undefined;
 
+  if (excludeInstallerId) {
+    console.log(`🔍 [orderService] Will exclude installer ${excludeInstallerId} from notifications (role: ${sessionUser?.role})`);
+  }
+
   // Priority: If both changed, send status change notification (more relevant)
   // Otherwise send whichever one changed
   if (statusChanged && currentCrewId) {
@@ -230,7 +238,8 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
         {
           subscriberName: updatedOrder.subscriberName,
           address: updatedOrder.address
-        }
+        },
+        excludeInstallerId  // ⭐ Exclude installer who made the change
       );
     } catch (err) {
       console.error('Crew reassignment notification failed:', err);

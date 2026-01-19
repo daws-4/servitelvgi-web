@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard";
-export type OrderType = "instalacion" | "averia" | "otro";
+export type OrderType = "instalacion" | "averia" | "recuperacion" | "otro";
 
 interface Crew {
     _id: string;
@@ -41,11 +41,8 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
     isSaving = false
 }) => {
     // Validate and normalize initialType to ensure it's a valid OrderType
-    // If type is not "instalacion" or "averia", treat it as "otro"
-    const normalizedType: OrderType =
-        initialType === "instalacion" || initialType === "averia"
-            ? initialType
-            : "otro";
+    const validTypes: OrderType[] = ["instalacion", "averia", "recuperacion", "otro"];
+    const normalizedType: OrderType = validTypes.includes(initialType) ? initialType : "otro";
 
     // Validate and normalize initialStatus to ensure it's a valid OrderStatus
     const validStatuses: OrderStatus[] = ["pending", "assigned", "in_progress", "completed", "cancelled", "hard"];
@@ -252,6 +249,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                     >
                         <option value="instalacion">Instalación</option>
                         <option value="averia">Avería</option>
+                        <option value="recuperacion">Recuperación</option>
                         <option value="otro">Otro</option>
                     </select>
                 </div>

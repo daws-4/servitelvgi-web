@@ -134,6 +134,8 @@ export async function sendFCMNotification(
             },
         };
 
+        console.log('📦 [FCM] Notification data payload:', JSON.stringify(fcmMessage.data, null, 2));
+
         // Send message
         const messageId = await messaging.send(fcmMessage);
 

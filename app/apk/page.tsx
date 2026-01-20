@@ -44,7 +44,7 @@ export default function ApkDownloadPage() {
 
     const handleDownload = () => {
         if (versionData?.downloadUrl) {
-            window.location.href = versionData.downloadUrl;
+            window.open(versionData.downloadUrl, '_blank', 'noopener,noreferrer');
         }
     };
 

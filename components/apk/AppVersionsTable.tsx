@@ -9,7 +9,7 @@ interface AppVersion {
     is_active: boolean;
     force_update: boolean;
     min_android_version?: number;
-    created: string;
+    created_at: string;
 }
 
 interface AppVersionsTableProps {
@@ -100,7 +100,7 @@ export const AppVersionsTable: React.FC<AppVersionsTableProps> = ({
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {formatDate(version.created)}
+                                    {formatDate(version.created_at)}
                                 </td>
                                 <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
                                     {version.release_notes || 'Sin notas'}

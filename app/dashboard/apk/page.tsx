@@ -13,7 +13,7 @@ interface AppVersion {
     is_active: boolean;
     force_update: boolean;
     min_android_version?: number;
-    created: string;
+    created_at: string;
 }
 
 export default function ApkManagementPage() {

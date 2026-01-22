@@ -873,14 +873,24 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                         >
                                             <td className="px-4 py-3 font-medium text-gray-700">
                                                 <div className="flex items-center gap-2">
-                                                    {/* Check for Bobbin FIRST */}
-                                                    {(material.batchCode || (typeof material.item !== 'string' && material.item.type === 'bobbin')) ? (
-                                                        <i className="fa-solid fa-spool text-blue-600" title="Bobina"></i>
+                                                    {/* Check if item exists first */}
+                                                    {!material.item || typeof material.item === 'string' ? (
+                                                        <span className="text-red-500 text-xs italic">
+                                                            <i className="fa-solid fa-triangle-exclamation mr-1"></i>
+                                                            El objeto de inventario solicitado ya no está disponible
+                                                        </span>
                                                     ) : (
-                                                        /* Check for Equipment SECOND */
-                                                        (material.instanceIds && material.instanceIds.length > 0) || (typeof material.item !== 'string' && material.item.type === 'equipment') ? (
-                                                            <i className="fa-solid fa-microchip text-purple-600" title="Equipo"></i>
-                                                        ) : null
+                                                        <>
+                                                            {/* Check for Bobbin FIRST */}
+                                                            {(material.batchCode || material.item.type === 'bobbin') ? (
+                                                                <i className="fa-solid fa-spool text-blue-600" title="Bobina"></i>
+                                                            ) : (
+                                                                /* Check for Equipment SECOND */
+                                                                (material.instanceIds && material.instanceIds.length > 0) || material.item.type === 'equipment' ? (
+                                                                    <i className="fa-solid fa-microchip text-purple-600" title="Equipo"></i>
+                                                                ) : null
+                                                            )}
+                                                        </>
                                                     )}
                                                     <span>{renderMaterialDisplay(material)}</span>
                                                     {material.batchCode && (
@@ -891,7 +901,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                                     {/* Only show instance count for equipment that has actual instances */}
                                                     {material.instanceIds && material.instanceIds.length > 0 &&
                                                         !material.batchCode &&
-                                                        (typeof material.item !== 'string' && material.item.type === 'equipment') && (
+                                                        (typeof material.item !== 'string' && material.item && material.item.type === 'equipment') && (
                                                             <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
                                                                 {material.instanceIds.length} instancia{material.instanceIds.length > 1 ? 's' : ''}
                                                             </span>

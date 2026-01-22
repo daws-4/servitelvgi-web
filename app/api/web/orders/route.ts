@@ -241,9 +241,10 @@ export async function PUT(request: NextRequest) {
         }
       });
 
-      // 3. Check for removed Generic Materials (Quantity) - ONLY IF COMPLETED
-      // Regular materials are only deducted when order is completed
-      if (currentOrder.status === 'completed') {
+      // 3. Check for removed Generic Materials (Quantity)
+      // Now that we deduct all materials immediately (not just on completion),
+      // we need to restore removed materials regardless of order status
+      {
         // Map current Generic items
         // We need to compare by inventoryId (or batchCode)
         // Warning: processOrderUsage deducts generic materials blindly. 
@@ -302,19 +303,14 @@ export async function PUT(request: NextRequest) {
       }
 
       // Logic for inventory processing:
-      // 1. If status is 'completed': Process ALL materials (instances + generic + bobbins)
-      // 2. If status != 'completed': Process items with instanceIds (equipment) OR batchCode (bobbins) early
+      // Process ALL materials regardless of status (equipment, bobbins, and regular materials)
+      // Delta calculation below (lines 328-362) already prevents duplicate processing
+      // This ensures materials are deducted immediately when assigned from mobile app
 
       let materialsToProcess: any[] = [];
 
-      if (data.status === 'completed') {
-        materialsToProcess = data.materialsUsed || [];
-      } else {
-        // Process equipment instances and bobbins early (before order completion)
-        materialsToProcess = (data.materialsUsed || []).filter((m: any) =>
-          (m.instanceIds && m.instanceIds.length > 0) || m.batchCode
-        );
-      }
+      // Always process all materials - idempotency is handled by delta calculation
+      materialsToProcess = data.materialsUsed || [];
 
       if (materialsToProcess.length > 0) {
 

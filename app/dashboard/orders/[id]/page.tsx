@@ -14,6 +14,7 @@ export default function OrderEditPage() {
 
     const [orderData, setOrderData] = useState<OrderEditData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [syncing, setSyncing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
@@ -96,6 +97,30 @@ export default function OrderEditPage() {
             alert('¡Orden actualizada correctamente!');
             // Optionally refresh the data
             window.location.reload();
+        }
+    };
+
+    const handleSyncNetuno = async () => {
+        if (!orderId) return;
+
+        if (!confirm('¿Estás seguro de que quieres enviar los datos a Netuno (Google Sheets)?')) {
+            return;
+        }
+
+        try {
+            setSyncing(true);
+            const response = await axios.post(`/api/web/orders/${orderId}/sync`);
+
+            if (response.data.success) {
+                alert('¡Datos enviados correctamente a Netuno!');
+            } else {
+                alert('Error al enviar a Netuno: ' + (response.data.error || 'Error desconocido'));
+            }
+        } catch (error: any) {
+            console.error('Error syncing:', error);
+            alert('Error de conexión o servidor al enviar a Netuno');
+        } finally {
+            setSyncing(false);
         }
     };
 
@@ -220,6 +245,27 @@ export default function OrderEditPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleSyncNetuno}
+                        disabled={syncing}
+                        className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${syncing
+                                ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                                : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200'
+                            }`}
+                        title="Enviar datos a Google Sheets/Netuno"
+                    >
+                        {syncing ? (
+                            <>
+                                <i className="fa-solid fa-spinner fa-spin"></i>
+                                Enviando...
+                            </>
+                        ) : (
+                            <>
+                                <i className="fa-solid fa-cloud-arrow-up"></i>
+                                Enviar Datos a Netuno
+                            </>
+                        )}
+                    </button>
                     {getStatusBadge(orderData.status)}
                     <img
                         src="https://ui-avatars.com/api/?name=Admin&background=004ba8&color=fff"

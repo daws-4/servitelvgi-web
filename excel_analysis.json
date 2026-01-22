@@ -1,0 +1,43 @@
+{
+  "Averías Servitelv (Jul 2025) (respuestas).xlsx": [
+    "Marca temporal",
+    "Técnico",
+    "Código de Abonado/ Nro de Ticket",
+    "Roseta FTTH de 2 puertos (805-4039)",
+    "Conector rápido SC/APC (805-4025)",
+    "Protectores de Empalme para Fibra Drop (805-6090)",
+    "Adaptador SC/UPC Simplex- Coupling (805-3005)",
+    "Fibra utilizada",
+    "Metros de Fibra utilizados",
+    "Número de Bobina",
+    "PatchCord SC/APC 1M Verde-Verde (805-2050)",
+    "PatchCord SC/UPC 1M Verde-Azul (805-2118)",
+    "Rj-45 (805-2069) ",
+    "Etiqueta Serializada Verde (300-0207)",
+    "Tensores de Fibra Drop (805-4041)",
+    "Ganchos de Fijación Tipo S (805-4033)",
+    "Grapas chatas N°5(INV-300-0032)",
+    "Reemplazo de ONT",
+    "Observaciones ",
+    "Columna 18"
+  ],
+  "Instalaciones Servitelv (Jul 2025) (respuestas) (1).xlsx": [
+    "Marca temporal",
+    "Técnico",
+    "Código de Abonado/ Nro de Ticket",
+    "Roseta FTTH de 2 puertos (805-4039)",
+    "Conector rápido SC/APC (805-4025)",
+    "Fibra utilizada",
+    "Metros de Fibra utilizados",
+    "Número de Bobina",
+    "PatchCord SC/APC 1M Verde-Verde (805-2050)",
+    "PatchCord SC/UPC 1M Verde-Azul (805-2118)",
+    "Rj-45 (805-2069) ",
+    "Etiqueta Serializada Verde (300-0207)",
+    "Tensores de Fibra Drop (805-4041)",
+    "Ganchos de Fijación Tipo S (805-4033)",
+    "ONT Utilizada",
+    "Tipo de Instalación",
+    "Grapas Chatas N° 5 (INV-300-0032)"
+  ]
+}

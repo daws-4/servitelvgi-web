@@ -33,11 +33,11 @@ export async function restockInventory(
     // Validar que ningún ítem sea de tipo equipo
     for (const item of items) {
       const inventoryItem = await InventoryModel.findById(item.inventoryId).session(session);
-      
+
       if (!inventoryItem) {
         throw new Error(`Item de inventario no encontrado: ${item.inventoryId}`);
       }
-      
+
       if (inventoryItem.type === "equipment") {
         throw new Error(
           `El ítem "${inventoryItem.description}" es un equipo y no puede reabastecerse por cantidad. ` +
@@ -271,7 +271,7 @@ export async function assignMaterialToCrew(
         if (inventoryItem.currentStock < item.quantity) {
           throw new Error(
             `Stock insuficiente para ${inventoryItem.description}. ` +
-              `Disponible: ${inventoryItem.currentStock}, Solicitado: ${item.quantity}`
+            `Disponible: ${inventoryItem.currentStock}, Solicitado: ${item.quantity}`
           );
         }
 
@@ -364,8 +364,7 @@ export async function returnMaterialFromCrew(
       if (itemIndex < 0) {
         const inventoryItem = await InventoryModel.findById(item.inventoryId);
         throw new Error(
-          `La cuadrilla no tiene asignado el material: ${
-            inventoryItem?.description || item.inventoryId
+          `La cuadrilla no tiene asignado el material: ${inventoryItem?.description || item.inventoryId
           }`
         );
       }
@@ -375,8 +374,8 @@ export async function returnMaterialFromCrew(
         const inventoryItem = await InventoryModel.findById(item.inventoryId);
         throw new Error(
           `Cantidad insuficiente de ${inventoryItem?.description || "material"}. ` +
-            `Disponible: ${crew.assignedInventory[itemIndex].quantity}, ` +
-            `Solicitado: ${item.quantity}`
+          `Disponible: ${crew.assignedInventory[itemIndex].quantity}, ` +
+          `Solicitado: ${item.quantity}`
         );
       }
 
@@ -426,8 +425,10 @@ export async function returnMaterialFromCrew(
 }
 
 /**
- * Procesa el consumo de materiales al completar una orden
- * @param orderId - ID de la orden completada
+ * Procesa el consumo de materiales de una orden
+ * NOTA: Ahora se llama cuando se asignan materiales a una orden (cualquier estado),
+ * no solo al completarla. Esto asegura que el inventario se descuente inmediatamente.
+ * @param orderId - ID de la orden
  * @param crewId - ID de la cuadrilla que realizó el trabajo
  * @param materials - Array de materiales usados con inventoryId, quantity y opcionalmente batchCode
  * @returns Confirmación de procesamiento
@@ -468,7 +469,7 @@ export async function processOrderUsage(
         if (batch.currentQuantity < material.quantity) {
           throw new Error(
             `Metros insuficientes en bobina ${material.batchCode}. ` +
-              `Disponibles: ${batch.currentQuantity}m, Solicitados: ${material.quantity}m`
+            `Disponibles: ${batch.currentQuantity}m, Solicitados: ${material.quantity}m`
           );
         }
 
@@ -517,93 +518,93 @@ export async function processOrderUsage(
       } else if (material.instanceIds && material.instanceIds.length > 0) {
         // Manejar instancias de equipos
         const inventoryItem = await InventoryModel.findById(material.inventoryId).session(session);
-        
+
         if (!inventoryItem) {
           throw new Error(`Item de inventario no encontrado: ${material.inventoryId}`);
         }
-        
+
         if (inventoryItem.type !== "equipment") {
-           // Si envían instanceIds pero no es equipo, advertir o tratar normal?
-           // Por integridad, requerimos que coincida
-           throw new Error(`El ítem "${inventoryItem.description}" no es un equipo.`);
+          // Si envían instanceIds pero no es equipo, advertir o tratar normal?
+          // Por integridad, requerimos que coincida
+          throw new Error(`El ítem "${inventoryItem.description}" no es un equipo.`);
         }
 
         // Marcar cada instancia como INSTALADA
         let instancesProcessed = 0;
-        
-        for (const uniqueId of material.instanceIds) {
-           const instance = inventoryItem.instances.find((inst: any) => inst.uniqueId === uniqueId);
-           
-           if (!instance) {
-             throw new Error(`Instancia ${uniqueId} no encontrada en el inventario`);
-           }
-           
-           // IDEMPOTENCY CHECK: If already installed on THIS order, skip
-           if (instance.status === 'installed' && instance.installedAt?.orderId?.toString() === orderId) {
-             continue; 
-           }
-           
-           // Validar estado (debe estar assigned a la crew, o in-stock si fuera uso directo bodega, pero aqui es desde crew)
-           if (instance.status !== 'assigned') {
-              throw new Error(`Instancia ${uniqueId} no está disponible en la cuadrilla (estado: ${instance.status})`);
-           }
-           
-           // Verificar que esté asignada a ESTA cuadrilla
-           if (instance.assignedTo?.crewId?.toString() !== crewId) {
-             throw new Error(`Instancia ${uniqueId} no pertenece a esta cuadrilla`);
-           }
 
-           // Actualizar estado
-           instance.status = 'installed';
-           instance.installedAt = {
-             orderId: new mongoose.Types.ObjectId(orderId),
-             installedDate: new Date(),
-             location: 'installed-via-order-completion', 
-           };
-           
-           instancesProcessed++;
+        for (const uniqueId of material.instanceIds) {
+          const instance = inventoryItem.instances.find((inst: any) => inst.uniqueId === uniqueId);
+
+          if (!instance) {
+            throw new Error(`Instancia ${uniqueId} no encontrada en el inventario`);
+          }
+
+          // IDEMPOTENCY CHECK: If already installed on THIS order, skip
+          if (instance.status === 'installed' && instance.installedAt?.orderId?.toString() === orderId) {
+            continue;
+          }
+
+          // Validar estado (debe estar assigned a la crew, o in-stock si fuera uso directo bodega, pero aqui es desde crew)
+          if (instance.status !== 'assigned') {
+            throw new Error(`Instancia ${uniqueId} no está disponible en la cuadrilla (estado: ${instance.status})`);
+          }
+
+          // Verificar que esté asignada a ESTA cuadrilla
+          if (instance.assignedTo?.crewId?.toString() !== crewId) {
+            throw new Error(`Instancia ${uniqueId} no pertenece a esta cuadrilla`);
+          }
+
+          // Actualizar estado
+          instance.status = 'installed';
+          instance.installedAt = {
+            orderId: new mongoose.Types.ObjectId(orderId),
+            installedDate: new Date(),
+            location: 'installed-via-order-completion',
+          };
+
+          instancesProcessed++;
         }
-        
+
         // Only save and deduct if changes were made
         if (instancesProcessed > 0) {
-            await inventoryItem.save({ session });
-            
-            // Descontar del inventario de la cuadrilla (cantidad)
-            const itemIndex = crew.assignedInventory.findIndex(
-              (inv: any) => inv.item.toString() === material.inventoryId
-            );
+          await inventoryItem.save({ session });
 
-            if (itemIndex >= 0) {
-              crew.assignedInventory[itemIndex].quantity -= instancesProcessed;
-              crew.assignedInventory[itemIndex].lastUpdate = new Date();
+          // Descontar del inventario de la cuadrilla (cantidad)
+          const itemIndex = crew.assignedInventory.findIndex(
+            (inv: any) => inv.item.toString() === material.inventoryId
+          );
 
-              if (crew.assignedInventory[itemIndex].quantity <= 0) {
-                crew.assignedInventory.splice(itemIndex, 1);
-              }
+          if (itemIndex >= 0) {
+            crew.assignedInventory[itemIndex].quantity -= instancesProcessed;
+            crew.assignedInventory[itemIndex].lastUpdate = new Date();
+
+            if (crew.assignedInventory[itemIndex].quantity <= 0) {
+              crew.assignedInventory.splice(itemIndex, 1);
             }
-            
-            // Historial
-             await InventoryHistoryModel.create(
-              [
-                {
-                  item: material.inventoryId,
-                  type: "usage_order",
-                  quantityChange: -instancesProcessed,
-                  reason: `Equipos instalados (${instancesProcessed}): ${material.instanceIds.join(', ')}`,
-                  crew: crewId,
-                  order: orderId,
-                  performedBy: sessionUser?.userId,
-                  performedByModel: sessionUser?.userModel,
-                  metadata: { instanceIds: material.instanceIds }
-                },
-              ],
-              { session }
-            );
+          }
+
+          // Historial
+          await InventoryHistoryModel.create(
+            [
+              {
+                item: material.inventoryId,
+                type: "usage_order",
+                quantityChange: -instancesProcessed,
+                reason: `Equipos instalados (${instancesProcessed}): ${material.instanceIds.join(', ')}`,
+                crew: crewId,
+                order: orderId,
+                performedBy: sessionUser?.userId,
+                performedByModel: sessionUser?.userModel,
+                metadata: { instanceIds: material.instanceIds }
+              },
+            ],
+            { session }
+          );
         }
 
       } else {
         // Material regular (no bobina, no equipo con instancias)
-        
+
         // Validar que no sea equipo sin instanceId
         const inventoryItem = await InventoryModel.findById(material.inventoryId).session(session);
         if (inventoryItem && inventoryItem.type === "equipment") {
@@ -612,7 +613,7 @@ export async function processOrderUsage(
             `No se puede consumir por cantidad sin instanceIds.`
           );
         }
-        
+
         const itemIndex = crew.assignedInventory.findIndex(
           (inv: any) => inv.item.toString() === material.inventoryId
         );
@@ -712,180 +713,178 @@ export async function restoreInventoryFromOrder(
 
         // Si existe el batch, restaurar cantidad
         if (batch) {
-            batch.currentQuantity += material.quantity;
-            if (batch.status === 'depleted' && batch.currentQuantity > 0) {
-                batch.status = 'active';
-            }
-            await batch.save({ session });
-            
-            // IMPORTANT: Also restore to parent inventory item's currentStock
-            await InventoryModel.findByIdAndUpdate(
-              material.inventoryId,
-              { $inc: { currentStock: material.quantity } },
-              { session }
-            );
-            
-            // Historial
-            await InventoryHistoryModel.create([{
-                item: material.inventoryId,
-                batch: batch._id,
-                type: "return", // Usamos return para indicar que vuelve
-                quantityChange: material.quantity,
-                reason: `Restaurado desde orden ${orderId} (eliminado)`,
-                crew: crewId,
-                order: orderId,
-                performedBy: sessionUser?.userId,
-                performedByModel: sessionUser?.userModel,
-            }], { session });
+          batch.currentQuantity += material.quantity;
+          if (batch.status === 'depleted' && batch.currentQuantity > 0) {
+            batch.status = 'active';
+          }
+          await batch.save({ session });
+
+          // IMPORTANT: Also restore to parent inventory item's currentStock
+          await InventoryModel.findByIdAndUpdate(
+            material.inventoryId,
+            { $inc: { currentStock: material.quantity } },
+            { session }
+          );
+
+          // Historial
+          await InventoryHistoryModel.create([{
+            item: material.inventoryId,
+            batch: batch._id,
+            type: "return", // Usamos return para indicar que vuelve
+            quantityChange: material.quantity,
+            reason: `Restaurado desde orden ${orderId} (eliminado)`,
+            crew: crewId,
+            order: orderId,
+            performedBy: sessionUser?.userId,
+            performedByModel: sessionUser?.userModel,
+          }], { session });
 
         } else {
-             // Si el batch ya no existe (raro), se podría intentar recrear o loguear error
-             // Por simplificación, si no existe el batch en la crew, asumimos que fue movido y no podemos restaurar fácilmente 
-             // O simplemente lo ignoramos para evitar bloqueos, o lanzamos error.
-             // Optamos por log warning y continuar (o lanzar error si es estricto)
-             console.warn(`Batch ${material.batchCode} no encontrado en crew ${crewId} para restauración.`);
+          // Si el batch ya no existe (raro), se podría intentar recrear o loguear error
+          // Por simplificación, si no existe el batch en la crew, asumimos que fue movido y no podemos restaurar fácilmente 
+          // O simplemente lo ignoramos para evitar bloqueos, o lanzamos error.
+          // Optamos por log warning y continuar (o lanzar error si es estricto)
+          console.warn(`Batch ${material.batchCode} no encontrado en crew ${crewId} para restauración.`);
         }
-        
+
         // Actualizar asignación en la cuadrilla
-         const itemIndex = crew.assignedInventory.findIndex(
+        const itemIndex = crew.assignedInventory.findIndex(
           (inv: any) => inv.item.toString() === material.inventoryId
         );
-        
+
         if (itemIndex >= 0) {
-            crew.assignedInventory[itemIndex].quantity += material.quantity;
-            crew.assignedInventory[itemIndex].lastUpdate = new Date();
+          crew.assignedInventory[itemIndex].quantity += material.quantity;
+          crew.assignedInventory[itemIndex].lastUpdate = new Date();
         } else {
-             crew.assignedInventory.push({
-                item: new mongoose.Types.ObjectId(material.inventoryId),
-                quantity: material.quantity,
-                lastUpdate: new Date(),
-             });
+          crew.assignedInventory.push({
+            item: new mongoose.Types.ObjectId(material.inventoryId),
+            quantity: material.quantity,
+            lastUpdate: new Date(),
+          });
         }
-        
-      } 
+
+      }
       // 2. Manejo de Instancias (Equipos)
       else if (material.instanceIds && material.instanceIds.length > 0) {
         console.log(`[RESTORE] Restaurando instancias para inventario ${material.inventoryId}: ${material.instanceIds.join(', ')}`);
         const inventoryItem = await InventoryModel.findById(material.inventoryId).session(session);
         if (inventoryItem) {
-            let restoredCount = 0;
-            const restoredInstances = [];
+          let restoredCount = 0;
+          const restoredInstances = [];
 
-            for (const uniqueId of material.instanceIds) {
-                const instance = inventoryItem.instances.find((inst: any) => inst.uniqueId === uniqueId);
-                
-                if (!instance) {
-                    console.warn(`[RESTORE] Instancia ${uniqueId} no encontrada en inventario.`);
-                    continue;
-                }
+          for (const uniqueId of material.instanceIds) {
+            const instance = inventoryItem.instances.find((inst: any) => inst.uniqueId === uniqueId);
 
-                console.log(`[RESTORE] Verificando instancia ${uniqueId}: Status=${instance.status}, InstalledAt=${instance.installedAt?.orderId}, AssignedTo=${instance.assignedTo?.crewId}, TargetOrder=${orderId}`);
-
-                // Case 1: Instance was INSTALLED in this order - restore to 'assigned'
-                const isInstalledInThisOrder = instance.status === 'installed' && instance.installedAt?.orderId?.toString() === orderId.toString();
-                
-                // Case 2: Instance is ASSIGNED to this crew (equipment added to order but order not completed yet)
-                // In this case, instance is already 'assigned' to crew, so we just need to update the crew inventory count
-                const isAssignedToThisCrew = instance.status === 'assigned' && instance.assignedTo?.crewId?.toString() === crewId.toString();
-                
-                if (isInstalledInThisOrder) {
-                    // Restore from installed -> assigned
-                    instance.status = 'assigned';
-                    instance.assignedTo = {
-                        crewId: new mongoose.Types.ObjectId(crewId),
-                        assignedAt: new Date(), 
-                    };
-                    instance.installedAt = undefined;
-                    restoredCount++;
-                    restoredInstances.push(uniqueId);
-                    console.log(`[RESTORE] Instancia ${uniqueId} restaurada de 'installed' a 'assigned'.`);
-                } else if (isAssignedToThisCrew) {
-                    // Instance is already assigned to crew, we just need to restore the crew inventory count
-                    // No change to instance status needed, but we increment the count
-                    restoredCount++;
-                    restoredInstances.push(uniqueId);
-                    console.log(`[RESTORE] Instancia ${uniqueId} ya está 'assigned' a la cuadrilla, restaurando conteo.`);
-                } else {
-                    console.warn(`[RESTORE] Instancia ${uniqueId} saltada. Status=${instance.status}, no cumple condiciones.`);
-                }
+            if (!instance) {
+              console.warn(`[RESTORE] Instancia ${uniqueId} no encontrada en inventario.`);
+              continue;
             }
-            
-            if (restoredCount > 0) {
-                await inventoryItem.save({ session });
-                console.log(`[RESTORE] Guardado inventoryItem con ${restoredCount} instancias restauradas.`);
-                
-                // Actualizar cuadrilla
-                const itemIndex = crew.assignedInventory.findIndex(
-                  (inv: any) => inv.item.toString() === material.inventoryId
-                );
-                
-                if (itemIndex >= 0) {
-                    crew.assignedInventory[itemIndex].quantity += restoredCount;
-                    crew.assignedInventory[itemIndex].lastUpdate = new Date();
-                    console.log(`[RESTORE] Incrementada cantidad en crew (index ${itemIndex}) en ${restoredCount}.`);
-                } else {
-                     crew.assignedInventory.push({
-                        item: new mongoose.Types.ObjectId(material.inventoryId),
-                        quantity: restoredCount,
-                        lastUpdate: new Date(),
-                     });
-                     console.log(`[RESTORE] Agregado nuevo item a crew con cantidad ${restoredCount}.`);
-                }
 
-                // Historial
-                await InventoryHistoryModel.create([{
-                    item: material.inventoryId,
-                    type: "return",
-                    quantityChange: restoredCount,
-                    reason: `Equipos restaurados desde orden ${orderId}: ${restoredInstances.join(', ')}`,
-                    crew: crewId,
-                    order: orderId,
-                    performedBy: sessionUser?.userId,
-                    performedByModel: sessionUser?.userModel,
-                    metadata: { instanceIds: restoredInstances }
-                }], { session });
+            console.log(`[RESTORE] Verificando instancia ${uniqueId}: Status=${instance.status}, InstalledAt=${instance.installedAt?.orderId}, AssignedTo=${instance.assignedTo?.crewId}, TargetOrder=${orderId}`);
+
+            // Case 1: Instance was INSTALLED in this order - restore to 'assigned'
+            const isInstalledInThisOrder = instance.status === 'installed' && instance.installedAt?.orderId?.toString() === orderId.toString();
+
+            // Case 2: Instance is ASSIGNED to this crew (equipment added to order but order not completed yet)
+            // In this case, instance is already 'assigned' to crew, so we just need to update the crew inventory count
+            const isAssignedToThisCrew = instance.status === 'assigned' && instance.assignedTo?.crewId?.toString() === crewId.toString();
+
+            if (isInstalledInThisOrder) {
+              // Restore from installed -> assigned
+              instance.status = 'assigned';
+              instance.assignedTo = {
+                crewId: new mongoose.Types.ObjectId(crewId),
+                assignedAt: new Date(),
+              };
+              instance.installedAt = undefined;
+              restoredCount++;
+              restoredInstances.push(uniqueId);
+              console.log(`[RESTORE] Instancia ${uniqueId} restaurada de 'installed' a 'assigned'.`);
+            } else if (isAssignedToThisCrew) {
+              // Instance is already assigned to crew, we just need to restore the crew inventory count
+              // No change to instance status needed, but we increment the count
+              restoredCount++;
+              restoredInstances.push(uniqueId);
+              console.log(`[RESTORE] Instancia ${uniqueId} ya está 'assigned' a la cuadrilla, restaurando conteo.`);
+            } else {
+              console.warn(`[RESTORE] Instancia ${uniqueId} saltada. Status=${instance.status}, no cumple condiciones.`);
             }
-        }
-      } 
-      // 3. Material Genérico
-      else {
-          // Solo restaurar si la orden estaba completada y se había descontado
-          // Pero... esta función se llama cuando detectamos remoción.
-          // Si la orden NO estaba completada, los materiales genéricos NO se descontaron, por lo tanto NO hay que restaurarlos.
-          // ESTA LOGICA DEBE SER CONTROLADA POR EL LLAMADOR (Route Handler).
-          // El Route Handler solo debe llamar a restoreInventoryFromOrder con materials genéricos SI la orden estaba completada.
-          // Aquí asumimos que si nos llega, es porque hay que restaurarlo.
-          
-          const inventoryItem = await InventoryModel.findById(material.inventoryId).session(session); // Solo para validar que existe
-          
-          if (inventoryItem) { // Si existe
-             const itemIndex = crew.assignedInventory.findIndex(
+          }
+
+          if (restoredCount > 0) {
+            await inventoryItem.save({ session });
+            console.log(`[RESTORE] Guardado inventoryItem con ${restoredCount} instancias restauradas.`);
+
+            // Actualizar cuadrilla
+            const itemIndex = crew.assignedInventory.findIndex(
               (inv: any) => inv.item.toString() === material.inventoryId
             );
-            
+
             if (itemIndex >= 0) {
-                crew.assignedInventory[itemIndex].quantity += material.quantity;
-                crew.assignedInventory[itemIndex].lastUpdate = new Date();
+              crew.assignedInventory[itemIndex].quantity += restoredCount;
+              crew.assignedInventory[itemIndex].lastUpdate = new Date();
+              console.log(`[RESTORE] Incrementada cantidad en crew (index ${itemIndex}) en ${restoredCount}.`);
             } else {
-                 crew.assignedInventory.push({
-                    item: new mongoose.Types.ObjectId(material.inventoryId),
-                    quantity: material.quantity,
-                    lastUpdate: new Date(),
-                 });
+              crew.assignedInventory.push({
+                item: new mongoose.Types.ObjectId(material.inventoryId),
+                quantity: restoredCount,
+                lastUpdate: new Date(),
+              });
+              console.log(`[RESTORE] Agregado nuevo item a crew con cantidad ${restoredCount}.`);
             }
-            
+
             // Historial
             await InventoryHistoryModel.create([{
-                item: material.inventoryId,
-                type: "return",
-                quantityChange: material.quantity,
-                reason: `Material restaurado desde orden ${orderId}`,
-                crew: crewId,
-                order: orderId,
-                performedBy: sessionUser?.userId,
-                performedByModel: sessionUser?.userModel,
+              item: material.inventoryId,
+              type: "return",
+              quantityChange: restoredCount,
+              reason: `Equipos restaurados desde orden ${orderId}: ${restoredInstances.join(', ')}`,
+              crew: crewId,
+              order: orderId,
+              performedBy: sessionUser?.userId,
+              performedByModel: sessionUser?.userModel,
+              metadata: { instanceIds: restoredInstances }
             }], { session });
           }
+        }
+      }
+      // 3. Material Genérico
+      else {
+        // Materiales genéricos ahora se descuentan inmediatamente al asignarlos a una orden.
+        // Por lo tanto, deben restaurarse cuando se eliminan de la orden, independientemente del estado.
+        // El caller (route handler) ya verificó que estos materiales fueron previamente descontados
+        // mediante la lógica de delta/comparación.
+
+        const inventoryItem = await InventoryModel.findById(material.inventoryId).session(session); // Solo para validar que existe
+
+        if (inventoryItem) { // Si existe
+          const itemIndex = crew.assignedInventory.findIndex(
+            (inv: any) => inv.item.toString() === material.inventoryId
+          );
+
+          if (itemIndex >= 0) {
+            crew.assignedInventory[itemIndex].quantity += material.quantity;
+            crew.assignedInventory[itemIndex].lastUpdate = new Date();
+          } else {
+            crew.assignedInventory.push({
+              item: new mongoose.Types.ObjectId(material.inventoryId),
+              quantity: material.quantity,
+              lastUpdate: new Date(),
+            });
+          }
+
+          // Historial
+          await InventoryHistoryModel.create([{
+            item: material.inventoryId,
+            type: "return",
+            quantityChange: material.quantity,
+            reason: `Material restaurado desde orden ${orderId}`,
+            crew: crewId,
+            order: orderId,
+            performedBy: sessionUser?.userId,
+            performedByModel: sessionUser?.userModel,
+          }], { session });
+        }
       }
     }
 
@@ -1074,7 +1073,7 @@ export async function getInventoryStatistics(
   try {
     // 1. Calcular métricas básicas del inventario actual
     const allItems = await InventoryModel.find().lean();
-    
+
     const totalItems = allItems.length;
     const criticalStock = allItems.filter(
       (item) => item.currentStock <= item.minimumStock * 0.5
@@ -1577,7 +1576,7 @@ export async function updateEquipmentInstance(
   if (updates.serialNumber !== undefined) instance.serialNumber = updates.serialNumber;
   if (updates.macAddress !== undefined) instance.macAddress = updates.macAddress;
   if (updates.notes !== undefined) instance.notes = updates.notes;
-  
+
   // Solo permitir cambio de estado si no está instalado
   if (updates.status !== undefined) {
     if (instance.status === "installed") {

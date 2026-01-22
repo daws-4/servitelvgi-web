@@ -258,3 +258,130 @@ export async function deleteOrder(id: string) {
   return await OrderModel.findByIdAndDelete(id).lean();
 }
 
+// Función manual para sincronizar con Netuno (n8n)
+export async function syncOrderToNetuno(id: string) {
+  await connectDB();
+
+  if (!process.env.N8N_WEBHOOK_URL) {
+    throw new Error('N8N_WEBHOOK_URL is not defined in .env');
+  }
+
+  // Fetch order with crew and installers populated
+  const order = await OrderModel.findById(id)
+    .populate({
+      path: 'assignedTo',
+      populate: [
+        {
+          path: 'leader',
+          select: 'name surname'
+        },
+        {
+          path: 'members',
+          select: 'name surname'
+        }
+      ]
+    })
+    .populate('materialsUsed.item', 'code description unit type')
+    .lean() as unknown as IOrder | null;
+
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  console.log(`🚀 Manually triggering n8n webhook for order ${id}...`);
+
+  // Helper function to format timestamp to DD/MM/YYYY HH:MM GMT-4
+  const formatTimestamp = (date: Date | string) => {
+    const d = new Date(date);
+
+    // Convert to GMT-4 (Venezuela time)
+    const offset = -4 * 60; // GMT-4 in minutes
+    const localTime = new Date(d.getTime() + offset * 60 * 1000);
+
+    const day = String(localTime.getUTCDate()).padStart(2, '0');
+    const month = String(localTime.getUTCMonth() + 1).padStart(2, '0');
+    const year = localTime.getUTCFullYear();
+    const hours = String(localTime.getUTCHours()).padStart(2, '0');
+    const minutes = String(localTime.getUTCMinutes()).padStart(2, '0');
+
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
+
+  // Build simplified payload
+  const payload: any = {
+    timestamp: formatTimestamp(order.updatedAt || new Date()),
+    ticket_id: order.ticket_id || order.subscriberNumber,
+  };
+
+  // Extract leader name from crew (only leader, not all members)
+  if (order.assignedTo && typeof order.assignedTo === 'object') {
+    const crew = order.assignedTo as any;
+
+    // Get leader name
+    if (crew.leader && typeof crew.leader === 'object') {
+      const leaderName = `${crew.leader.name || ''} ${crew.leader.surname || ''}`.trim();
+      payload.technician = leaderName || `Cuadrilla ${crew.number || 'Sin asignar'}`;
+    } else {
+      payload.technician = `Cuadrilla ${crew.number || 'Sin asignar'}`;
+    }
+  } else {
+    payload.technician = 'Sin asignar';
+  }
+
+  // Process materials
+  if (order.materialsUsed && Array.isArray(order.materialsUsed)) {
+    order.materialsUsed.forEach((material: any) => {
+      const item = material.item;
+
+      if (!item || typeof item === 'string') return;
+
+      const code = item.code;
+      const quantity = material.quantity;
+      const itemType = item.type;
+      const description = item.description;
+
+      // Equipment -> ONT field with description
+      if (itemType === 'equipment') {
+        payload.ont = description || code;
+      }
+      // Bobbin (fiber) -> extract description, meters, and batchCode
+      else if (itemType === 'bobbin' || material.batchCode) {
+        payload.fiberDescription = description || 'Fibra óptica';
+        payload.fiberMeters = quantity;
+        payload.batchCode = material.batchCode || '';
+      }
+      // Regular material -> code as key, quantity as value
+      else {
+        payload[code] = quantity;
+      }
+    });
+  }
+
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    if (process.env.N8N_AUTH_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.N8N_AUTH_TOKEN}`;
+    }
+
+    const response = await fetch(process.env.N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+      console.log(`✅ Webhook sent to n8n for order ${order.ticket_id || id}. Status: ${response.status}`);
+      return { success: true, status: response.status };
+    } else {
+      const errorText = await response.text();
+      console.error(`⚠️ n8n returned error status: ${response.status} ${errorText}`);
+      return { success: false, status: response.status, error: errorText };
+    }
+  } catch (error) {
+    console.error('❌ Error sending webhook to n8n:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}

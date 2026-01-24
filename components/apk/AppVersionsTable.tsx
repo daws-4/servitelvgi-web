@@ -109,7 +109,7 @@ export const AppVersionsTable: React.FC<AppVersionsTableProps> = ({
                                     <div className="flex justify-end gap-2">
                                         <button
                                             onClick={() => onDownload(version)}
-                                            className="text-blue-600 hover:text-blue-900"
+                                            className="text-blue-600 hover:text-blue-900 cursor-pointer"
                                             title="Descargar APK"
                                         >
                                             <svg
@@ -128,7 +128,7 @@ export const AppVersionsTable: React.FC<AppVersionsTableProps> = ({
                                         </button>
                                         <button
                                             onClick={() => onEdit(version)}
-                                            className="text-indigo-600 hover:text-indigo-900"
+                                            className="text-indigo-600 hover:text-indigo-900 cursor-pointer"
                                             title="Editar"
                                         >
                                             <svg
@@ -151,7 +151,7 @@ export const AppVersionsTable: React.FC<AppVersionsTableProps> = ({
                                                     onDelete(version.id);
                                                 }
                                             }}
-                                            className="text-red-600 hover:text-red-900"
+                                            className="text-red-600 hover:text-red-900 cursor-pointer"
                                             title="Eliminar"
                                         >
                                             <svg

@@ -135,7 +135,7 @@ export const NewVersionModal: React.FC<NewVersionModalProps> = ({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                         aria-label="Cerrar modal"
                     >
                         <i className="fa-solid fa-times text-xl"></i>
@@ -265,14 +265,14 @@ export const NewVersionModal: React.FC<NewVersionModalProps> = ({
                                 type="button"
                                 onClick={onClose}
                                 disabled={loading}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 cursor-pointer"
                             >
                                 Cancelar
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                                 {loading ? 'Procesando...' : editMode ? 'Actualizar' : 'Crear Versión'}
                             </button>

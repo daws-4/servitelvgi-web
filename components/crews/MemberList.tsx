@@ -127,7 +127,7 @@ export const MemberList: React.FC<MemberListProps> = ({
                     type="button"
                     onClick={handleAddMember}
                     disabled={!selectedInstallerId}
-                    className="px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                     <i className="fa-solid fa-plus mr-1"></i> Agregar
                 </button>

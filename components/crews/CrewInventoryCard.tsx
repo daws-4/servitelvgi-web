@@ -47,7 +47,7 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
                     {onEquipmentClick && (
                         <button
                             onClick={onEquipmentClick}
-                            className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                            className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 cursor-pointer"
                             title="Ver equipos asignados"
                         >
                             <i className="fa-solid fa-microchip"></i>
@@ -56,7 +56,7 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
                     )}
                     <button
                         onClick={onRefresh}
-                        className="p-2 text-neutral hover:text-primary transition-colors"
+                        className="p-2 text-neutral hover:text-primary transition-colors cursor-pointer"
                         title="Actualizar"
                     >
                         <i className="fa-solid fa-rotate-right"></i>
@@ -116,7 +116,7 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
                                     <td className="py-3 text-center">
                                         <button
                                             onClick={() => onReturnClick(inventoryItem)}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors shadow-sm"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors shadow-sm cursor-pointer"
                                             title="Devolver material al almacén"
                                         >
                                             <i className="fa-solid fa-rotate-left text-xs"></i>

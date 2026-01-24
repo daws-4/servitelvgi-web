@@ -311,7 +311,7 @@ export const CrewMovementHistory: React.FC<CrewMovementHistoryProps> = ({
                             <button
                                 onClick={loadMore}
                                 disabled={loadingMore}
-                                className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+                                className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto cursor-pointer"
                             >
                                 {loadingMore ? (
                                     <>

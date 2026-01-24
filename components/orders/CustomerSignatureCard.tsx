@@ -56,7 +56,7 @@ export const CustomerSignatureCard: React.FC<CustomerSignatureCardProps> = ({ si
                         <button
                             onClick={handleDelete}
                             disabled={isDeleting}
-                            className="bg-white text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-full transition-colors border border-gray-200 shadow-sm"
+                            className="bg-white text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-full transition-colors border border-gray-200 shadow-sm cursor-pointer"
                             title="Eliminar firma"
                         >
                             {isDeleting ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-trash-can"></i>}

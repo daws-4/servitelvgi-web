@@ -144,7 +144,7 @@ export default function ApkDownloadPage() {
                             {/* Download Button */}
                             <button
                                 onClick={handleDownload}
-                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 px-8 rounded-xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center justify-center gap-3 mb-6"
+                                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold py-4 px-8 rounded-xl hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 shadow-lg flex items-center justify-center gap-3 mb-6 cursor-pointer"
                             >
                                 <svg
                                     className="w-6 h-6"

@@ -124,7 +124,7 @@ export default function ReportHistoryDrawer({ isOpen, onClose, onSelectReport }:
                             <h2 className="text-lg font-bold text-[#0f0f0f]">Historial</h2>
                             <p className="text-xs text-[#bcabae]">Reportes generados recientemente</p>
                         </div>
-                        <button onClick={onClose} className="text-[#bcabae] hover:text-red-500 transition-colors">
+                        <button onClick={onClose} className="text-[#bcabae] hover:text-red-500 transition-colors cursor-pointer">
                             <i className="fa-solid fa-times text-xl"></i>
                         </button>
                     </div>
@@ -152,7 +152,7 @@ export default function ReportHistoryDrawer({ isOpen, onClose, onSelectReport }:
                                             </Chip>
                                             <button
                                                 onClick={(e) => handleDelete(e, report._id)}
-                                                className="text-[#bcabae] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                                className="text-[#bcabae] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 cursor-pointer"
                                             >
                                                 <i className="fa-solid fa-trash-can"></i>
                                             </button>

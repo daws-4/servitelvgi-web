@@ -57,7 +57,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
             {/* Close Button */}
             <button
                 onClick={onClose}
-                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all flex items-center justify-center"
+                className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all flex items-center justify-center cursor-pointer"
                 aria-label="Cerrar"
             >
                 <i className="fa-solid fa-times text-xl"></i>
@@ -75,7 +75,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                         e.stopPropagation();
                         handlePrevious();
                     }}
-                    className="absolute left-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all flex items-center justify-center"
+                    className="absolute left-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all flex items-center justify-center cursor-pointer"
                     aria-label="Anterior"
                 >
                     <i className="fa-solid fa-chevron-left text-xl"></i>
@@ -101,7 +101,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                         e.stopPropagation();
                         handleNext();
                     }}
-                    className="absolute right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all flex items-center justify-center"
+                    className="absolute right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all flex items-center justify-center cursor-pointer"
                     aria-label="Siguiente"
                 >
                     <i className="fa-solid fa-chevron-right text-xl"></i>

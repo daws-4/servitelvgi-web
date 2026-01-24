@@ -73,6 +73,7 @@ export default function OrderEditPage() {
                         customerSignature: signatureUrl || undefined,
                         installerLog: order.installerLog || [],
                         equipmentRecovered: order.equipmentRecovered,
+                        updatedAt: order.updatedAt,
                     };
 
                     setOrderData(formData);
@@ -128,6 +129,7 @@ export default function OrderEditPage() {
             const canvas = await html2canvas(certificateRef.current, {
                 scale: 2,
                 useCORS: true,
+                allowTaint: true,
                 logging: false,
                 backgroundColor: '#ffffff'
             });

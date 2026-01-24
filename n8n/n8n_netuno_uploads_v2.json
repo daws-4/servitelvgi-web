@@ -1,0 +1,267 @@
+{
+  "name": "ServitelV Order Sync & WhatsApp V3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0023b399-e6a6-44a4-a1b3-1442b26788e4",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "webhook-node",
+      "name": "Webhook (Receive Order)",
+      "webhookId": "0023b399-e6a6-44a4-a1b3-1442b26788e4"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normalizar datos para Google Sheets\nconst order = items[0].json.body;\n\nconst output = {\n  'Marca temporal': order.timestamp || new Date().toISOString(),\n  'Técnico': order.technician || 'No especificado',\n  'Código de Abonado/ Nro de Ticket': order.ticket_id || order.subscriberNumber || '',\n  \n  // Mapeo dinámico de materiales\n  'Roseta FTTH de 2 puertos (805-4039)': order['Roseta FTTH de 2 puertos (805-4039)'] || '',\n  'Conector rápido SC/APC (805-4025)': order['Conector rápido SC/APC (805-4025)'] || '',\n  'Fibra utilizada': order.fiberDescription || '',\n  'Metros de Fibra utilizados': order.fiberMeters || '',\n  'Número de Bobina': order.batchCode || '',\n  'PatchCord SC/APC 1M Verde-Verde (805-2050)': order['PatchCord SC/APC 1M Verde-Verde (805-2050)'] || '',\n  'PatchCord SC/UPC 1M Verde-Azul (805-2118)': order['PatchCord SC/UPC 1M Verde-Azul (805-2118)'] || '',\n  'Rj-45 (805-2069) ': order['Rj-45 (805-2069)'] || '',\n  'Etiqueta Serializada Verde (300-0207)': order['Etiqueta Serializada Verde (300-0207)'] || '',\n  'Tensores de Fibra Drop (805-4041)': order['Tensores de Fibra Drop (805-4041)'] || '',\n  'Ganchos de Fijación Tipo S (805-4033)': order['Ganchos de Fijación Tipo S (805-4033)'] || '',\n  'ONT Utilizada': order.ont || '',\n  'Tipo de Instalación': order.type || '',\n  'Grapas Chatas N° 5 (INV-300-0032)': order['Grapas Chatas N° 5 (INV-300-0032)'] || '',\n  \n  // Datos para WhatsApp\n  'telefono_cliente': order.phones ? String(order.phones).split(',')[0].trim() : '',\n  'certificate_url': order.certificateUrl || ''\n};\n\nreturn [{ json: output }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "normalize-data",
+      "name": "Normalize Data"
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json['Tipo de Instalación'] }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "instalacion"
+            },
+            {
+              "value2": "averia",
+              "output": 1
+            },
+            {
+              "value2": "recuperacion",
+              "output": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        460,
+        0
+      ],
+      "id": "switch-order-type",
+      "name": "Filter by Type"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1FaNTiOpewW6q2uqCpr682-zpZuGiqbtbLyGoNXora_Y",
+          "mode": "list",
+          "cachedResultName": "Instalaciones_test",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1FaNTiOpewW6q2uqCpr682-zpZuGiqbtbLyGoNXora_Y/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1FaNTiOpewW6q2uqCpr682-zpZuGiqbtbLyGoNXora_Y/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        700,
+        -100
+      ],
+      "id": "sheet-instalaciones",
+      "name": "Sheet Instalaciones"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1FaNTiOpewW6q2uqCpr682-zpZuGiqbtbLyGoNXora_Y",
+          "mode": "list",
+          "cachedResultName": "Averias_test",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1FaNTiOpewW6q2uqCpr682-zpZuGiqbtbLyGoNXora_Y/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=123456",
+          "mode": "list",
+          "cachedResultName": "Averias",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        700,
+        100
+      ],
+      "id": "sheet-averias",
+      "name": "Sheet Averías"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v18.0/YOUR_PHONE_NUMBER_ID/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsappApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messaging_product",
+              "value": "whatsapp"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.telefono_cliente }}"
+            },
+            {
+              "name": "type",
+              "value": "image"
+            },
+            {
+              "name": "image",
+              "value": "={{ { \"link\": $json.certificate_url } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1000,
+        0
+      ],
+      "id": "whatsapp-sender",
+      "name": "Send WhatsApp Image"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"message\": \"Procesado correctamente\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1300,
+        0
+      ],
+      "id": "respond-node",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook (Receive Order)": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Filter by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter by Type": {
+      "main": [
+        [
+          {
+            "node": "Sheet Instalaciones",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheet Averías",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheet Instalaciones": {
+      "main": [
+        [
+          {
+            "node": "whatsapp-sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheet Averías": {
+      "main": [
+        [
+          {
+            "node": "whatsapp-sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "whatsapp-sender": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

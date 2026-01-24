@@ -13,9 +13,9 @@ export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Leer token de cookie O del header Authorization
-  const token = req.cookies.get("token")?.value ?? 
-                req.headers.get("authorization")?.replace("Bearer ", "") ?? 
-                null;
+  const token = req.cookies.get("token")?.value ??
+    req.headers.get("authorization")?.replace("Bearer ", "") ??
+    null;
 
   // Compatibility redirect: old login path -> new login root
   if (pathname === "/login" || pathname === "/login/") {
@@ -76,27 +76,27 @@ export function proxy(req: NextRequest) {
 
   // Check if it's a valid route (non-dashboard)
   const isValidNonDashboardRoute = validRoutes.some((route) => pathname.startsWith(route));
-  
+
   // Check if it's a valid dashboard route
   const isValidDashboardRoute = validDashboardRoutes.some((route) => {
     // Exact match or dynamic route match (e.g., /dashboard/orders/[id])
-    return pathname === route || 
-           pathname.startsWith(route + '/') ||
-           pathname === route + '/';
+    return pathname === route ||
+      pathname.startsWith(route + '/') ||
+      pathname === route + '/';
   });
 
-  const isValidRoute = 
-    isValidNonDashboardRoute || 
+  const isValidRoute =
+    isValidNonDashboardRoute ||
     isValidDashboardRoute ||
     pathname === '/'; // Root is valid (will redirect based on auth)
 
   // If route doesn't match any valid pattern, redirect based on auth status
   if (!isValidRoute) {
     const redirectUrl = req.nextUrl.clone();
-    
+
     // Check if it's an invalid dashboard subroute
     const isInvalidDashboardSubroute = pathname.startsWith('/dashboard/');
-    
+
     if (token) {
       // Logged in: redirect to dashboard with 404 indicator
       redirectUrl.pathname = DEFAULT_REDIRECT;
@@ -118,5 +118,5 @@ export function proxy(req: NextRequest) {
 
 // Apply middleware to all routes except Next internals and static files.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|certificates).*)"],
 };

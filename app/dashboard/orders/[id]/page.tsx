@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { OrderEditForm, OrderEditData } from '@/components/orders/OrderEditForm';
 import { OrderHistoryModal } from '@/components/orders/OrderHistoryModal';
+import { OrderCompletionCertificate } from '@/components/orders/OrderCompletionCertificate';
 import axios from 'axios';
 import PocketBase from 'pocketbase';
+import html2canvas from 'html2canvas';
 
 export default function OrderEditPage() {
     const router = useRouter();
@@ -15,8 +17,12 @@ export default function OrderEditPage() {
     const [orderData, setOrderData] = useState<OrderEditData | null>(null);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+
+    // Ref for the certificate component
+    const certificateRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!orderId) {
@@ -57,12 +63,16 @@ export default function OrderEditPage() {
                             : (order.servicesToInstall || ''),
                         type: order.type || 'instalacion',
                         status: order.status || 'pending',
-                        assignedTo: order.assignedTo?._id || order.assignedTo || undefined,
+                        assignedTo: order.assignedTo?._id || (typeof order.assignedTo === 'string' ? order.assignedTo : undefined),
+                        technicianName: (order.assignedTo && typeof order.assignedTo === 'object' && order.assignedTo.leader)
+                            ? `${order.assignedTo.leader.name} ${order.assignedTo.leader.surname}`
+                            : undefined,
                         materialsUsed: order.materialsUsed || [],
                         photoEvidence: order.photoEvidence || [],
                         internetTest: order.internetTest || undefined,
                         customerSignature: signatureUrl || undefined,
                         installerLog: order.installerLog || [],
+                        equipmentRecovered: order.equipmentRecovered,
                     };
 
                     setOrderData(formData);
@@ -101,26 +111,97 @@ export default function OrderEditPage() {
     };
 
     const handleSyncNetuno = async () => {
-        if (!orderId) return;
+        if (!orderId || !orderData || !certificateRef.current) return;
 
-        if (!confirm('¿Estás seguro de que quieres enviar los datos a Netuno (Google Sheets)?')) {
+        if (!confirm('¿Estás seguro de que quieres generar el certificado, guardarlo y enviar los datos a Netuno (WhatsApp)?')) {
             return;
         }
 
         try {
             setSyncing(true);
-            const response = await axios.post(`/api/web/orders/${orderId}/sync`);
+
+            // 1. GENERATE IMAGE
+            console.log("📸 Generating Certificate Image...");
+            // Wait a moment for any potential renders
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const canvas = await html2canvas(certificateRef.current, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            // Convert to Blob
+            const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+            if (!blob) throw new Error("Failed to generate image blob");
+            const file = new File([blob], "certificate.png", { type: "image/png" });
+
+            // 2. UPLOAD TO BACKEND
+            console.log("⬆️ Uploading Certificate...");
+            const formData = new FormData();
+            formData.append('orderId', orderId);
+            formData.append('ticketId', orderData.ticket_id || orderData.subscriberNumber);
+            formData.append('image', file);
+
+            const uploadResponse = await axios.post('/api/web/certificates/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (!uploadResponse.data.success) {
+                throw new Error("Upload failed: " + (uploadResponse.data.error || 'Unknown error'));
+            }
+
+            const publicUrl = uploadResponse.data.url;
+            console.log("✅ Certificate Uploaded:", publicUrl);
+
+            // 3. TRIGGER SYNC (Passing the URL explicitly)
+            console.log("🔄 Triggering Netuno Sync...", { publicUrl });
+            const response = await axios.post(`/api/web/orders/${orderId}/sync`, {
+                certificateUrl: publicUrl
+            });
 
             if (response.data.success) {
-                alert('¡Datos enviados correctamente a Netuno!');
+                alert(`¡Éxito! \n\n1. Certificado Guardado\n2. Datos enviados a Netuno/WhatsApp`);
             } else {
-                alert('Error al enviar a Netuno: ' + (response.data.error || 'Error desconocido'));
+                alert('Certificado guardado, pero error al enviar a Netuno: ' + (response.data.error || 'Error desconocido'));
             }
         } catch (error: any) {
             console.error('Error syncing:', error);
-            alert('Error de conexión o servidor al enviar a Netuno');
+            alert('Error en el proceso: ' + (error.message || error));
         } finally {
             setSyncing(false);
+        }
+    };
+
+    const handleExportImage = async () => {
+        if (!certificateRef.current || !orderData) return;
+
+        try {
+            setExporting(true);
+
+            // Wait a moment for any potential renders
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const canvas = await html2canvas(certificateRef.current, {
+                scale: 2, // Higher resolution
+                useCORS: true, // For images from other domains (like signatures)
+                logging: true,
+                backgroundColor: '#ffffff'
+            });
+
+            // Convert to blob and download
+            const image = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.href = image;
+            link.download = `${orderData.ticket_id || orderData.subscriberNumber}.png`;
+            link.click();
+
+        } catch (err) {
+            console.error('Error exporting image:', err);
+            alert('Error al exportar la imagen. Intenta de nuevo.');
+        } finally {
+            setExporting(false);
         }
     };
 
@@ -225,7 +306,12 @@ export default function OrderEditPage() {
     }
 
     return (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto relative">
+            {/* HIDDEN CERTIFICATE COMPONENT (Off-screen) */}
+            <div className="absolute top-0 left-[-9999px]">
+                <OrderCompletionCertificate ref={certificateRef} data={orderData} />
+            </div>
+
             {/* HEADER */}
             <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-200 sticky top-0 z-10">
                 <div className="flex items-center gap-3">
@@ -245,12 +331,35 @@ export default function OrderEditPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* EXPORT BUTTON */}
+                    <button
+                        onClick={handleExportImage}
+                        disabled={exporting}
+                        className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${exporting
+                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                            : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
+                            }`}
+                        title="Exportar como Imagen"
+                    >
+                        {exporting ? (
+                            <>
+                                <i className="fa-solid fa-spinner fa-spin"></i>
+                                Generando...
+                            </>
+                        ) : (
+                            <>
+                                <i className="fa-solid fa-image"></i>
+                                Exportar Img
+                            </>
+                        )}
+                    </button>
+
                     <button
                         onClick={handleSyncNetuno}
                         disabled={syncing}
                         className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${syncing
-                                ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                                : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200'
+                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                            : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200'
                             }`}
                         title="Enviar datos a Google Sheets/Netuno"
                     >
@@ -262,7 +371,7 @@ export default function OrderEditPage() {
                         ) : (
                             <>
                                 <i className="fa-solid fa-cloud-arrow-up"></i>
-                                Enviar Datos a Netuno
+                                Enviar a Netuno
                             </>
                         )}
                     </button>

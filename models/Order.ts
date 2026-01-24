@@ -60,6 +60,7 @@ export interface IOrder {
     };
   }; // No aplica para recuperación
   googleFormReported?: boolean;
+  certificateUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -212,6 +213,9 @@ const OrderSchema = new mongoose.Schema(
     googleFormReported: {
       type: Boolean,
       default: false,
+    },
+    certificateUrl: {
+      type: String,
     },
   },
   { timestamps: true }

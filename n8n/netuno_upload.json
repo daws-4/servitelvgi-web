@@ -1,0 +1,379 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "0023b399-e6a6-44a4-a1b3-1442b26788e4",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a8d94c88-1ba9-4350-8aed-1ccd829651f2",
+      "name": "Webhook",
+      "webhookId": "0023b399-e6a6-44a4-a1b3-1442b26788e4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const order = items[0].json.body;\n\nconst output = {\n  'Marca temporal': order.timestamp || '',\n  'Técnico': order.technician || '',\n  'Código de Abonado/ Nro de Ticket': order.ticket_id || '',\n  \n  // Todos los materiales con nombre completo como clave\n  'Roseta FTTH de 2 puertos (805-4039)': order['Roseta FTTH de 2 puertos (805-4039)'] || '',\n  'Conector rápido SC/APC (805-4025)': order['Conector rápido SC/APC (805-4025)'] || '',\n  'Fibra utilizada': order.fiberDescription || '',\n  'Metros de Fibra utilizados': order.fiberMeters || '',\n  'Número de Bobina': order.batchCode || '',\n  'PatchCord SC/APC 1M Verde-Verde (805-2050)': order['PatchCord SC/APC 1M Verde-Verde (805-2050)'] || '',\n  'PatchCord SC/UPC 1M Verde-Azul (805-2118)': order['PatchCord SC/UPC 1M Verde-Azul (805-2118)'] || '',\n  'Rj-45 (805-2069) ': order['Rj-45 (805-2069)'] || '',\n  'Etiqueta Serializada Verde (300-0207)': order['Etiqueta Serializada Verde (300-0207)'] || '',\n  'Tensores de Fibra Drop (805-4041)': order['Tensores de Fibra Drop (805-4041)'] || '',\n  'Ganchos de Fijación Tipo S (805-4033)': order['Ganchos de Fijación Tipo S (805-4033)'] || '',\n  'ONT Utilizada': order.ont || '',\n  'Tipo de Instalación': order.type || '',\n  'Grapas Chatas N° 5 (INV-300-0032)': order['Grapas Chatas N° 5 (INV-300-0032)'] || ''\n};\n\nreturn [{ json: output }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a0bebfd2-a96b-429c-b9d3-4d42d9ae18fb",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1FaNTiOpewW6q2uqCpr682-zpZuGiqbtbLyGoNXora_Y",
+          "mode": "list",
+          "cachedResultName": "Instalaciones_test",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1FaNTiOpewW6q2uqCpr682-zpZuGiqbtbLyGoNXora_Y/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1FaNTiOpewW6q2uqCpr682-zpZuGiqbtbLyGoNXora_Y/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Marca temporal",
+              "displayName": "Marca temporal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Técnico",
+              "displayName": "Técnico",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Código de Abonado/ Nro de Ticket",
+              "displayName": "Código de Abonado/ Nro de Ticket",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Roseta FTTH de 2 puertos (805-4039)",
+              "displayName": "Roseta FTTH de 2 puertos (805-4039)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Conector rápido SC/APC (805-4025)",
+              "displayName": "Conector rápido SC/APC (805-4025)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fibra utilizada",
+              "displayName": "Fibra utilizada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Metros de Fibra utilizados",
+              "displayName": "Metros de Fibra utilizados",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Número de Bobina",
+              "displayName": "Número de Bobina",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PatchCord SC/APC 1M Verde-Verde (805-2050)",
+              "displayName": "PatchCord SC/APC 1M Verde-Verde (805-2050)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "PatchCord SC/UPC 1M Verde-Azul (805-2118)",
+              "displayName": "PatchCord SC/UPC 1M Verde-Azul (805-2118)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rj-45 (805-2069) ",
+              "displayName": "Rj-45 (805-2069) ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Etiqueta Serializada Verde (300-0207)",
+              "displayName": "Etiqueta Serializada Verde (300-0207)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tensores de Fibra Drop (805-4041)",
+              "displayName": "Tensores de Fibra Drop (805-4041)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ganchos de Fijación Tipo S (805-4033)",
+              "displayName": "Ganchos de Fijación Tipo S (805-4033)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ONT Utilizada",
+              "displayName": "ONT Utilizada",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tipo de Instalación",
+              "displayName": "Tipo de Instalación",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Grapas Chatas N° 5 (INV-300-0032)",
+              "displayName": "Grapas Chatas N° 5 (INV-300-0032)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "281f7f01-ae04-4cef-bce7-7e4aeebff66b",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ehagD8XYRxvo4yG8",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"message\": \"Datos guardados correctamente en Google Sheets\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "ff75939c-bc90-43cb-b42a-47e5477f1741",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "vn8n.servitelv.com",
+          "user-agent": "node",
+          "content-length": "1529",
+          "accept": "*/*",
+          "accept-encoding": "gzip, br",
+          "accept-language": "*",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "186.167.223.161",
+          "cf-ipcountry": "VE",
+          "cf-ray": "9c1c30690f4074a0-MIA",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "cf-warp-tag-id": "82646c74-afbd-4db8-9b18-956c6db76764",
+          "connection": "keep-alive",
+          "content-type": "application/json",
+          "sec-fetch-mode": "cors",
+          "x-forwarded-for": "186.167.223.161",
+          "x-forwarded-proto": "https"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "_id": "693d982635368e9d8a645ebe",
+          "subscriberNumber": "368063",
+          "__v": 0,
+          "address": "MUNICIPIO CÁRDENAS. URB. TARIBA, CALLE PRINCIPAL TARIBA ENTRE CARRERA 05 Y CARRERA 11(NORTE) CSDU PRINCIPAL TARIBA GPON TAR29A, URB COLINA DE DON JUAN CALLE 02 PISO 0 VIVIENDA CASA 84",
+          "createdAt": "2025-12-13T16:45:26.423Z",
+          "email": "hernandeztrillosdaniel@gmail.com",
+          "googleFormReported": false,
+          "node": "SCRVEG20112A-GPON TAR29A",
+          "phones": [
+            "4247617337",
+            "4247617337"
+          ],
+          "receptionDate": "2025-12-13T16:45:26.424Z",
+          "servicesToInstall": [
+            "Fibranet500_500Mb N°20469486",
+            "TelefoniaPon 2767400990",
+            "NetUnoGO Plus 3 N°20469487"
+          ],
+          "status": "completed",
+          "subscriberName": "DANIEL GEU HERNANDEZ CHACON",
+          "type": "instalacion",
+          "updatedAt": "2026-01-22T04:08:10.313Z",
+          "assignedTo": {
+            "_id": "693da2ba72ef04a612b0df10",
+            "number": 10
+          },
+          "assignmentDate": "2025-12-17T14:13:33.595Z",
+          "internetTest": {
+            "downloadSpeed": 331.59,
+            "uploadSpeed": 55.47,
+            "ping": 49,
+            "provider": "Net Uno, C.A.",
+            "wifiSSID": "Linksys",
+            "frecuency": "5 GHz",
+            "coordinates": {
+              "latitude": 7.7699702,
+              "longitude": -72.2253931
+            }
+          },
+          "materialsUsed": [
+            {
+              "item": {
+                "_id": "6970faf21d00d145dc997666",
+                "code": "Conector rápido SC/APC (805-4025)",
+                "description": "Conector rápido SC/APC (805-4025)",
+                "unit": "unidades",
+                "type": "material"
+              },
+              "quantity": 10,
+              "instanceIds": [],
+              "_id": "6971a2aa045acd976678d7de"
+            }
+          ],
+          "completionDate": "2026-01-22T04:08:10.200Z",
+          "installerLog": [
+            {
+              "timestamp": "2026-01-10T20:15:46.274Z",
+              "log": "Instalación completada con éxito",
+              "status": "completed",
+              "_id": "6962b3747288a6254d8c4d2a"
+            }
+          ],
+          "photoEvidence": [],
+          "ticket_id": "78945663"
+        },
+        "webhookUrl": "https://vn8n.servitelv.com/webhook/0023b399-e6a6-44a4-a1b3-1442b26788e4",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1b1696e9ee238e46e8f063146e611e16b8d40b44af00e0a3013078a6cc869c50"
+  }
+}

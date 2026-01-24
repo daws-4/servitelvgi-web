@@ -63,6 +63,7 @@ export interface OrderEditData {
     customerSignature?: string; // Base64 from react-native-signature-canvas
     equipmentRecovered?: EquipmentRecovered; // For recovery orders
     installerLog?: InstallerLogEntry[];
+    technicianName?: string;
 }
 
 interface OrderEditFormProps {

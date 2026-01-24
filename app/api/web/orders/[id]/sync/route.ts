@@ -21,7 +21,18 @@ export async function POST(
             return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
         }
 
-        const result = await syncOrderToNetuno(id);
+        // Check if body has certificateUrl override
+        let certificateUrl = undefined;
+        try {
+            const body = await request.json();
+            if (body && body.certificateUrl) {
+                certificateUrl = body.certificateUrl;
+            }
+        } catch (e) {
+            // Body might be empty, ignore JSON parse error
+        }
+
+        const result = await syncOrderToNetuno(id, certificateUrl);
 
         if (result.success) {
             return NextResponse.json(result);

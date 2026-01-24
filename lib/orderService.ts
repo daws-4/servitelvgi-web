@@ -66,7 +66,14 @@ export async function getOrders(filters = {}) {
 export async function getOrderById(id: string): Promise<IOrder | null> {
   await connectDB();
   const order = await OrderModel.findById(id)
-    .populate("assignedTo", "number")
+    .populate({
+      path: "assignedTo",
+      select: "number leader",
+      populate: {
+        path: "leader",
+        select: "name surname"
+      }
+    })
     .populate("materialsUsed.item", "code description unit type")
     .lean() as unknown as IOrder | null;
 
@@ -259,7 +266,7 @@ export async function deleteOrder(id: string) {
 }
 
 // Función manual para sincronizar con Netuno (n8n)
-export async function syncOrderToNetuno(id: string) {
+export async function syncOrderToNetuno(id: string, certificateUrlOverride?: string) {
   await connectDB();
 
   if (!process.env.N8N_WEBHOOK_URL) {
@@ -311,6 +318,8 @@ export async function syncOrderToNetuno(id: string) {
   const payload: any = {
     timestamp: formatTimestamp(order.updatedAt || new Date()),
     ticket_id: order.ticket_id || order.subscriberNumber,
+    certificateUrl: certificateUrlOverride || order.certificateUrl || '',
+    type: order.type || 'instalacion',
   };
 
   // Extract leader name from crew (only leader, not all members)

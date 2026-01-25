@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const inventoryId = searchParams.get("inventoryId");
     const status = searchParams.get("status") || undefined;
+    const crewId = searchParams.get("crewId") || undefined;
 
     if (!inventoryId) {
       return NextResponse.json(
@@ -24,7 +25,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const filters = status ? { status } : {};
+    const filters: { status?: string; crewId?: string } = {};
+    if (status) filters.status = status;
+    if (crewId) filters.crewId = crewId;
+
     const instances = await getEquipmentInstances(inventoryId, filters);
 
     return NextResponse.json({

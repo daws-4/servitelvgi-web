@@ -68,10 +68,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔍 [API POST] Session User:', sessionUser ? `${sessionUser.username} (${sessionUser.role})` : 'None');
+    console.log('📦 [API POST] Body:', JSON.stringify(body, null, 2));
 
     const created = await createOrder(body, sessionUser || undefined);
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
-  } catch (err) {
+  } catch (err: any) {
+    console.error("❌ [API POST] Error creating order:", err);
+    if (err.errors) {
+      console.error("❌ [API POST] Validation Errors:", JSON.stringify(err.errors, null, 2));
+    }
     return NextResponse.json(
       { error: String(err) },
       { status: 500, headers: CORS_HEADERS }

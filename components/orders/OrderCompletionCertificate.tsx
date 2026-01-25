@@ -108,6 +108,21 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                             <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Servicios / Trabajo Realizado:</span>
                             <span className="font-medium text-[10px] break-words">{data.servicesToInstall || 'N/A'}</span>
                         </div>
+                        {/* New Technical Fields */}
+                        <div className="grid grid-cols-2 gap-2 mt-1">
+                            <div>
+                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Potencia Nap:</span>
+                                <span className="font-medium text-[10px]">{data.powerNap || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Potencia Roseta:</span>
+                                <span className="font-medium text-[10px]">{data.powerRoseta || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Puertos Restantes:</span>
+                            <span className="font-medium text-[10px]">{data.remainingPorts !== undefined ? data.remainingPorts : 'N/A'}</span>
+                        </div>
                     </div>
                 </div>
 

@@ -17,7 +17,7 @@ export interface OrderData {
     email?: string;
     type: "instalacion" | "averia" | "recuperacion" | "otro";
     address: string;
-    status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard";
+    status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard" | "visita";
     assignedTo?: {
         _id: string;
         number?: number;
@@ -292,6 +292,12 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                 return (
                     <span className="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                         <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1.5"></span> Hard
+                    </span>
+                );
+            case "visita":
+                return (
+                    <span className="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span> Visita
                     </span>
                 );
         }

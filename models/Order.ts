@@ -5,10 +5,10 @@ import mongoose from "mongoose";
 
 export interface IOrder {
   _id?: string;
-  subscriberNumber: string;
-  ticket_id?: string;
+  subscriberNumber?: string;
+  ticket_id: string;
   type: "instalacion" | "averia" | "recuperacion" | "otro";
-  status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
+  status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "visita";
   subscriberName: string;
   address: string;
   phones?: string[];
@@ -26,7 +26,7 @@ export interface IOrder {
   installerLog?: {
     timestamp: Date;
     log: string;
-    status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled";
+    status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "visita";
   }[];
   materialsUsed?: {
     item: mongoose.Schema.Types.ObjectId | any;
@@ -63,6 +63,10 @@ export interface IOrder {
   certificateUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  visitCount?: number;
+  powerNap?: string;
+  powerRoseta?: string;
+  remainingPorts?: number;
 }
 
 // Removed duplicate fields below
@@ -99,6 +103,7 @@ const OrderSchema = new mongoose.Schema(
         "completed",
         "cancelled",
         "hard",
+        "visita",
         // Aquí puedes añadir otros estados si aparecen en otras imágenes,
         // por ahora "Pendiente" es lo más claro
       ],
@@ -129,6 +134,9 @@ const OrderSchema = new mongoose.Schema(
     node: {
       type: String, // "Nodo: SCRVEG20112A-GPON TAR29A"
     },
+    powerNap: { type: String },
+    powerRoseta: { type: String },
+    remainingPorts: { type: Number },
     servicesToInstall: {
       type: [String], // Para instalación/avería
     },
@@ -156,7 +164,7 @@ const OrderSchema = new mongoose.Schema(
         log: { type: String, required: true },
         status: {
           type: String,
-          enum: ["pending", "assigned", "in_progress", "completed", "cancelled"],
+          enum: ["pending", "assigned", "in_progress", "completed", "cancelled", "visita"],
           required: true,
         },
       },
@@ -182,7 +190,6 @@ const OrderSchema = new mongoose.Schema(
       condition: {
         type: String,
         enum: ["good", "damaged", "defective"],
-        default: "good",
       },
       notes: { type: String },
     },
@@ -213,6 +220,10 @@ const OrderSchema = new mongoose.Schema(
     googleFormReported: {
       type: Boolean,
       default: false,
+    },
+    visitCount: {
+      type: Number,
+      default: 0,
     },
     certificateUrl: {
       type: String,

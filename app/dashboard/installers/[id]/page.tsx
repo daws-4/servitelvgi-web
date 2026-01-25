@@ -5,6 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import { InstallerEditForm } from "@/components/installers/InstallerEditForm";
 import { InstallerStatusBadge } from "@/components/installers/InstallerStatusBadge";
 import { InstallerOnDutyBadge } from "@/components/installers/InstallerOnDutyBadge";
+import { DataUsageSection } from "@/components/installers/DataUsageSection";
+
 
 interface Installer {
     _id: string;
@@ -209,8 +211,15 @@ export default function InstallerEditPage() {
                         onSubmit={handleSubmit}
                         onCancel={handleCancel}
                     />
+
+                    {/* DATA USAGE SECTION */}
+                    <div className="mt-8">
+                        <DataUsageSection installerId={id} />
+                    </div>
                 </div>
             </main>
         </div>
     );
 }
+
+

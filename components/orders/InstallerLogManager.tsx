@@ -59,16 +59,18 @@ export const InstallerLogManager: React.FC<InstallerLogManagerProps> = ({
         }
     };
 
-    const getStatusBadge = (status: OrderStatus) => {
-        const configs = {
+    const getStatusBadge = (status: OrderStatus | string) => {
+        const configs: Record<string, { class: string; label: string }> = {
             pending: { class: 'bg-yellow-100 text-yellow-800 border-yellow-200', label: 'Pendiente' },
             assigned: { class: 'bg-blue-100 text-blue-800 border-blue-200', label: 'Asignada' },
             in_progress: { class: 'bg-purple-100 text-purple-800 border-purple-200', label: 'En Progreso' },
             completed: { class: 'bg-green-100 text-green-800 border-green-200', label: 'Completada' },
             cancelled: { class: 'bg-red-100 text-red-800 border-red-200', label: 'Cancelada' },
-            hard: { class: 'bg-orange-100 text-orange-800 border-orange-200', label: 'Hard' }
+            hard: { class: 'bg-orange-100 text-orange-800 border-orange-200', label: 'Hard' },
+            visita: { class: 'bg-green-100 text-green-800 border-green-200', label: 'Visita' },
+            averia: { class: 'bg-red-50 text-red-700 border-red-100', label: 'Avería' }
         };
-        const config = configs[status];
+        const config = configs[status] || { class: 'bg-gray-100 text-gray-800 border-gray-200', label: status || 'Desconocido' };
         return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${config.class}`}>{config.label}</span>;
     };
 

@@ -801,11 +801,9 @@ export async function restoreInventoryFromOrder(
               restoredInstances.push(uniqueId);
               console.log(`[RESTORE] Instancia ${uniqueId} restaurada de 'installed' a 'assigned'.`);
             } else if (isAssignedToThisCrew) {
-              // Instance is already assigned to crew, we just need to restore the crew inventory count
-              // No change to instance status needed, but we increment the count
-              restoredCount++;
-              restoredInstances.push(uniqueId);
-              console.log(`[RESTORE] Instancia ${uniqueId} ya está 'assigned' a la cuadrilla, restaurando conteo.`);
+              // Instance is already assigned to crew and was never deducted (order wasn't completed)
+              // Don't increment count - the instance was never consumed, so nothing to restore
+              console.log(`[RESTORE] Instancia ${uniqueId} ya está 'assigned' a la cuadrilla, no requiere restauración de conteo.`);
             } else {
               console.warn(`[RESTORE] Instancia ${uniqueId} saltada. Status=${instance.status}, no cumple condiciones.`);
             }
@@ -1516,7 +1514,7 @@ export async function markInstanceAsInstalled(
  */
 export async function getEquipmentInstances(
   inventoryId: string,
-  filters: { status?: string } = {}
+  filters: { status?: string; crewId?: string } = {}
 ) {
   await connectDB();
 
@@ -1536,6 +1534,14 @@ export async function getEquipmentInstances(
 
   if (filters.status) {
     instances = instances.filter((inst: any) => inst.status === filters.status);
+  }
+
+  // Filter by crewId - only return instances assigned to this specific crew
+  if (filters.crewId) {
+    instances = instances.filter(
+      (inst: any) => inst.assignedTo?.crewId?.toString() === filters.crewId ||
+        inst.assignedTo?.crewId?._id?.toString() === filters.crewId
+    );
   }
 
   return instances;

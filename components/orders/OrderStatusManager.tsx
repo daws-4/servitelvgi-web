@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard";
+export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard" | "visita";
 export type OrderType = "instalacion" | "averia" | "recuperacion" | "otro";
 
 interface Crew {
@@ -45,7 +45,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
     const normalizedType: OrderType = validTypes.includes(initialType) ? initialType : "otro";
 
     // Validate and normalize initialStatus to ensure it's a valid OrderStatus
-    const validStatuses: OrderStatus[] = ["pending", "assigned", "in_progress", "completed", "cancelled", "hard"];
+    const validStatuses: OrderStatus[] = ["pending", "assigned", "in_progress", "completed", "cancelled", "hard", "visita"];
     const normalizedStatus = validStatuses.includes(initialStatus) ? initialStatus : "pending";
 
     const [status, setStatus] = useState<OrderStatus>(normalizedStatus);
@@ -156,6 +156,12 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                     badgeClass: "bg-orange-100 text-orange-800 border-orange-200",
                     description: "Orden Hard. Requiere atención especial."
                 };
+            case 'visita':
+                return {
+                    colorClass: "text-green-500",
+                    badgeClass: "bg-green-100 text-green-800 border-green-200",
+                    description: "Visita técnica realizada."
+                };
             default:
                 // Fallback for any unexpected status values
                 return {
@@ -192,6 +198,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                             <option value="completed">Completada</option>
                             <option value="cancelled">Cancelada</option>
                             <option value="hard">Hard</option>
+                            <option value="visita">Visita</option>
                         </select>
                         {/* Status Icon */}
                         <div className="absolute inset-y-0 left-0 flex items-center px-3 pointer-events-none">

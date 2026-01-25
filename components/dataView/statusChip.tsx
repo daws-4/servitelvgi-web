@@ -8,7 +8,9 @@ export type OrderStatus =
     | "in_progress"
     | "completed"
     | "cancelled"
-    | "averia"; // Asumiendo que 'averia' es un tipo especial o estado crítico
+    | "averia" // Asumiendo que 'averia' es un tipo especial o estado crítico
+    | "hard"
+    | "visita";
 
 interface StatusChipProps extends Omit<ChipProps, "children"> {
     status: string; // Recibimos el string del estado (puede venir de la DB)
@@ -45,6 +47,16 @@ const statusConfig: Record<string, { color: ChipProps["color"]; label: string; v
     averia: {
         color: "danger",
         label: "Avería",
+        variant: "flat",
+    },
+    hard: {
+        color: "warning",
+        label: "Hard",
+        variant: "solid",
+    },
+    visita: {
+        color: "success",
+        label: "Visita",
         variant: "flat",
     },
     // Estado por defecto para valores desconocidos

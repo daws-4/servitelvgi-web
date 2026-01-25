@@ -74,6 +74,10 @@ export default function OrderEditPage() {
                         installerLog: order.installerLog || [],
                         equipmentRecovered: order.equipmentRecovered,
                         updatedAt: order.updatedAt,
+                        visitCount: order.visitCount || 0,
+                        powerNap: order.powerNap || '',
+                        powerRoseta: order.powerRoseta || '',
+                        remainingPorts: order.remainingPorts || undefined,
                     };
 
                     setOrderData(formData);
@@ -100,6 +104,9 @@ export default function OrderEditPage() {
         const response = await axios.put('/api/web/orders', {
             id: orderId,
             ...data,
+            powerNap: data.powerNap,
+            powerRoseta: data.powerRoseta,
+            remainingPorts: data.remainingPorts,
             phones: data.phones.split(',').map(p => p.trim()).filter(p => p),
             servicesToInstall: data.servicesToInstall.split(',').map(s => s.trim()).filter(s => s),
         });
@@ -244,6 +251,8 @@ export default function OrderEditPage() {
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 uppercase">Cancelada</span>;
             case 'hard':
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200 uppercase">Hard</span>;
+            case 'visita':
+                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 uppercase">Visita</span>;
             default:
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800 border border-gray-200 uppercase">Cargando...</span>;
         }
@@ -329,6 +338,13 @@ export default function OrderEditPage() {
                             <span className="text-gray-400 font-normal">
                                 #{orderData.ticket_id}
                             </span>
+                            {/* Visit Count Badge */}
+                            {(orderData.visitCount || 0) > 0 && (
+                                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-700 border border-pink-200" title="Cantidad de Visitas Técnicas">
+                                    <i className="fa-solid fa-location-dot text-[10px]"></i>
+                                    {orderData.visitCount}
+                                </span>
+                            )}
                         </h1>
                     </div>
                 </div>

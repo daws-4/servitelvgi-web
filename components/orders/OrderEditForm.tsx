@@ -65,6 +65,10 @@ export interface OrderEditData {
     installerLog?: InstallerLogEntry[];
     technicianName?: string;
     updatedAt?: Date | string; // Order finalization date
+    visitCount?: number;
+    powerNap?: string;
+    powerRoseta?: string;
+    remainingPorts?: number;
 }
 
 interface OrderEditFormProps {
@@ -275,6 +279,27 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                             label="Nodo / Ubicación"
                             value={formData.node}
                             onValueChange={(value) => handleInputChange('node', value)}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormInput
+                                label="Potencia Nap"
+                                value={formData.powerNap || ''}
+                                onValueChange={(value) => handleInputChange('powerNap', value)}
+                                placeholder="Ej: -20.5"
+                            />
+                            <FormInput
+                                label="Potencia Roseta"
+                                value={formData.powerRoseta || ''}
+                                onValueChange={(value) => handleInputChange('powerRoseta', value)}
+                                placeholder="Ej: -21.2"
+                            />
+                        </div>
+                        <FormInput
+                            label="Puertos Restantes"
+                            type="number"
+                            value={formData.remainingPorts?.toString() || ''}
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, remainingPorts: parseInt(value) || undefined }))}
+                            placeholder="Ej: 4"
                         />
                         <div className="md:col-span-2">
                             <FormTextarea

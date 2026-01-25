@@ -28,6 +28,7 @@ const statusOptions: SelectOption[] = [
     { key: "completed", label: "Completada" },
     { key: "cancelled", label: "Cancelada" },
     { key: "hard", label: "Hard" },
+    { key: "visita", label: "Visita" },
 ];
 
 const typeOptions: SelectOption[] = [

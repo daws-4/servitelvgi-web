@@ -184,6 +184,24 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
     data.completionDate = new Date();
   }
 
+  // --- LOGIC FOR VISIT COUNTING ---
+  // Check if interaction counts as a visit (Status "hard" or "visita" AND new log entry added)
+  // We compare the length of installerLog to detect if a new entry was pushed.
+  // Note: This relies on the frontend pushing the log entry in the update payload.
+
+  const oldLogCount = oldOrder.installerLog ? oldOrder.installerLog.length : 0;
+  const newLogCount = (data.installerLog && Array.isArray(data.installerLog)) ? data.installerLog.length : 0;
+
+  const isHardOrVisita = data.status === 'hard' || data.status === 'visita';
+  const hasNewLogEntry = newLogCount > oldLogCount;
+
+  if (isHardOrVisita && hasNewLogEntry) {
+    const currentCount = oldOrder.visitCount || 0;
+    data.visitCount = currentCount + 1;
+    console.log(`[Visit Counter] Incrementing visit count for order ${id}. New count: ${data.visitCount}`);
+  }
+  // --------------------------------
+
   // Track changes before updating
   await trackChanges(id, oldOrder, data, sessionUser);
 

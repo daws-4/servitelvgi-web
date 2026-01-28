@@ -35,7 +35,7 @@ const SaveIcon: React.FC<{ className?: string }> = ({ className }) => (
 
 interface NewOrderFormData {
     subscriberNumber: string;
-    ticket_id: string;
+    ticket_id?: string;
     subscriberName: string;
     phones: string;
     email: string;
@@ -132,7 +132,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
             // Prepare order data
             const orderData = {
                 subscriberNumber: formData.subscriberNumber,
-                ticket_id: formData.ticket_id || undefined,
+                ticket_id: formData.ticket_id?.trim() || undefined,
                 subscriberName: formData.subscriberName,
                 phones: formData.phones.split(',').map(p => p.trim()).filter(p => p),
                 email: formData.email,
@@ -223,7 +223,7 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
                                 placeholder="Ej: TKT-2026-001"
                                 value={formData.ticket_id}
                                 onValueChange={(value) => handleInputChange('ticket_id', value)}
-                                description="Opcional: ID del ticket asociado"
+                                description="Opcional: ID del ticket asociado (debe ser único)"
                             />
 
                             <FormInput

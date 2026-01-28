@@ -6,7 +6,7 @@ import { FormSelect, SelectOption } from '@/components/interactiveForms/Select';
 import { FormButton } from '@/components/interactiveForms/Button';
 
 interface NewCrewFormData {
-    name: string;
+    number: string;
     leader: string;
     members: string[];
     isActive: boolean;
@@ -19,7 +19,7 @@ interface NewCrewFormProps {
 
 export const NewCrewForm: React.FC<NewCrewFormProps> = ({ onSuccess, onCancel }) => {
     const [formData, setFormData] = useState<NewCrewFormData>({
-        name: '',
+        number: '',
         leader: '',
         members: [],
         isActive: true,
@@ -54,10 +54,12 @@ export const NewCrewForm: React.FC<NewCrewFormProps> = ({ onSuccess, onCancel })
         { key: 'false', label: 'Inactiva' },
     ];
 
-    const installerOptions: SelectOption[] = installers.map(installer => ({
-        key: installer._id,
-        label: `${installer.name} ${installer.surname}`
-    }));
+    const installerOptions: SelectOption[] = installers
+        .filter(installer => !installer.currentCrew) // Solo instaladores sin cuadrilla
+        .map(installer => ({
+            key: installer._id,
+            label: `${installer.name} ${installer.surname}`
+        }));
 
     // Filter out the leader from member options
     const memberOptions: SelectOption[] = installerOptions.filter(
@@ -71,7 +73,7 @@ export const NewCrewForm: React.FC<NewCrewFormProps> = ({ onSuccess, onCancel })
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.name || !formData.leader) {
+        if (!formData.number || !formData.leader) {
             alert('Por favor completa los campos requeridos');
             return;
         }
@@ -80,7 +82,7 @@ export const NewCrewForm: React.FC<NewCrewFormProps> = ({ onSuccess, onCancel })
 
         try {
             const requestData = {
-                name: formData.name,
+                number: parseInt(formData.number),
                 leader: formData.leader,
                 members: formData.members,
                 isActive: formData.isActive,
@@ -122,10 +124,11 @@ export const NewCrewForm: React.FC<NewCrewFormProps> = ({ onSuccess, onCancel })
                 <div className="p-6 grid grid-cols-1 gap-6">
                     <FormInput
                         label="Nombre de la Cuadrilla"
-                        value={formData.name}
-                        onValueChange={(value) => handleInputChange('name', value)}
+                        value={formData.number}
+                        onValueChange={(value) => handleInputChange('number', value)}
                         isRequired
-                        placeholder="Ej: Cuadrilla Norte 1"
+                        type="number"
+                        placeholder="Ej: 1"
                     />
 
                     <FormSelect
@@ -180,7 +183,7 @@ export const NewCrewForm: React.FC<NewCrewFormProps> = ({ onSuccess, onCancel })
                     type="submit"
                     className="bg-secondary"
                     isLoading={isSaving}
-                    isDisabled={!formData.name || !formData.leader}
+                    isDisabled={!formData.number || !formData.leader}
                 >
                     <i className="fa-solid fa-save"></i>
                     Guardar Cuadrilla

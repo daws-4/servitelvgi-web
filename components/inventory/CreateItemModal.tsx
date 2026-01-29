@@ -156,6 +156,7 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
             isOpen={isOpen}
             onClose={handleClose}
             size="2xl"
+            placement="top"
             classNames={{
                 base: "max-w-2xl",
                 backdrop: "bg-dark/50 backdrop-blur-sm",

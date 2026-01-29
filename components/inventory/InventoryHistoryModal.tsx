@@ -197,6 +197,7 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
             onClose={onClose}
             size="3xl"
             scrollBehavior="inside"
+            placement="top"
             classNames={{
                 base: "max-w-4xl",
                 backdrop: "bg-dark/50 backdrop-blur-sm",

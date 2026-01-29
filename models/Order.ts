@@ -67,6 +67,10 @@ export interface IOrder {
   powerNap?: string;
   powerRoseta?: string;
   remainingPorts?: number;
+  etiqueta?: {
+    color: "verde" | "rojo" | "azul";
+    numero: number;
+  };
 }
 
 // Removed duplicate fields below
@@ -226,6 +230,15 @@ const OrderSchema = new mongoose.Schema(
     },
     certificateUrl: {
       type: String,
+    },
+    etiqueta: {
+      color: {
+        type: String,
+        enum: ["verde", "rojo", "azul"],
+      },
+      numero: {
+        type: Number,
+      },
     },
   },
   { timestamps: true }

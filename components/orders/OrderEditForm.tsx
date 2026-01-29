@@ -69,6 +69,10 @@ export interface OrderEditData {
     powerNap?: string;
     powerRoseta?: string;
     remainingPorts?: number;
+    etiqueta?: {
+        color: "verde" | "rojo" | "azul";
+        numero: number;
+    };
 }
 
 interface OrderEditFormProps {
@@ -303,6 +307,52 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                             onValueChange={(value) => setFormData(prev => ({ ...prev, remainingPorts: parseInt(value) || undefined }))}
                             placeholder="Ej: 4"
                         />
+
+                        {/* Etiqueta Section */}
+                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="md:col-span-3">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <i className="fa-solid fa-tag mr-2 text-secondary"></i>
+                                    Etiqueta
+                                </label>
+                            </div>
+                            <div className="md:col-span-1">
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Color</label>
+                                <select
+                                    value={formData.etiqueta?.color || ''}
+                                    onChange={(e) => setFormData(prev => ({
+                                        ...prev,
+                                        etiqueta: {
+                                            color: e.target.value as "verde" | "rojo" | "azul",
+                                            numero: prev.etiqueta?.numero || 0
+                                        }
+                                    }))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+                                >
+                                    <option value="">Seleccionar color</option>
+                                    <option value="verde">🟢 Verde</option>
+                                    <option value="rojo">🔴 Rojo</option>
+                                    <option value="azul">🔵 Azul</option>
+                                </select>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-medium text-gray-600 mb-1">Número</label>
+                                <input
+                                    type="number"
+                                    value={formData.etiqueta?.numero?.toString() || ''}
+                                    onChange={(e) => setFormData(prev => ({
+                                        ...prev,
+                                        etiqueta: {
+                                            color: prev.etiqueta?.color || 'verde',
+                                            numero: parseInt(e.target.value) || 0
+                                        }
+                                    }))}
+                                    placeholder="Ingrese un número"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-transparent text-sm"
+                                />
+                            </div>
+                        </div>
+
                         <div className="md:col-span-2">
                             <FormTextarea
                                 label="Servicios / Reporte"

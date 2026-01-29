@@ -21,6 +21,14 @@ export default function InventoryPage() {
     const historyModal = useDisclosure();
     const manageInstancesModal = useDisclosure();
 
+    // Delete confirmation modal state
+    const [deleteConfirmation, setDeleteConfirmation] = useState<{
+        itemId: string;
+        itemName: string;
+        bobbinCount: number;
+        bobbinCodes: string[];
+    } | null>(null);
+
     // Data states
     const [items, setItems] = useState<InventoryItem[]>([]);
     const [stats, setStats] = useState({
@@ -56,6 +64,10 @@ export default function InventoryPage() {
             if (searchValue) params.append("search", searchValue);
             if (typeFilter && typeFilter !== "all") params.append("type", typeFilter);
             if (showOnlyLowStock) params.append("lowStock", "true");
+
+            // Add pagination params
+            params.append("page", currentPage.toString());
+            params.append("limit", itemsPerPage.toString());
 
             const response = await fetch(`/api/web/inventory?${params.toString()}`);
             const data = await response.json();
@@ -135,10 +147,42 @@ export default function InventoryPage() {
 
     // Handle delete item
     const handleDelete = async (itemId: string) => {
-        if (!confirm("¿Estás seguro de eliminar este ítem?")) return;
+        try {
+            // First attempt without force to check for bobbins
+            const response = await fetch(`/api/web/inventory?id=${itemId}`, {
+                method: "DELETE",
+            });
+
+            const data = await response.json();
+
+            if (data.requiresConfirmation) {
+                // Show confirmation modal with bobbin information
+                const item = items.find(i => i._id === itemId);
+                setDeleteConfirmation({
+                    itemId,
+                    itemName: item?.description || "este ítem",
+                    bobbinCount: data.bobbinCount,
+                    bobbinCodes: data.bobbinCodes
+                });
+            } else if (data.success) {
+                fetchItems();
+                fetchStats();
+                alert(data.message || "Ítem eliminado correctamente");
+            } else {
+                alert(`Error: ${data.error}`);
+            }
+        } catch (error) {
+            console.error("Error deleting item:", error);
+            alert("Error al eliminar el ítem");
+        }
+    };
+
+    // Confirm deletion with force (cascade delete bobbins)
+    const confirmDelete = async () => {
+        if (!deleteConfirmation) return;
 
         try {
-            const response = await fetch(`/api/web/inventory?id=${itemId}`, {
+            const response = await fetch(`/api/web/inventory?id=${deleteConfirmation.itemId}&force=true`, {
                 method: "DELETE",
             });
 
@@ -147,6 +191,8 @@ export default function InventoryPage() {
             if (data.success) {
                 fetchItems();
                 fetchStats();
+                setDeleteConfirmation(null);
+                alert(data.message || "Ítem eliminado correctamente");
             } else {
                 alert(`Error: ${data.error}`);
             }
@@ -167,7 +213,7 @@ export default function InventoryPage() {
     return (
         <>
             {/* Page Header */}
-            <div className="bg-white shadow-sm border-b border-neutral/20 sticky top-0 z-10">
+            <div className="hidden md:block bg-white shadow-sm border-b border-neutral/20 sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-6 py-4">
                     <div className="flex items-center gap-4">
                         <div className="flex flex-col">
@@ -286,6 +332,61 @@ export default function InventoryPage() {
                 inventoryId={selectedItem?._id || ""}
                 itemDescription={selectedItem?.description || ""}
             />
+
+            {/* Delete Confirmation Modal */}
+            {deleteConfirmation && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+                        <div className="p-6">
+                            <div className="flex items-start gap-4">
+                                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                                    <i className="fa-solid fa-exclamation-triangle text-red-600 text-xl"></i>
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold text-dark mb-2">
+                                        Advertencia: Bobinas Asociadas
+                                    </h3>
+                                    <p className="text-sm text-neutral mb-4">
+                                        El ítem <strong>{deleteConfirmation.itemName}</strong> tiene{" "}
+                                        <strong className="text-red-600">{deleteConfirmation.bobbinCount}</strong>{" "}
+                                        bobina{deleteConfirmation.bobbinCount > 1 ? "s" : ""} asociada{deleteConfirmation.bobbinCount > 1 ? "s" : ""} que también se eliminarán:
+                                    </p>
+
+                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 max-h-40 overflow-y-auto">
+                                        <ul className="space-y-1">
+                                            {deleteConfirmation.bobbinCodes.map((code) => (
+                                                <li key={code} className="text-sm font-mono text-red-700 flex items-center gap-2">
+                                                    <i className="fa-solid fa-spool text-xs"></i>
+                                                    {code}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+
+                                    <p className="text-xs text-neutral italic">
+                                        Esta acción no se puede deshacer. Todas las bobinas listadas serán eliminadas permanentemente.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 rounded-b-lg border-t border-neutral/10">
+                            <button
+                                onClick={() => setDeleteConfirmation(null)}
+                                className="px-4 py-2 text-sm font-medium text-neutral hover:text-dark transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                            >
+                                Eliminar Todo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

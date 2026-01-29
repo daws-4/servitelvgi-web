@@ -28,7 +28,7 @@ export const InventoryFilterToolbar: React.FC<InventoryFilterToolbarProps> = ({
     onLowStockToggle,
 }) => {
     return (
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-neutral/10 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div suppressHydrationWarning className="bg-white p-4 rounded-xl shadow-sm border border-neutral/10 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
             {/* Left Section: Search & Type Filter */}
             <div className="flex gap-4 w-full md:w-auto">
                 {/* Search Input */}
@@ -70,7 +70,7 @@ export const InventoryFilterToolbar: React.FC<InventoryFilterToolbarProps> = ({
                     classNames={{
                         wrapper: "group-data-[selected=true]:bg-red-500",
                     }}
-                /   >
+                />
             </div>
         </div>
     );

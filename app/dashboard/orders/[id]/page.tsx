@@ -78,6 +78,7 @@ export default function OrderEditPage() {
                         powerNap: order.powerNap || '',
                         powerRoseta: order.powerRoseta || '',
                         remainingPorts: order.remainingPorts || undefined,
+                        etiqueta: order.etiqueta || undefined,
                     };
 
                     setOrderData(formData);
@@ -262,14 +263,14 @@ export default function OrderEditPage() {
         return (
             <div className="flex-1 overflow-y-auto">
                 {/* Header Skeleton */}
-                <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-200 sticky top-0 z-10">
-                    <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
-                        <div className="h-6 w-64 bg-gray-200 rounded animate-pulse"></div>
+                <header className="min-h-16 bg-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between px-4 md:px-6 py-3 md:py-0 border-b border-gray-200 sticky top-0 z-50 gap-3 md:gap-0">
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <div className="w-4 h-4 bg-gray-200 rounded animate-pulse flex-shrink-0"></div>
+                        <div className="h-6 flex-1 md:w-64 bg-gray-200 rounded animate-pulse"></div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="h-6 w-24 bg-gray-200 rounded-full animate-pulse"></div>
-                        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-end">
+                        <div className="h-6 w-20 md:w-24 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse flex-shrink-0"></div>
                     </div>
                 </header>
 
@@ -291,12 +292,12 @@ export default function OrderEditPage() {
     if (error || !orderData) {
         return (
             <div className="flex-1 overflow-y-auto">
-                <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-200">
+                <header className="min-h-16 bg-white shadow-sm flex items-center justify-between px-4 md:px-6 py-3 md:py-0 border-b border-gray-200">
                     <div className="flex items-center gap-3">
-                        <button onClick={handleCancel} className="text-gray-500 hover:text-primary transition-colors">
+                        <button onClick={handleCancel} className="text-gray-500 hover:text-primary transition-colors flex-shrink-0">
                             <i className="fa-solid fa-arrow-left"></i>
                         </button>
-                        <h1 className="text-xl font-bold text-primary">Error</h1>
+                        <h1 className="text-lg md:text-xl font-bold text-primary">Error</h1>
                     </div>
                 </header>
                 <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
@@ -324,23 +325,23 @@ export default function OrderEditPage() {
             </div>
 
             {/* HEADER */}
-            <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-200 sticky top-0 z-10">
-                <div className="flex items-center gap-3">
+            <header className="min-h-16 bg-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between px-4 md:px-6 py-3 md:py-0 border-b border-gray-200 sticky top-0 z-50 gap-3 md:gap-0">
+                <div className="flex items-center gap-3 w-full md:w-auto">
                     <button
                         onClick={handleCancel}
-                        className="text-gray-500 hover:text-primary transition-colors"
+                        className="text-gray-500 hover:text-primary transition-colors flex-shrink-0"
                     >
                         <i className="fa-solid fa-arrow-left"></i>
                     </button>
-                    <div>
-                        <h1 className="text-xl font-bold text-primary flex items-center gap-2">
-                            Editar Orden
-                            <span className="text-gray-400 font-normal">
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-lg md:text-xl font-bold text-primary flex flex-wrap items-center gap-2">
+                            <span className="whitespace-nowrap">Editar Orden</span>
+                            <span className="text-gray-400 font-normal text-sm md:text-base truncate">
                                 #{orderData.ticket_id}
                             </span>
                             {/* Visit Count Badge */}
                             {(orderData.visitCount || 0) > 0 && (
-                                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-700 border border-pink-200" title="Cantidad de Visitas Técnicas">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-pink-100 text-pink-700 border border-pink-200" title="Cantidad de Visitas Técnicas">
                                     <i className="fa-solid fa-location-dot text-[10px]"></i>
                                     {orderData.visitCount}
                                 </span>
@@ -348,12 +349,12 @@ export default function OrderEditPage() {
                         </h1>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    {/* EXPORT BUTTON */}
+                <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-end flex-wrap">
+                    {/* EXPORT BUTTON - Hidden on mobile */}
                     <button
                         onClick={handleExportImage}
                         disabled={exporting}
-                        className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${exporting
+                        className={`flex items-center gap-2 cursor-pointer px-2 md:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${exporting
                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                             : 'bg-green-50 text-green-600 hover:bg-green-100 border border-green-200'
                             }`}
@@ -362,20 +363,21 @@ export default function OrderEditPage() {
                         {exporting ? (
                             <>
                                 <i className="fa-solid fa-spinner fa-spin"></i>
-                                Generando...
+                                <span className="hidden md:inline">Generando...</span>
                             </>
                         ) : (
                             <>
                                 <i className="fa-solid fa-image"></i>
-                                Exportar Img
+                                <span className="hidden md:inline">Exportar</span>
                             </>
                         )}
                     </button>
 
+                    {/* SYNC BUTTON - Hidden on mobile */}
                     <button
                         onClick={handleSyncNetuno}
                         disabled={syncing}
-                        className={`flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${syncing
+                        className={`flex items-center gap-2 cursor-pointer px-2 md:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${syncing
                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                             : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200'
                             }`}
@@ -384,21 +386,16 @@ export default function OrderEditPage() {
                         {syncing ? (
                             <>
                                 <i className="fa-solid fa-spinner fa-spin"></i>
-                                Enviando...
+                                <span className="hidden md:inline">Enviando...</span>
                             </>
                         ) : (
                             <>
                                 <i className="fa-solid fa-cloud-arrow-up"></i>
-                                Enviar a Netuno
+                                <span className="hidden md:inline">Netuno</span>
                             </>
                         )}
                     </button>
                     {getStatusBadge(orderData.status)}
-                    <img
-                        src="https://ui-avatars.com/api/?name=Admin&background=004ba8&color=fff"
-                        className="w-8 h-8 rounded-full"
-                        alt="User avatar"
-                    />
                 </div>
             </header>
 

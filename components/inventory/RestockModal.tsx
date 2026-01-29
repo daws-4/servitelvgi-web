@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Modal,
     ModalContent,
@@ -7,8 +7,10 @@ import {
     ModalFooter,
     Tabs,
     Tab,
+    Autocomplete,
+    AutocompleteItem,
+    Input,
 } from "@heroui/react";
-import { Autocomplete, AutocompleteItem } from "@heroui/react";
 import { FormInput } from "@/components/interactiveForms/Input";
 import { FormButton } from "@/components/interactiveForms/Button";
 
@@ -64,6 +66,14 @@ export const RestockModal: React.FC<RestockModalProps> = ({
     const [selectedBobbinId, setSelectedBobbinId] = useState("");
     const [metersToAdd, setMetersToAdd] = useState("");
 
+    // Edit bobbin state
+    const [editingBobbin, setEditingBobbin] = useState<{
+        id: string;
+        batchCode: string;
+        itemId: string;
+        meters: string;
+    } | null>(null);
+
     // Equipment Management State
     const [selectedEquipmentTypeId, setSelectedEquipmentTypeId] = useState("");
     const [equipmentInstances, setEquipmentInstances] = useState<EquipmentInstance[]>([]);
@@ -73,6 +83,10 @@ export const RestockModal: React.FC<RestockModalProps> = ({
         macAddress: "",
         notes: "",
     });
+
+    // Barcode Scanner State
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const scannerRef = useRef<any>(null);
 
     // Shared State
     const [activeTab, setActiveTab] = useState<string>("manual");
@@ -95,10 +109,15 @@ export const RestockModal: React.FC<RestockModalProps> = ({
     const regularMaterials = inventoryItems.filter(item => item.type !== "equipment");
     const equipmentTypes = inventoryItems.filter(item => item.type === "equipment");
 
+    // Debug: Log equipment types
+    console.log('🔍 Total inventoryItems:', inventoryItems.length);
+    console.log('🔍 Equipment items found:', equipmentTypes.length, equipmentTypes);
+
     const fetchInventoryItems = async () => {
         setLoadingItems(true);
         try {
-            const response = await fetch("/api/web/inventory");
+            // Fetch all items without pagination by setting a high limit
+            const response = await fetch("/api/web/inventory?limit=9999");
             const data = await response.json();
             if (data.success) {
                 setInventoryItems(data.items || []);
@@ -285,7 +304,7 @@ export const RestockModal: React.FC<RestockModalProps> = ({
     };
 
     const handleDeleteBobbin = async (batchCode: string) => {
-        if (!confirm(`¿Eliminar la bobina ${batchCode}? Solo se pueden eliminar bobinas agotadas.`)) {
+        if (!confirm(`¿Estás seguro de que deseas eliminar la bobina ${batchCode}? Esta acción no se puede deshacer.`)) {
             return;
         }
 
@@ -303,6 +322,49 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                 onSuccess();
             } else {
                 setError(data.message || "Error al eliminar bobina");
+            }
+        } catch (err) {
+            setError("Error de conexión con el servidor");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Start editing a bobbin
+    const handleEditBobbin = (bobbin: Bobbin) => {
+        setEditingBobbin({
+            id: bobbin._id,
+            batchCode: bobbin.batchCode,
+            itemId: typeof bobbin.item === 'object' && bobbin.item !== null ? bobbin.item._id : bobbin.item || "",
+            meters: bobbin.currentQuantity.toString()
+        });
+    };
+
+    // Save edited bobbin
+    const handleSaveEditBobbin = async () => {
+        if (!editingBobbin) return;
+
+        setLoading(true);
+        setError("");
+        try {
+            const response = await fetch(`/api/web/inventory/batches/update`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    batchCode: editingBobbin.batchCode,
+                    itemId: editingBobbin.itemId,
+                    currentQuantity: Number(editingBobbin.meters)
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                fetchBobbins();
+                onSuccess();
+                setEditingBobbin(null);
+            } else {
+                setError(data.message || "Error al actualizar bobina");
             }
         } catch (err) {
             setError("Error de conexión con el servidor");
@@ -379,6 +441,84 @@ export const RestockModal: React.FC<RestockModalProps> = ({
         }
     };
 
+    // Barcode Scanner Handlers
+    const startScanner = async () => {
+        setIsScannerOpen(true);
+
+        // Dynamically import html5-qrcode
+        const { Html5Qrcode } = await import('html5-qrcode');
+
+        // Wait for next tick to ensure DOM is ready
+        setTimeout(() => {
+            const html5QrCode = new Html5Qrcode("barcode-reader");
+            scannerRef.current = html5QrCode;
+
+            // Request permission explicitly first to ensure browser prompting
+            Html5Qrcode.getCameras().then((devices) => {
+                if (devices && devices.length) {
+                    // Cameras exist, try to start
+                    return html5QrCode.start(
+                        { facingMode: "environment" }, // Use back camera
+                        {
+                            fps: 10,
+                            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                                // Responsive qrbox: 70% of the smallest dimension
+                                const minEdgePercentage = 0.7;
+                                const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
+                                const boxSize = Math.floor(minDimension * minEdgePercentage);
+                                return { width: boxSize, height: boxSize };
+                            },
+                            aspectRatio: 1.0
+                        },
+                        (decodedText) => {
+                            // On success
+                            setInstanceForm(prev => ({
+                                ...prev,
+                                uniqueId: decodedText
+                            }));
+                            stopScanner();
+                        },
+                        (errorMessage) => {
+                            // On error (scan failed) - ignore
+                        }
+                    );
+                } else {
+                    throw new Error("No se detectaron cámaras en el dispositivo.");
+                }
+            }).catch((err: unknown) => {
+                console.error("Unable to start scanner:", err);
+
+                let errorMessage = "No se pudo iniciar la cámara.";
+                if (!window.isSecureContext) {
+                    errorMessage = "La cámara requiere una conexión segura (HTTPS) o localhost.";
+                } else if (err instanceof Error) {
+                    if (err.message.includes("Camera streaming not supported")) {
+                        errorMessage = "El navegador no soporta streaming de cámara o faltan permisos.";
+                    } else if (err.message.includes("Permission denied")) {
+                        errorMessage = "Permiso de cámara denegado.";
+                    }
+                }
+
+                setError(errorMessage);
+                setIsScannerOpen(false);
+            });
+        }, 100);
+    };
+
+    const stopScanner = () => {
+        if (scannerRef.current) {
+            scannerRef.current.stop().then(() => {
+                scannerRef.current = null;
+                setIsScannerOpen(false);
+            }).catch((err: unknown) => {
+                console.error("Error stopping scanner:", err);
+                setIsScannerOpen(false);
+            });
+        } else {
+            setIsScannerOpen(false);
+        }
+    };
+
     const handleClose = () => {
         if (!loading) {
             setError("");
@@ -407,6 +547,7 @@ export const RestockModal: React.FC<RestockModalProps> = ({
             onClose={handleClose}
             size="3xl"
             scrollBehavior="inside"
+            placement="top"
             classNames={{
                 base: "max-w-4xl",
                 backdrop: "bg-dark/50 backdrop-blur-sm",
@@ -584,23 +725,30 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                         Crear Nueva Bobina
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                        <FormInput
+                                        <Input
                                             label="Código de Bobina"
                                             placeholder="Ej: BOB-001"
                                             value={newBobbinCode}
                                             onValueChange={setNewBobbinCode}
+                                            size="md"
+                                            variant="bordered"
+                                            labelPlacement="outside"
+                                            classNames={{
+                                                inputWrapper: "border-neutral/50 hover:border-primary data-[focus=true]:border-neutral"
+                                            }}
                                         />
                                         <div>
                                             <Autocomplete
+                                                labelPlacement="outside"
                                                 label="Ítem de Cable"
                                                 placeholder="Seleccionar cable..."
                                                 selectedKey={newBobbinItemId}
                                                 onSelectionChange={(key) => setNewBobbinItemId(key as string)}
                                                 isLoading={loadingItems}
                                                 variant="bordered"
-                                                size="sm"
+                                                size="md"
                                             >
-                                                {inventoryItems.filter(item => item.type === 'material').map((item) => (
+                                                {inventoryItems.filter(item => item.type === 'material' && item.unit === 'metros').map((item) => (
                                                     <AutocompleteItem key={item._id} textValue={item.description}>
                                                         <div className="flex flex-col">
                                                             <span className="font-medium">{item.description}</span>
@@ -611,13 +759,19 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                             </Autocomplete>
                                         </div>
                                         <div className="flex gap-2">
-                                            <FormInput
+                                            <Input
                                                 type="number"
                                                 label="Metros"
                                                 placeholder="Cantidad"
                                                 value={newBobbinMeters}
                                                 onValueChange={setNewBobbinMeters}
                                                 min="1"
+                                                size="md"
+                                                variant="bordered"
+                                                labelPlacement="outside"
+                                                classNames={{
+                                                    inputWrapper: "border-neutral/50 hover:border-primary data-[focus=true]:border-neutral"
+                                                }}
                                             />
                                             <FormButton
                                                 onPress={handleCreateBobbin}
@@ -645,7 +799,8 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                                 onSelectionChange={(key) => setSelectedBobbinId(key as string)}
                                                 isLoading={loadingBobbins}
                                                 variant="bordered"
-                                                size="sm"
+                                                size="md"
+                                                labelPlacement="outside"
                                             >
                                                 {bobbins.filter(bobbin => bobbin.item).map((bobbin) => (
                                                     <AutocompleteItem key={bobbin._id} textValue={bobbin.batchCode}>
@@ -705,36 +860,126 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-neutral/10">
-                                                    {bobbins.filter(bobbin => bobbin.item).map((bobbin) => (
+                                                    {bobbins.map((bobbin) => (
                                                         <tr key={bobbin._id}>
-                                                            <td className="px-4 py-3 font-medium">{bobbin.batchCode}</td>
-                                                            <td className="px-4 py-3">
-                                                                <div className="text-sm">{bobbin.item?.description || 'Item eliminado'}</div>
-                                                                <div className="text-xs text-neutral">{bobbin.item?.code || '-'}</div>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right font-bold text-primary">
-                                                                {bobbin.currentQuantity}m
-                                                            </td>
-                                                            <td className="px-4 py-3 text-center">
-                                                                <span className={`px-2 py-1 rounded-full text-xs ${bobbin.currentQuantity === 0
-                                                                    ? 'bg-red-100 text-red-700'
-                                                                    : 'bg-green-100 text-green-700'
-                                                                    }`}>
-                                                                    {bobbin.currentQuantity === 0 ? 'Agotada' : 'Activa'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-4 py-3 text-right">
-                                                                {bobbin.currentQuantity === 0 && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleDeleteBobbin(bobbin.batchCode)}
-                                                                        className="text-neutral hover:text-red-500 transition-colors cursor-pointer"
-                                                                        disabled={loading}
-                                                                    >
-                                                                        <i className="fa-solid fa-trash"></i>
-                                                                    </button>
-                                                                )}
-                                                            </td>
+                                                            {editingBobbin?.id === bobbin._id ? (
+                                                                // Editing mode
+                                                                <>
+                                                                    <td className="px-4 py-3 font-medium">{bobbin.batchCode}</td>
+                                                                    <td className="px-4 py-3">
+                                                                        <Autocomplete
+                                                                            size="sm"
+                                                                            selectedKey={editingBobbin.itemId}
+                                                                            onSelectionChange={(key) => setEditingBobbin({
+                                                                                ...editingBobbin,
+                                                                                itemId: key as string
+                                                                            })}
+                                                                            placeholder="Seleccionar item..."
+                                                                            classNames={{
+                                                                                base: "max-w-xs"
+                                                                            }}
+                                                                        >
+                                                                            {inventoryItems.filter(item => item.unit === 'metros').map((item) => (
+                                                                                <AutocompleteItem key={item._id} textValue={item.description}>
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className="text-sm">{item.description}</span>
+                                                                                        <span className="text-xs text-neutral">{item.code}</span>
+                                                                                    </div>
+                                                                                </AutocompleteItem>
+                                                                            ))}
+                                                                        </Autocomplete>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right">
+                                                                        <Input
+                                                                            type="number"
+                                                                            size="sm"
+                                                                            value={editingBobbin.meters}
+                                                                            onValueChange={(value) => setEditingBobbin({
+                                                                                ...editingBobbin,
+                                                                                meters: value
+                                                                            })}
+                                                                            endContent="m"
+                                                                            classNames={{
+                                                                                base: "max-w-[120px] ml-auto"
+                                                                            }}
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <span className={`px - 2 py - 1 rounded - full text - xs ${Number(editingBobbin.meters) === 0
+                                                                            ? 'bg-red-100 text-red-700'
+                                                                            : 'bg-green-100 text-green-700'
+                                                                            } `}>
+                                                                            {Number(editingBobbin.meters) === 0 ? 'Agotada' : 'Activa'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right">
+                                                                        <div className="flex items-center justify-end gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={handleSaveEditBobbin}
+                                                                                className="text-green-600 hover:text-green-700 transition-colors"
+                                                                                disabled={loading}
+                                                                            >
+                                                                                <i className="fa-solid fa-check"></i>
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setEditingBobbin(null)}
+                                                                                className="text-neutral hover:text-dark transition-colors"
+                                                                                disabled={loading}
+                                                                            >
+                                                                                <i className="fa-solid fa-times"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </>
+                                                            ) : (
+                                                                // View mode
+                                                                <>
+                                                                    <td className="px-4 py-3 font-medium">{bobbin.batchCode}</td>
+                                                                    <td className="px-4 py-3">
+                                                                        <div className="text-sm">
+                                                                            {bobbin.item?.description || (
+                                                                                <span className="text-red-600 italic">⚠️ Item eliminado</span>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="text-xs text-neutral">{bobbin.item?.code || '-'}</div>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right font-bold text-primary">
+                                                                        {bobbin.currentQuantity}m
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-center">
+                                                                        <span className={`px - 2 py - 1 rounded - full text - xs ${bobbin.currentQuantity === 0
+                                                                            ? 'bg-red-100 text-red-700'
+                                                                            : 'bg-green-100 text-green-700'
+                                                                            } `}>
+                                                                            {bobbin.currentQuantity === 0 ? 'Agotada' : 'Activa'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right">
+                                                                        <div className="flex items-center justify-end gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleEditBobbin(bobbin)}
+                                                                                className="text-blue-600 hover:text-blue-700 transition-colors"
+                                                                                disabled={loading}
+                                                                                title="Editar bobina"
+                                                                            >
+                                                                                <i className="fa-solid fa-edit"></i>
+                                                                            </button>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleDeleteBobbin(bobbin.batchCode)}
+                                                                                className="text-red-600 hover:text-red-700 transition-colors"
+                                                                                disabled={loading}
+                                                                                title="Eliminar bobina"
+                                                                            >
+                                                                                <i className="fa-solid fa-trash"></i>
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </>
+                                                            )}
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -798,6 +1043,61 @@ export const RestockModal: React.FC<RestockModalProps> = ({
                                 {selectedEquipmentTypeId && (
                                     <div className="bg-gray-50 p-4 rounded-lg border border-neutral/10">
                                         <h4 className="text-sm font-bold text-dark mb-3">Agregar Instancias</h4>
+
+                                        {/* Camera Barcode Scanner Button */}
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <i className="fa-solid fa-camera text-blue-600"></i>
+                                                    <label className="text-sm font-medium text-blue-900">
+                                                        Escanear Código con Cámara
+                                                    </label>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={startScanner}
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                                    disabled={loading || isScannerOpen}
+                                                >
+                                                    <i className="fa-solid fa-qrcode"></i>
+                                                    Abrir Cámara
+                                                </button>
+                                            </div>
+                                            <p className="text-xs text-blue-700">
+                                                Usa la cámara de tu dispositivo para escanear códigos de barras o QR
+                                            </p>
+                                        </div>
+
+
+
+                                        {/* Scanner Modal */}
+                                        {isScannerOpen && (
+                                            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                                                <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <h3 className="text-lg font-bold text-dark">Escanear Código</h3>
+                                                        <button
+                                                            onClick={stopScanner}
+                                                            className="text-neutral hover:text-dark transition-colors"
+                                                        >
+                                                            <i className="fa-solid fa-times text-xl"></i>
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="mb-4">
+                                                        <div id="barcode-reader" className="w-full rounded-lg overflow-hidden border-2 border-blue-500 min-h-[250px] bg-black"></div>
+                                                    </div>
+
+                                                    <p className="text-xs text-neutral/70 text-center mb-2">
+                                                        Si el navegador solicita permiso de cámara, por favor acéptalo.
+                                                    </p>
+                                                    <p className="text-sm text-neutral text-center">
+                                                        Coloca el código dentro del cuadro para escanearlo
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="grid grid-cols-2 gap-3 mb-3">
                                             <FormInput
                                                 label="ID Único *"

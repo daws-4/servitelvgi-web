@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error("Error al crear lote:", error);
-    
+
     // Manejar error de código duplicado
     if (error.code === 11000) {
       return NextResponse.json(
@@ -137,7 +137,7 @@ export async function PUT(request: NextRequest) {
 
 /**
  * DELETE /api/web/inventory/batches
- * Elimina una bobina agotada
+ * Elimina una bobina (descuenta del inventario y marca como agotada)
  * Query param: batchCode
  */
 export async function DELETE(request: NextRequest) {

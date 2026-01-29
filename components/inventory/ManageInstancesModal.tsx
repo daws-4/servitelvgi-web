@@ -201,6 +201,7 @@ export const ManageInstancesModal: React.FC<ManageInstancesModalProps> = ({
             onClose={handleClose}
             size="3xl"
             scrollBehavior="inside"
+            placement="top"
             classNames={{
                 backdrop: "bg-dark/50 backdrop-blur-sm",
             }}

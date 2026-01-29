@@ -910,6 +910,8 @@ export async function getInventoryItems(filters: {
   search?: string;
   type?: string;
   lowStock?: boolean;
+  page?: number;
+  limit?: number;
 } = {}) {
   await connectDB();
 
@@ -930,7 +932,24 @@ export async function getInventoryItems(filters: {
     query.$expr = { $lt: ["$currentStock", "$minimumStock"] };
   }
 
-  return await InventoryModel.find(query).sort({ code: 1 }).lean();
+  // Get total count before pagination
+  const total = await InventoryModel.countDocuments(query);
+
+  // Apply pagination
+  const page = filters.page || 1;
+  const limit = filters.limit || 10;
+  const skip = (page - 1) * limit;
+
+  const items = await InventoryModel.find(query)
+    .sort({ code: 1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  return {
+    items,
+    total,
+  };
 }
 
 /**
@@ -1202,6 +1221,14 @@ export async function updateInventory(id: string, data: any) {
  */
 export async function deleteInventory(id: string) {
   await connectDB();
+
+  // Usar una sesión para garantizar la atomicidad si es posible, 
+  // pero aquí mantendremos la consistencia básica
+
+  // 1. Eliminar todas las bobinas asociadas a este ítem
+  await InventoryBatchModel.deleteMany({ item: id });
+
+  // 2. Eliminar el ítem de inventario
   return await InventoryModel.findByIdAndDelete(id).lean();
 }
 
@@ -1749,8 +1776,13 @@ export async function getBatches(filters: {
     query.batchCode = { $regex: filters.batchCode, $options: "i" };
   }
 
+  // Use strictPopulate: false to allow populating even if item was deleted
   return await InventoryBatchModel.find(query)
-    .populate("item", "code description unit")
+    .populate({
+      path: "item",
+      select: "code description unit",
+      strictPopulate: false
+    })
     .populate("crew", "name")
     .sort({ batchCode: 1 })
     .lean();
@@ -1828,7 +1860,7 @@ export async function assignMetersToBatch(
 }
 
 /**
- * Elimina una bobina agotada
+ * Elimina una bobina (marca como agotada y descuenta del inventario)
  * @param batchCode - Código del lote a eliminar
  * @param sessionUser - Usuario que realiza la eliminación
  * @returns Lote eliminado
@@ -1852,14 +1884,27 @@ export async function deleteBatch(
       throw new Error(`Lote no encontrado: ${batchCode}`);
     }
 
-    // Solo permitir eliminar bobinas agotadas o con cantidad 0
-    if (batch.currentQuantity > 0 && batch.status !== "depleted") {
-      throw new Error(
-        "Solo se pueden eliminar bobinas agotadas (0 metros restantes)"
-      );
+    // Guardar la cantidad actual para ajustar el inventario
+    const currentQuantity = batch.currentQuantity;
+
+    // Si la bobina tiene cantidad restante, descontarla del inventario asegurando no negativos
+    if (currentQuantity > 0) {
+      const parentItem = await InventoryModel.findById(batch.item).session(session);
+
+      if (parentItem) {
+        // Calcular nuevo stock asegurando que no sea negativo
+        const newStock = Math.max(0, (parentItem.currentStock || 0) - currentQuantity);
+
+        await InventoryModel.findByIdAndUpdate(
+          batch.item,
+          { currentStock: newStock },
+          { session }
+        );
+      }
+      // Si el item padre no existe, no hacemos nada con el stock y continuamos con la eliminación de la bobina
     }
 
-    // Marcar como agotado en lugar de eliminar (para historial)
+    // Marcar como agotado en lugar de eliminar (para mantener historial)
     batch.status = "depleted";
     batch.currentQuantity = 0;
     await batch.save({ session });
@@ -1871,8 +1916,8 @@ export async function deleteBatch(
           item: batch.item,
           batch: batch._id,
           type: "adjustment",
-          quantityChange: 0,
-          reason: `Bobina ${batchCode} marcada como agotada y eliminada`,
+          quantityChange: currentQuantity > 0 ? -currentQuantity : 0,
+          reason: `Bobina ${batchCode} eliminada${currentQuantity > 0 ? ` (${currentQuantity} metros descontados del inventario)` : ''}`,
           performedBy: sessionUser?.userId,
           performedByModel: sessionUser?.userModel,
         },

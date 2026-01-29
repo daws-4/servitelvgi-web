@@ -144,39 +144,64 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                 </div>
             </div>
 
-            {/* SPEEDTEST & SIGNATURE - SIDE BY SIDE */}
-            <div className="grid grid-cols-3 gap-4 mb-3">
-                {/* SPEEDTEST - TAKES 2 COLUMNS */}
-                <div className="col-span-2">
+            {/* SPEEDTEST, INSTALLER LOG & SIGNATURE - SIDE BY SIDE */}
+            <div className="grid grid-cols-3 gap-3 mb-3">
+                {/* SPEEDTEST - 1 COLUMN */}
+                <div>
                     <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Prueba de Velocidad</h3>
                     {data.internetTest ? (
-                        <div className="grid grid-cols-4 gap-2 p-2 rounded" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
-                            <div className="text-center">
-                                <span className="block text-[10px] uppercase mb-0.5" style={{ color: colors.gray500 }}>Descarga</span>
-                                <span className="block text-base" style={{ color: colors.green600 }}>{data.internetTest.downloadSpeed || 0} <span className="text-[10px]" style={{ color: colors.gray400 }}>Mbps</span></span>
-                            </div>
-                            <div className="text-center" style={{ borderLeft: `1px solid ${colors.gray200}` }}>
-                                <span className="block text-[10px] uppercase mb-0.5" style={{ color: colors.gray500 }}>Carga</span>
-                                <span className="block text-base" style={{ color: colors.blue600 }}>{data.internetTest.uploadSpeed || 0} <span className="text-[10px]" style={{ color: colors.gray400 }}>Mbps</span></span>
-                            </div>
-                            <div className="text-center" style={{ borderLeft: `1px solid ${colors.gray200}` }}>
-                                <span className="block text-[10px] uppercase mb-0.5" style={{ color: colors.gray500 }}>Ping</span>
-                                <span className="block text-base" style={{ color: colors.gray700 }}>{data.internetTest.ping || 0} <span className="text-[10px]" style={{ color: colors.gray400 }}>ms</span></span>
-                            </div>
-                            <div className="text-center" style={{ borderLeft: `1px solid ${colors.gray200}` }}>
-                                <span className="block text-[10px] uppercase mb-0.5" style={{ color: colors.gray500 }}>Señal</span>
-                                <span className="block text-xs mt-0.5" style={{ color: colors.gray700 }}>{data.internetTest.wifiSSID || 'N/A'}</span>
+                        <div className="p-2 rounded" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[8px] uppercase" style={{ color: colors.gray500 }}>Descarga</span>
+                                    <span className="text-[10px] font-bold" style={{ color: colors.green600 }}>{data.internetTest.downloadSpeed || 0} <span className="text-[7px]" style={{ color: colors.gray400 }}>Mbps</span></span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[8px] uppercase" style={{ color: colors.gray500 }}>Carga</span>
+                                    <span className="text-[10px] font-bold" style={{ color: colors.blue600 }}>{data.internetTest.uploadSpeed || 0} <span className="text-[7px]" style={{ color: colors.gray400 }}>Mbps</span></span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[8px] uppercase" style={{ color: colors.gray500 }}>Ping</span>
+                                    <span className="text-[10px] font-bold" style={{ color: colors.gray700 }}>{data.internetTest.ping || 0} <span className="text-[7px]" style={{ color: colors.gray400 }}>ms</span></span>
+                                </div>
+                                <div className="pt-1 text-[8px]" style={{ borderTop: `1px solid ${colors.gray200}` }}>
+                                    <span style={{ color: colors.gray500 }}>Frecuencia:</span> <span className="font-medium" style={{ color: colors.gray700 }}>{data.internetTest.frecuency || 'N/A'}</span>
+                                    <span className="mx-1" style={{ color: colors.gray300 }}>•</span>
+                                    <span style={{ color: colors.gray500 }}>Señal:</span> <span className="font-medium" style={{ color: colors.gray700 }}>{data.internetTest.wifiSSID || 'N/A'}</span>
+                                </div>
                             </div>
                         </div>
                     ) : (
                         <div className="p-2 rounded text-center" style={{ backgroundColor: colors.gray50, border: `1px dashed ${colors.gray300}` }}>
-                            <p className="text-xs italic" style={{ color: colors.gray500 }}>No se realizó prueba de velocidad.</p>
+                            <p className="text-[10px] italic py-4" style={{ color: colors.gray500 }}>No se realizó prueba de velocidad.</p>
                         </div>
                     )}
                 </div>
 
-                {/* SIGNATURE - TAKES 1 COLUMN */}
-                <div className="col-span-1">
+                {/* INSTALLER LOG - 1 COLUMN */}
+                <div>
+                    <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Bitácora</h3>
+                    {data.installerLog && data.installerLog.length > 0 ? (() => {
+                        const lastLog = data.installerLog[data.installerLog.length - 1];
+                        return (
+                            <div className="p-2 rounded" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
+                                <div className="flex justify-end mb-1.5">
+                                    <span className="text-[9px]" style={{ color: colors.gray500 }}>
+                                        {new Date(lastLog.timestamp).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })} {new Date(lastLog.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                </div>
+                                <p className="text-[10px] leading-relaxed" style={{ color: colors.gray700 }}>{lastLog.log}</p>
+                            </div>
+                        );
+                    })() : (
+                        <div className="p-2 rounded text-center" style={{ backgroundColor: colors.gray50, border: `1px dashed ${colors.gray300}` }}>
+                            <p className="text-[10px] italic py-4" style={{ color: colors.gray500 }}>Sin bitácora registrada.</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* SIGNATURE - 1 COLUMN (RIGHT) */}
+                <div>
                     <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Firma del Cliente</h3>
                     <div className="flex flex-col items-center">
                         {data.customerSignature ? (

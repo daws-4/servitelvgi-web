@@ -110,6 +110,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
             isOpen={isOpen}
             onClose={handleClose}
             size="lg"
+            placement="top"
             classNames={{
                 base: "max-w-lg",
                 backdrop: "bg-dark/50 backdrop-blur-sm",

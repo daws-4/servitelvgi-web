@@ -88,7 +88,8 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
     const fetchInventoryItems = async () => {
         setLoadingItems(true);
         try {
-            const response = await fetch("/api/web/inventory");
+            // Fetch all items without pagination by setting a high limit
+            const response = await fetch("/api/web/inventory?limit=9999");
             const data = await response.json();
             if (data.success) {
                 setInventoryItems(data.items || []);
@@ -340,6 +341,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
             onClose={handleClose}
             size="2xl"
             scrollBehavior="outside"
+            placement="top"
             classNames={{
                 base: "max-w-2xl",
                 backdrop: "bg-dark/50 backdrop-blur-sm",

@@ -12,19 +12,21 @@ import { connectDB } from "@/lib/db";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    
+
     const filters = {
       search: searchParams.get("search") || undefined,
       type: searchParams.get("type") || undefined,
       lowStock: searchParams.get("lowStock") === "true",
+      page: parseInt(searchParams.get("page") || "1"),
+      limit: parseInt(searchParams.get("limit") || "10"),
     };
 
-    const items = await getInventoryItems(filters);
+    const result = await getInventoryItems(filters);
 
     return NextResponse.json({
       success: true,
-      count: items.length,
-      items,
+      count: result.total,
+      items: result.items,
     });
   } catch (error: any) {
     console.error("Error al obtener inventario:", error);
@@ -75,7 +77,7 @@ export async function POST(request: NextRequest) {
       // Validar uniqueIds únicos
       const uniqueIds = instances.map((inst: any) => inst.uniqueId);
       const hasDuplicates = uniqueIds.length !== new Set(uniqueIds).size;
-      
+
       if (hasDuplicates) {
         return NextResponse.json(
           { success: false, error: "Los IDs únicos de las instancias deben ser únicos" },
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest) {
         status: "in-stock",
         createdAt: new Date(),
       }));
-      
+
       // El middleware actualizará currentStock automáticamente
     }
 
@@ -162,6 +164,7 @@ export async function DELETE(request: NextRequest) {
     await connectDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const force = searchParams.get("force") === "true";
 
     if (!id) {
       return NextResponse.json(
@@ -170,7 +173,26 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // TODO: Verificar que el ítem no esté siendo usado en inventarios de cuadrillas u órdenes
+    // Check for associated bobbins
+    const InventoryBatchModel = (await import("@/models/InventoryBatch")).default;
+    const associatedBobbins = await InventoryBatchModel.find({ item: id });
+
+    if (associatedBobbins.length > 0 && !force) {
+      // Return warning with bobbin information
+      return NextResponse.json({
+        success: false,
+        requiresConfirmation: true,
+        bobbinCount: associatedBobbins.length,
+        bobbinCodes: associatedBobbins.map(b => b.batchCode),
+        message: `Este ítem tiene ${associatedBobbins.length} bobina${associatedBobbins.length > 1 ? 's' : ''} asociada${associatedBobbins.length > 1 ? 's' : ''} que también se eliminarán.`
+      }, { status: 409 });
+    }
+
+    // If force is true or no bobbins, proceed with deletion
+    if (force && associatedBobbins.length > 0) {
+      // Delete all associated bobbins
+      await InventoryBatchModel.deleteMany({ item: id });
+    }
 
     const deletedItem = await InventoryModel.findByIdAndDelete(id);
 
@@ -183,7 +205,8 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Ítem eliminado correctamente",
+      message: `Ítem eliminado correctamente${associatedBobbins.length > 0 ? ` junto con ${associatedBobbins.length} bobina${associatedBobbins.length > 1 ? 's' : ''}` : ''}`,
+      deletedBobbins: associatedBobbins.length
     });
   } catch (error: any) {
     console.error("Error al eliminar ítem:", error);

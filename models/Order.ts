@@ -82,8 +82,6 @@ const OrderSchema = new mongoose.Schema(
     },
     ticket_id: {
       type: String,
-      unique: true,
-      sparse: true,
     },
     // Tipo de orden (se puede deducir o inferir si no está explícito en el título)
     type: {

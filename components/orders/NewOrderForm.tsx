@@ -176,7 +176,15 @@ export const NewOrderForm: React.FC<NewOrderFormProps> = ({ onSuccess, onCancel 
                     onSuccess();
                 }
             } else {
-                alert('Error al crear la orden');
+                // Parse error message from backend
+                try {
+                    const errorData = await response.json();
+                    const errorMessage = errorData.error || 'Error al crear la orden';
+                    alert(errorMessage);
+                } catch (parseError) {
+                    // If JSON parsing fails, show generic error
+                    alert('Error al crear la orden');
+                }
             }
         } catch (error) {
             console.error('Error guardando orden:', error);

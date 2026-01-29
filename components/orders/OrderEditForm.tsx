@@ -144,6 +144,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                     body: JSON.stringify({
                         id: orderId,
                         ...updatedData,
+                        ticket_id: updatedData.ticket_id?.trim() || undefined, // Allow empty ticket
                         phones: updatedData.phones.split(',').map(p => p.trim()).filter(p => p),
                         servicesToInstall: updatedData.servicesToInstall.split(',').map(s => s.trim()).filter(s => s),
                     }),
@@ -186,6 +187,7 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                 // but ideally a PATCH or relaxed PUT handles this.
                 // Re-sending current form data to be safe with the current PUT logic
                 ...formData,
+                ticket_id: formData.ticket_id?.trim() || undefined, // Allow empty ticket
                 materialsUsed: newMaterials, // Overwrite specifically
                 phones: formData.phones.split(',').map(p => p.trim()).filter(p => p),
                 servicesToInstall: formData.servicesToInstall.split(',').map(s => s.trim()).filter(s => s),

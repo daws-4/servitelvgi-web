@@ -74,9 +74,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err: any) {
     console.error("❌ [API POST] Error creating order:", err);
+
+    // Check if it's a validation error (duplicate ticket)
+    if (err.message && err.message.includes('ya existe en el sistema')) {
+      return NextResponse.json(
+        { error: err.message },
+        { status: 400, headers: CORS_HEADERS }
+      );
+    }
+
+    // Handle mongoose validation errors
     if (err.errors) {
       console.error("❌ [API POST] Validation Errors:", JSON.stringify(err.errors, null, 2));
     }
+
+    // Handle other errors
     return NextResponse.json(
       { error: String(err) },
       { status: 500, headers: CORS_HEADERS }

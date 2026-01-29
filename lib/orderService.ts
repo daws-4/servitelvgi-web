@@ -13,6 +13,23 @@ void CrewModel;
 // Función reutilizable para CREAR ordenes
 export async function createOrder(data: any, sessionUser?: SessionUser) {
   await connectDB();
+
+  // Validar ticket duplicado si se proporciona ticket_id
+  if (data.ticket_id && data.ticket_id.trim()) {
+    const existingOrder = await OrderModel.findOne({
+      ticket_id: data.ticket_id.trim()
+    }).lean();
+
+    if (existingOrder) {
+      throw new Error(`El ticket "${data.ticket_id}" ya existe en el sistema. Por favor, utiliza un ticket diferente o déjalo vacío.`);
+    }
+  }
+
+  // Sanitize ticket_id: convert empty string to null
+  if (data.ticket_id !== undefined && (!data.ticket_id || data.ticket_id.trim() === '')) {
+    data.ticket_id = null;
+  }
+
   // Aquí validas lógica de negocio (ej: verificar si el técnico existe)
   const newOrder = await OrderModel.create(data);
   if (newOrder.assignedTo) {
@@ -209,6 +226,12 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
   if (data.status && oldOrder.status !== data.status && (data.assignedTo || oldOrder.assignedTo)) {
     // We'll send this after the update to ensure we have the latest order data
     // Store the flag to send notification after update
+  }
+
+  // Sanitize ticket_id: convert empty string to null to avoid duplicate key errors
+  // MongoDB's sparse index allows multiple null values but not multiple empty strings
+  if (data.ticket_id !== undefined && (!data.ticket_id || data.ticket_id.trim() === '')) {
+    data.ticket_id = null;
   }
 
   // Update the order

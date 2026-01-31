@@ -9,7 +9,8 @@ export type ReportType =
   | 'inventory_report'
   | 'netuno_orders'
   | 'crew_performance'
-  | 'crew_inventory';
+  | 'crew_inventory'
+  | 'crew_visits';
 
 export interface ReportFilters {
   reportType: ReportType;
@@ -25,6 +26,7 @@ export interface OrderSummary {
   subscriberNumber: string;
   subscriberName: string;
   address: string;
+  ticket?: string; // Número de ticket
   type: 'instalacion' | 'averia' | 'recuperacion';
   status: string;
   completionDate?: Date;
@@ -38,27 +40,27 @@ export interface OrderSummary {
 }
 
 export interface DailyReportData {
-  finalizadas: OrderSummary[];
-  asignadas: OrderSummary[];
+  fecha: string;
+  cuadrillas: CrewDailyData[];
   totales: {
-    finalizadas: number;
-    asignadas: number;
+    completadas: number;
+    noCompletadas: number;
   };
-  cached?: boolean;
 }
 
-export interface MonthlyReportData {
-  breakdown: Array<{
-    date: string;
-    finalizadas: number;
-    asignadas: number;
-  }>;
+export interface CrewDailyData {
+  crewId: string;
+  crewNumber: number;
+  crewName: string;
+  completadas: OrderSummary[];
+  noCompletadas: OrderSummary[];
   totales: {
-    finalizadas: number;
-    asignadas: number;
+    completadas: number;
+    noCompletadas: number;
   };
-  cached?: boolean;
 }
+
+export type MonthlyReportData = DailyReportData;
 
 export interface MaterialSummary {
   code: string;
@@ -69,6 +71,23 @@ export interface MaterialSummary {
   disponible?: number;
   quantity?: number;
   crew?: string;
+}
+
+export interface MaterialMovement {
+  _id: string;
+  itemCode: string;
+  itemDescription: string;
+  quantity: number;
+  date: Date;
+  crewNumber?: number;
+  crewName?: string;
+  reason?: string;
+}
+
+export interface WarehouseMovementData {
+  entradasNetuno: MaterialMovement[];
+  salidasCuadrillas: MaterialMovement[];
+  devolucionesInventario: MaterialMovement[];
 }
 
 export interface InventoryReportData {
@@ -108,6 +127,18 @@ export interface CrewInventoryData {
   }>;
 }
 
+export interface CrewVisitsData {
+  crewId: string;
+  crewNumber: number;
+  crewName: string;
+  totalVisits: number;
+  orderCount: number;
+  instalaciones: number;
+  averias: number;
+  recuperaciones: number;
+  otros: number;
+}
+
 export interface FullReportData {
   [key: string]: any;
 }
@@ -127,34 +158,4 @@ export interface n8nResponse {
   message: string;
   recordsProcessed: number;
   errors?: string[];
-}
-
-export interface GeneratedReportDocument {
-  _id: string;
-  reportType: ReportType;
-  filters: {
-    startDate: string;
-    endDate: string;
-    crewId?: string;
-    additionalFilters?: Map<string, string>;
-  };
-  data: any;
-  metadata: {
-    totalRecords: number;
-    generatedAt: Date;
-    generatedBy?: string;
-    generatedByModel?: 'User' | 'Installer';
-    executionTimeMs?: number;
-  };
-  exportedFiles?: {
-    excel?: string;
-    pdf?: string;
-    word?: string;
-  };
-  sentToN8n: boolean;
-  sentToN8nAt?: Date;
-  reportHash: string;
-  expiresAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
 }

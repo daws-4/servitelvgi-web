@@ -105,8 +105,8 @@ export const RestockModal: React.FC<RestockModalProps> = ({
         }
     }, [isOpen, activeTab]);
 
-    // Filter items by type
-    const regularMaterials = inventoryItems.filter(item => item.type !== "equipment");
+    // Filter items by type - Exclude equipment AND meters (metros must use Bobbin tab)
+    const regularMaterials = inventoryItems.filter(item => item.type !== "equipment" && item.unit !== "metros");
     const equipmentTypes = inventoryItems.filter(item => item.type === "equipment");
 
     // Debug: Log equipment types

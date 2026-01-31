@@ -138,6 +138,18 @@ export async function exportReportToWord(
         order.status,
       ]);
       break;
+
+    case "crew_visits":
+      tableHeaders = ["Cuadrilla", "Total Visitas", "Instalaciones", "Averías", "Recuperaciones", "Otros"];
+      tableRows = (Array.isArray(data) ? data : []).map((crew: any) => [
+        crew.crewName || "",
+        String(crew.totalVisits || 0),
+        String(crew.instalaciones || 0),
+        String(crew.averias || 0),
+        String(crew.recuperaciones || 0),
+        String(crew.otros || 0),
+      ]);
+      break;
   }
 
   // Crear tabla con docx
@@ -206,6 +218,7 @@ function getReportTypeName(type: ReportType): string {
     netuno_orders: "Órdenes Netuno",
     crew_performance: "Rendimiento Cuadrillas",
     crew_inventory: "Inventario Cuadrillas",
+    crew_visits: "Visitas por Cuadrilla",
   };
   return names[type] || type;
 }

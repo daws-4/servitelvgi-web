@@ -239,10 +239,7 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
                         <div className="flex-1">
                             <DateRangePicker
                                 label="Rango de Fechas"
-                                value={dateRange ? {
-                                    start: parseDate(dateRange.start),
-                                    end: parseDate(dateRange.end)
-                                } : null}
+                                value={dateRange}
                                 onDateChange={handleDateChange}
                                 classNames={{
                                     base: "max-w-md",

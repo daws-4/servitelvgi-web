@@ -218,7 +218,12 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
                                 selectedKeys={[formData.unit]}
                                 onSelectionChange={(keys) => {
                                     const selected = Array.from(keys)[0] as string;
-                                    setFormData({ ...formData, unit: selected });
+                                    setFormData({
+                                        ...formData,
+                                        unit: selected,
+                                        // Reset stock if switching to meters
+                                        currentStock: selected === "metros" ? 0 : formData.currentStock
+                                    });
                                 }}
                                 isRequired
                             />
@@ -234,7 +239,10 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
                             />
                         </div>
 
-                        {!isEquipment && (
+
+
+                        {/* Validar que no sea equipo NI metros */}
+                        {!isEquipment && formData.unit !== "metros" && (
                             <FormInput
                                 label="Stock Inicial"
                                 type="number"
@@ -244,6 +252,19 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
                                     setFormData({ ...formData, currentStock: Number(value) })
                                 }
                             />
+                        )}
+
+                        {/* Información para items en metros */}
+                        {formData.unit === "metros" && !isEquipment && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                    <i className="fa-solid fa-info-circle text-blue-600 text-lg mt-0.5"></i>
+                                    <div className="text-sm text-blue-800">
+                                        <p className="font-semibold mb-1">Gestión por Bobinas</p>
+                                        <p>Los ítems medidos en metros no pueden tener stock inicial directo. Debes agregarlos mediante la opción "Reabastecer" escaneando o ingresando bobinas individuales.</p>
+                                    </div>
+                                </div>
+                            </div>
                         )}
 
                         {/* Información para equipos */}

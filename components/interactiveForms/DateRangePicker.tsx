@@ -1,21 +1,44 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { DateRangePicker, DateRangePickerProps } from "@heroui/react";
 import { parseDate, getLocalTimeZone, today } from "@internationalized/date";
 import { I18nProvider } from "@react-aria/i18n";
 
-interface DateFilterProps extends Omit<DateRangePickerProps, "children"> {
+interface DateFilterProps extends Omit<DateRangePickerProps, "children" | "value"> {
     onDateChange?: (range: { start: string; end: string } | null) => void;
+    value?: { start: string; end: string } | null;
 }
 
 export const DateFilter: React.FC<DateFilterProps> = ({
     onDateChange,
+    value,
     label = "Filtrar por Fecha",
     ...props
 }) => {
+    // Estado local para el valor del DateRangePicker
+    const [internalValue, setInternalValue] = useState<any>(null);
+
+    // Sincronizar el valor externo con el estado interno
+    useEffect(() => {
+        if (value && value.start && value.end) {
+            try {
+                setInternalValue({
+                    start: parseDate(value.start),
+                    end: parseDate(value.end)
+                });
+            } catch (error) {
+                console.error("Error parsing date value:", error);
+                setInternalValue(null);
+            }
+        } else {
+            setInternalValue(null);
+        }
+    }, [value]);
 
     // Manejador de cambio: convierte el objeto Date de HeroUI a strings ISO (YYYY-MM-DD)
     // para que sean fáciles de enviar a tu API o filtrar en MongoDB
     const handleChange = (range: any) => {
+        setInternalValue(range);
+
         if (range && range.start && range.end) {
             if (onDateChange) {
                 onDateChange({
@@ -44,6 +67,7 @@ export const DateFilter: React.FC<DateFilterProps> = ({
                 }}
                 // Traducciones y accesibilidad
                 errorMessage="Selecciona un rango válido"
+                value={internalValue}
                 onChange={handleChange}
                 // Props adicionales que quieras pasar
                 {...props}

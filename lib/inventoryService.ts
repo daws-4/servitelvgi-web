@@ -44,6 +44,14 @@ export async function restockInventory(
           `Use el endpoint /api/web/inventory/instances para agregar instancias de equipos.`
         );
       }
+
+      // Validar que no sea cables/metros (requieren bobinas)
+      if (inventoryItem.unit === "metros") {
+        throw new Error(
+          `El ítem "${inventoryItem.description}" se mide en metros y debe ingresarse como Bobina. ` +
+          `Use la opción de crear bobina en lugar de reabastecimiento directo.`
+        );
+      }
     }
 
     for (const item of items) {
@@ -719,12 +727,15 @@ export async function restoreInventoryFromOrder(
           }
           await batch.save({ session });
 
-          // IMPORTANT: Also restore to parent inventory item's currentStock
-          await InventoryModel.findByIdAndUpdate(
-            material.inventoryId,
-            { $inc: { currentStock: material.quantity } },
-            { session }
-          );
+          // IMPORTANT: Only restore to parent inventory item's currentStock if batch is in WAREHOUSE
+          // If batch is assigned to a crew, the parent stock (which tracks warehouse stock) should NOT increase
+          if (batch.location === 'warehouse') {
+            await InventoryModel.findByIdAndUpdate(
+              material.inventoryId,
+              { $inc: { currentStock: material.quantity } },
+              { session }
+            );
+          }
 
           // Historial
           await InventoryHistoryModel.create([{
@@ -1904,10 +1915,8 @@ export async function deleteBatch(
       // Si el item padre no existe, no hacemos nada con el stock y continuamos con la eliminación de la bobina
     }
 
-    // Marcar como agotado en lugar de eliminar (para mantener historial)
-    batch.status = "depleted";
-    batch.currentQuantity = 0;
-    await batch.save({ session });
+    // Eliminar físicamente de la base de datos
+    await InventoryBatchModel.deleteOne({ _id: batch._id }).session(session);
 
     // Crear registro en historial
     await InventoryHistoryModel.create(
@@ -1917,7 +1926,7 @@ export async function deleteBatch(
           batch: batch._id,
           type: "adjustment",
           quantityChange: currentQuantity > 0 ? -currentQuantity : 0,
-          reason: `Bobina ${batchCode} eliminada${currentQuantity > 0 ? ` (${currentQuantity} metros descontados del inventario)` : ''}`,
+          reason: `Bobina ${batchCode} eliminada físicamente de la base de datos${currentQuantity > 0 ? ` (${currentQuantity} metros descontados del inventario)` : ''}`,
           performedBy: sessionUser?.userId,
           performedByModel: sessionUser?.userModel,
         },

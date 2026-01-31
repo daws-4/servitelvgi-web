@@ -26,8 +26,13 @@ export function exportReportToPDF(
 
   doc.setFontSize(11);
   doc.text(`Tipo: ${getReportTypeName(reportType)}`, 14, 22);
+
+  // Handle generatedAt as either Date object or string
+  const generatedDate = metadata.generatedAt instanceof Date
+    ? metadata.generatedAt
+    : new Date(metadata.generatedAt);
   doc.text(
-    `Generado: ${metadata.generatedAt.toLocaleDateString("es-ES")}`,
+    `Generado: ${generatedDate.toLocaleDateString("es-ES")}`,
     14,
     27
   );
@@ -98,6 +103,18 @@ export function exportReportToPDF(
       });
       break;
 
+    case "crew_visits":
+      columns = ["Cuadrilla", "Total Visitas", "Instalaciones", "Averías", "Recuperaciones", "Otros"];
+      rows = data.map((crew: any) => [
+        crew.crewName,
+        crew.totalVisits,
+        crew.instalaciones,
+        crew.averias,
+        crew.recuperaciones,
+        crew.otros,
+      ]);
+      break;
+
     case "netuno_orders":
       columns = ["N° Abonado", "Nombre", "Tipo", "Nodo", "Estado"];
       rows = (data.pendientes || []).map((order: any) => [
@@ -137,8 +154,21 @@ export function exportReportToPDF(
   doc.text(`Total de registros: ${metadata.totalRecords}`, 14, finalY);
 
   // Generar nombre de archivo
-  const dateStr = new Date().toISOString().split("T")[0];
-  const fileName = `ENLARED_${reportType}_${dateStr}.pdf`;
+  let fileName: string;
+
+  if (reportType === 'crew_visits') {
+    const crewNumber = metadata.filters.crewId ? 'cuadrilla_especifica' : 'todas';
+    const startDate = new Date(metadata.filters.startDate);
+    const endDate = new Date(metadata.filters.endDate);
+    const monthStr = startDate.getMonth() === endDate.getMonth()
+      ? startDate.toLocaleDateString('es-ES', { month: 'short' })
+      : `${startDate.toLocaleDateString('es-ES', { month: 'short' })}-${endDate.toLocaleDateString('es-ES', { month: 'short' })}`;
+    const timestamp = new Date().getTime();
+    fileName = `visitas_cuadrilla_${crewNumber}_${monthStr}_${timestamp}.pdf`;
+  } else {
+    const dateStr = new Date().toISOString().split("T")[0];
+    fileName = `ENLARED_${reportType}_${dateStr}.pdf`;
+  }
 
   // Descargar PDF
   doc.save(fileName);
@@ -154,6 +184,7 @@ function getReportTypeName(type: ReportType): string {
     netuno_orders: "Órdenes Netuno",
     crew_performance: "Rendimiento Cuadrillas",
     crew_inventory: "Inventario Cuadrillas",
+    crew_visits: "Visitas por Cuadrilla",
   };
   return names[type] || type;
 }

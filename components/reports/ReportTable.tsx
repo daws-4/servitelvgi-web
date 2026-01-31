@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/table";
 import { Chip } from "@heroui/chip";
 import { Skeleton } from "@heroui/skeleton";
@@ -12,12 +13,22 @@ interface ReportTableProps {
     reportType: ReportType;
     data: any;
     isLoading: boolean;
+    crewId?: string; // Optional crew filter
 }
 
-export default function ReportTable({ reportType, data, isLoading }: ReportTableProps) {
+export default function ReportTable({ reportType, data, isLoading, crewId }: ReportTableProps) {
+    const router = useRouter();
+
+    // Función para navegar a editar orden
+    const handleRowClick = (item: any) => {
+        if (['daily_installations', 'daily_repairs', 'monthly_installations', 'monthly_repairs'].includes(reportType) && item._id) {
+            router.push(`/dashboard/orders/${item._id}`);
+        }
+    };
 
     // Transformación de datos según el tipo de reporte
     const { rows, columns } = useMemo(() => {
+        console.log("[DEBUG] ReportTable calculating rows:", { reportType, dataCrews: data?.cuadrillas?.length });
         if (!data) return { rows: [], columns: [] };
 
         let cols: { key: string; label: string; align?: "start" | "center" | "end" }[] = [];
@@ -29,53 +40,98 @@ export default function ReportTable({ reportType, data, isLoading }: ReportTable
             case "monthly_installations":
             case "monthly_repairs":
                 cols = [
+                    { key: "crew", label: "CUADRILLA" },
+                    { key: "estado", label: "ESTADO" },
+                    { key: "ticket", label: "TICKET" },
                     { key: "subscriberNumber", label: "ABONADO" },
                     { key: "subscriberName", label: "NOMBRE" },
-                    { key: "address", label: "DIRECCIÓN" },
-                    { key: "status", label: "ESTADO" },
-                    { key: "assignedTo", label: "CUADRILLA" },
-                    { key: "date", label: "FECHA" },
                 ];
 
-                const allOrders = [...(data.finalizadas || []), ...(data.asignadas || [])];
-                processedRows = allOrders.map((item: any, idx) => ({
-                    key: item._id || idx,
-                    subscriberNumber: item.subscriberNumber,
-                    subscriberName: item.subscriberName,
-                    address: item.address ? (item.address.length > 40 ? item.address.substring(0, 40) + "..." : item.address) : "-",
-                    status: item.status,
-                    assignedTo: item.assignedTo?.name || "Sin asignar",
-                    date: item.completionDate || item.assignmentDate ? format(new Date(item.completionDate || item.assignmentDate), "dd/MM/yyyy") : "-",
-                    type: item.type
-                }));
-                break;
+                // Agregar fecha si es reporte mensual
+                if (['monthly_installations', 'monthly_repairs'].includes(reportType)) {
+                    cols.push({ key: "date", label: "FECHA" });
+                }
 
-            case "inventory_report":
-                cols = [
-                    { key: "code", label: "CÓDIGO" },
-                    { key: "description", label: "DESCRIPCIÓN" },
-                    { key: "category", label: "CATEGORÍA" },
-                    { key: "quantity", label: "CANTIDAD", align: "end" },
-                ];
+                // Agrupar por cuadrilla - filtrar por crewId si está seleccionado
+                const dailyCuadrillas = crewId
+                    ? (data.cuadrillas || []).filter((crew: any) => crew.crewId === crewId)
+                    : (data.cuadrillas || []);
 
-                const categories = [
-                    { items: data.instalaciones, cat: "Instalaciones" },
-                    { items: data.averias, cat: "Averías" },
-                    { items: data.materialAveriado, cat: "Averiado" },
-                    { items: data.materialRecuperado, cat: "Recuperado" },
-                ];
-
-                categories.forEach(({ items, cat }) => {
-                    (items || []).forEach((item: any, idx: number) => {
+                dailyCuadrillas.forEach((crew: any) => {
+                    // Agregar completadas
+                    crew.completadas.forEach((order: any) => {
                         processedRows.push({
-                            key: `${cat}-${item._id || idx}`,
-                            code: item.code,
-                            description: item.description,
-                            category: cat,
-                            quantity: item.usado || item.quantityChange || item.quantity || 0,
+                            key: `${crew.crewId}-completada-${order._id}`,
+                            _id: order._id, // Para navegación
+                            crew: crew.crewName,
+                            estado: "Completada",
+                            ticket: order.ticket || "N/A",
+                            subscriberNumber: order.subscriberNumber,
+                            subscriberName: order.subscriberName,
+                            date: order.completionDate ? format(new Date(order.completionDate), 'dd/MM/yyyy') : '-'
+                        });
+                    });
+
+                    // Agregar no completadas
+                    crew.noCompletadas.forEach((order: any) => {
+                        processedRows.push({
+                            key: `${crew.crewId}-pendiente-${order._id}`,
+                            _id: order._id, // Para navegación
+                            crew: crew.crewName,
+                            estado: "Pendiente",
+                            ticket: order.ticket || "N/A",
+                            subscriberNumber: order.subscriberNumber,
+                            subscriberName: order.subscriberName,
+                            date: order.assignmentDate ? format(new Date(order.assignmentDate), 'dd/MM/yyyy') : '-'
                         });
                     });
                 });
+                break;
+
+
+
+            case "inventory_report":
+                cols = [
+                    { key: "codigo", label: "CÓDIGO" },
+                    { key: "descripcion", label: "DESCRIPCIÓN" },
+                    { key: "fecha", label: "FECHA" },
+                    { key: "cuadrilla", label: "CUADRILLA" },
+                    { key: "cantidad", label: "CANTIDAD", align: "end" },
+                    { key: "tipo", label: "TIPO MOVIMIENTO" },
+                ];
+
+                // Transform warehouse movements into flat rows
+                const entradasRows = (data.entradasNetuno || []).map((item: any, idx: number) => ({
+                    key: `entrada-${item._id || idx}`,
+                    codigo: item.itemCode,
+                    descripcion: item.itemDescription,
+                    fecha: format(new Date(item.date), 'dd/MM/yyyy HH:mm'),
+                    cuadrilla: "-",
+                    cantidad: item.quantity,
+                    tipo: "Entrada Netuno",
+                }));
+
+                const salidasRows = (data.salidasCuadrillas || []).map((item: any, idx: number) => ({
+                    key: `salida-${item._id || idx}`,
+                    codigo: item.itemCode,
+                    descripcion: item.itemDescription,
+                    fecha: format(new Date(item.date), 'dd/MM/yyyy HH:mm'),
+                    cuadrilla: item.crewName || "N/A",
+                    cantidad: item.quantity,
+                    tipo: "Salida Cuadrilla",
+                }));
+
+                const devolucionesRows = (data.devolucionesInventario || []).map((item: any, idx: number) => ({
+                    key: `devolucion-${item._id || idx}`,
+                    codigo: item.itemCode,
+                    descripcion: item.itemDescription,
+                    fecha: format(new Date(item.date), 'dd/MM/yyyy HH:mm'),
+                    cuadrilla: item.crewName || "N/A",
+                    cantidad: item.quantity,
+                    tipo: "Devolución",
+                }));
+
+                processedRows = [...entradasRows, ...salidasRows, ...devolucionesRows];
                 break;
 
             case "netuno_orders":
@@ -133,10 +189,33 @@ export default function ReportTable({ reportType, data, isLoading }: ReportTable
                     });
                 });
                 break;
+
+            case "crew_visits":
+                cols = [
+                    { key: "crewName", label: "CUADRILLA" },
+                    { key: "totalVisits", label: "TOTAL VISITAS", align: "end" },
+                    { key: "instalaciones", label: "INSTALACIONES", align: "end" },
+                    { key: "averias", label: "AVERÍAS", align: "end" },
+                    { key: "recuperaciones", label: "RECUPERACIONES", align: "end" },
+                    { key: "otros", label: "OTROS", align: "end" },
+                ];
+
+                // Ensure data is an array
+                const crewVisitsData = Array.isArray(data) ? data : [];
+                processedRows = crewVisitsData.map((item: any, idx: number) => ({
+                    key: idx,
+                    crewName: item.crewName,
+                    totalVisits: item.totalVisits,
+                    instalaciones: item.instalaciones,
+                    averias: item.averias,
+                    recuperaciones: item.recuperaciones,
+                    otros: item.otros
+                }));
+                break;
         }
 
         return { rows: processedRows, columns: cols };
-    }, [data, reportType]);
+    }, [data, reportType, crewId]);
 
     const renderCell = (item: any, columnKey: React.Key) => {
         const value = item[columnKey as string];
@@ -157,6 +236,17 @@ export default function ReportTable({ reportType, data, isLoading }: ReportTable
                 return (
                     <span className={`px-2 py-1 rounded text-xs font-semibold ${value === 'instalacion' ? 'bg-blue-100 text-blue-700' : value === 'averia' ? 'bg-red-100 text-red-700' : 'bg-gray-100'}`}>
                         {value === 'instalacion' ? 'Instalación' : 'Avería'}
+                    </span>
+                );
+            case "tipo":
+                const tipoColors: any = {
+                    "Entrada Netuno": "bg-green-100 text-green-700",
+                    "Salida Cuadrilla": "bg-orange-100 text-orange-700",
+                    "Devolución": "bg-blue-100 text-blue-700"
+                };
+                return (
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${tipoColors[value] || 'bg-gray-100'}`}>
+                        {value}
                     </span>
                 );
             case "category":
@@ -213,7 +303,11 @@ export default function ReportTable({ reportType, data, isLoading }: ReportTable
             </TableHeader>
             <TableBody items={rows}>
                 {(item) => (
-                    <TableRow key={item.key}>
+                    <TableRow
+                        key={item.key}
+                        onClick={() => handleRowClick(item)}
+                        className={['daily_installations', 'daily_repairs', 'monthly_installations', 'monthly_repairs'].includes(reportType) ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}
+                    >
                         {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
                     </TableRow>
                 )}

@@ -1,4 +1,4 @@
-// lib/reportService.ts
+﻿// lib/reportService.ts
 // Servicio central para generación de reportes con agregaciones MongoDB
 
 import { connectDB } from "@/lib/db";
@@ -6,17 +6,18 @@ import OrderModel from "@/models/Order";
 import CrewModel from "@/models/Crew";
 import InventoryModel from "@/models/Inventory";
 import InventoryHistoryModel from "@/models/InventoryHistory";
-import GeneratedReportModel from "@/models/GeneratedReport";
 import { SessionUser } from "@/lib/authHelpers";
 import { startOfMonth, endOfMonth, format, parseISO } from "date-fns";
 import type { Types } from "mongoose";
 import type {
   DailyReportData,
+  CrewDailyData,
   MonthlyReportData,
   InventoryReportData,
   NetunoReportData,
   CrewPerformanceData,
   CrewInventoryData,
+  CrewVisitsData,
   OrderSummary,
 } from "@/types/reportTypes";
 
@@ -51,10 +52,11 @@ function transformToOrderSummary(order: any): OrderSummary {
     subscriberNumber: order.subscriberNumber,
     subscriberName: order.subscriberName,
     address: order.address,
+    ticket: order.ticket_id || "", // Map ticket_id from model to ticket
     type: order.type,
     status: order.status,
-    completionDate: order.completionDate,
-    assignmentDate: order.assignmentDate,
+    completionDate: order.completionDate || order.updatedAt, // Fallback to updatedAt
+    assignmentDate: order.assignmentDate || order.createdAt, // Fallback to createdAt
     assignedTo: order.assignedTo ? {
       _id: order.assignedTo._id?.toString() || order.assignedTo.toString(),
       number: order.assignedTo.number || null,
@@ -65,86 +67,98 @@ function transformToOrderSummary(order: any): OrderSummary {
 }
 
 /**
- * 1. Reporte día a día de instalaciones/averías
- * Usuario selecciona fecha específica y obtiene órdenes finalizadas y asignadas de ese día
+ * 1. Reporte diario de instalaciones/averías agrupado por cuadrilla
+ * Siempre usa la fecha actual y agrupa por cuadrilla
  */
 export async function getDailyReport(
-  date: string,
   type: "instalacion" | "averia" | "all" = "all",
   sessionUser?: SessionUser
 ): Promise<DailyReportData> {
   await connectDB();
 
-  const filters: any = {
-    filters: { startDate: date, endDate: date },
+  // Usar fecha actual
+  const today = new Date();
+  const startOfDay = new Date(today);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(today);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const baseFilter: any = {
+    $or: [
+      {
+        completionDate: { $gte: startOfDay, $lte: endOfDay },
+        status: "completed",
+      },
+      {
+        assignmentDate: { $gte: startOfDay, $lte: endOfDay },
+        status: { $in: ["assigned", "in_progress"] },
+      },
+    ],
   };
 
   if (type !== "all") {
-    filters.filters.type = type;
+    baseFilter.type = type;
   }
 
-  // Intentar usar caché con GeneratedReport
-  let reportType = "daily_installations";
-  if (type === "averia") reportType = "daily_repairs";
-  // Si type es "instalacion" o "all", por defecto podría ser daily_installations,
-  // pero el enum 'daily_installations' implica SOLO instalaciones?
-  // Re-leyendo route.ts, si pide daily_installations, manda type='instalacion'.
-  // Si pide daily_repairs, manda type='averia'.
-  // Nunca manda 'all' desde route.ts para estos casos específicos.
-  if (type === "instalacion") reportType = "daily_installations";
+  // Buscar todas las órdenes del día y poblar cuadrilla
+  const orders = await OrderModel.find(baseFilter)
+    .populate("assignedTo", "number")
+    .lean();
 
-  const result = await GeneratedReportModel.findOrGenerate(
-    reportType,
-    filters.filters,
-    async () => {
-      // Generar reporte nuevo
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+  // Agrupar por cuadrilla
+  const crewMap = new Map<string, CrewDailyData>();
 
-      const baseFilter: any = {
-        $or: [
-          {
-            completionDate: { $gte: startOfDay, $lte: endOfDay },
-            status: "completed",
-          },
-          {
-            assignmentDate: { $gte: startOfDay, $lte: endOfDay },
-            status: { $in: ["assigned", "in_progress"] },
-          },
-        ],
-      };
+  for (const order of orders) {
+    const crew = order.assignedTo as any;
+    if (!crew) continue; // Skip órdenes sin cuadrilla
 
-      if (type !== "all") {
-        baseFilter.type = type;
-      }
+    const crewId = crew._id.toString();
 
-      const orders = await OrderModel.find(baseFilter)
-        .populate("assignedTo", "name")
-        .lean();
-
-      // Separar en finalizadas y asignadas y transformar a OrderSummary
-      const finalizadas = orders
-        .filter((order) => order.status === "completed")
-        .map(transformToOrderSummary);
-      const asignadas = orders
-        .filter((order) => ["assigned", "in_progress"].includes(order.status))
-        .map(transformToOrderSummary);
-
-      return {
-        finalizadas,
-        asignadas,
+    if (!crewMap.has(crewId)) {
+      crewMap.set(crewId, {
+        crewId,
+        crewNumber: crew.number || 0,
+        crewName: `Cuadrilla ${crew.number || "S/N"}`,
+        completadas: [],
+        noCompletadas: [],
         totales: {
-          finalizadas: finalizadas.length,
-          asignadas: asignadas.length,
+          completadas: 0,
+          noCompletadas: 0,
         },
-      };
-    },
-    sessionUser
+      });
+    }
+
+    const crewData = crewMap.get(crewId)!;
+    const orderSummary = transformToOrderSummary(order);
+
+    if (order.status === "completed") {
+      crewData.completadas.push(orderSummary);
+      crewData.totales.completadas++;
+    } else {
+      crewData.noCompletadas.push(orderSummary);
+      crewData.totales.noCompletadas++;
+    }
+  }
+
+  // Convertir Map a array y ordenar por número de cuadrilla
+  const cuadrillas = Array.from(crewMap.values()).sort(
+    (a, b) => a.crewNumber - b.crewNumber
   );
 
-  return { ...result.data, cached: result.cached };
+  // Calcular totales generales
+  const totales = cuadrillas.reduce(
+    (acc, crew) => ({
+      completadas: acc.completadas + crew.totales.completadas,
+      noCompletadas: acc.noCompletadas + crew.totales.noCompletadas,
+    }),
+    { completadas: 0, noCompletadas: 0 }
+  );
+
+  return {
+    fecha: format(today, "yyyy-MM-dd"),
+    cuadrillas,
+    totales,
+  };
 }
 
 /**
@@ -156,264 +170,263 @@ export async function getMonthlyReport(
   year: number,
   type: "instalacion" | "averia" | "all" = "all",
   sessionUser?: SessionUser
-): Promise<MonthlyReportData> {
+): Promise<DailyReportData> { // Reuse DailyReportData as structure is identical
   await connectDB();
 
   const monthDate = new Date(year, month - 1, 1);
   const startDate = startOfMonth(monthDate);
   const endDate = endOfMonth(monthDate);
 
-  const filters = {
-    startDate: format(startDate, "yyyy-MM-dd"),
-    endDate: format(endDate, "yyyy-MM-dd"),
-    type,
+  // Set end of day for the last day of month
+  endDate.setHours(23, 59, 59, 999);
+
+  console.log(`[DEBUG] getMonthlyReport Params: Month=${month}, Year=${year}, Type=${type}`);
+  console.log(`[DEBUG] Date Range: ${startDate.toISOString()} -> ${endDate.toISOString()}`);
+
+  // DIAGNOSTICO 1: Buscar CUALQUIER orden en este rango de fechas (sin importar status ni type)
+  const broadQuery = {
+    $or: [
+      { completionDate: { $gte: startDate, $lte: endDate } },
+      { assignmentDate: { $gte: startDate, $lte: endDate } }
+    ]
+  };
+  const broadCount = await OrderModel.countDocuments(broadQuery);
+  console.log(`[DEBUG LEVEL 1] Total orders in date range (any status/type): ${broadCount}`);
+
+  if (broadCount > 0) {
+    // Ver qué tipos y status existen en este rango
+    const typesFound = await OrderModel.distinct('type', broadQuery);
+    const statusesFound = await OrderModel.distinct('status', broadQuery);
+    console.log(`[DEBUG LEVEL 1] Types found in range:`, typesFound);
+    console.log(`[DEBUG LEVEL 1] Statuses found in range:`, statusesFound);
+  }
+
+  const baseFilter: any = {
+    $or: [
+      {
+        completionDate: { $gte: startDate, $lte: endDate },
+        status: "completed",
+      },
+      {
+        assignmentDate: { $gte: startDate, $lte: endDate },
+        status: { $in: ["assigned", "in_progress"] },
+      },
+    ],
   };
 
-  let reportType = "monthly_installations";
-  if (type === "averia") reportType = "monthly_repairs";
-  if (type === "instalacion") reportType = "monthly_installations";
+  const statusCount = await OrderModel.countDocuments(baseFilter);
+  console.log(`[DEBUG LEVEL 2] Orders matching Date + Status requirement: ${statusCount}`);
 
-  const result = await GeneratedReportModel.findOrGenerate(
-    reportType,
-    filters,
-    async () => {
-      const baseFilter: any = {
-        $or: [
-          {
-            completionDate: { $gte: startDate, $lte: endDate },
-            status: "completed",
-          },
-          {
-            assignmentDate: { $gte: startDate, $lte: endDate },
-            status: { $in: ["assigned", "in_progress"] },
-          },
-        ],
-      };
+  if (type !== "all") {
+    baseFilter.type = type;
+  }
 
-      if (type !== "all") {
-        baseFilter.type = type;
-      }
+  console.log(`[DEBUG LEVEL 3] Final Query with Type filter (${type}):`, JSON.stringify(baseFilter, null, 2));
 
-      // Agregación por día
-      const dailyBreakdown = await OrderModel.aggregate([
-        { $match: baseFilter },
-        {
-          $project: {
-            date: {
-              $dateToString: {
-                format: "%Y-%m-%d",
-                date: {
-                  $cond: [
-                    { $eq: ["$status", "completed"] },
-                    "$completionDate",
-                    "$assignmentDate",
-                  ],
-                },
-              },
-            },
-            status: 1,
-          },
+  // Buscar todas las órdenes del mes y poblar cuadrilla
+  const orders = await OrderModel.find(baseFilter)
+    .populate("assignedTo", "number")
+    .lean();
+
+  console.log(`[DEBUG FINAL] Orders returned: ${orders.length}`);
+
+  // Agrupar por cuadrilla
+  const crewMap = new Map<string, CrewDailyData>();
+
+  for (const order of orders) {
+    const crew = order.assignedTo as any;
+    if (!crew) continue; // Skip órdenes sin cuadrilla
+
+    const crewId = crew._id.toString();
+
+    if (!crewMap.has(crewId)) {
+      crewMap.set(crewId, {
+        crewId,
+        crewNumber: crew.number || 0,
+        crewName: `Cuadrilla ${crew.number || "S/N"}`,
+        completadas: [],
+        noCompletadas: [],
+        totales: {
+          completadas: 0,
+          noCompletadas: 0,
         },
-        {
-          $group: {
-            _id: "$date",
-            finalizadas: {
-              $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
-            },
-            asignadas: {
-              $sum: {
-                $cond: [
-                  { $in: ["$status", ["assigned", "in_progress"]] },
-                  1,
-                  0,
-                ],
-              },
-            },
-          },
-        },
-        { $sort: { _id: 1 } },
-      ]);
+      });
+    }
 
-      const breakdown = dailyBreakdown.map((day) => ({
-        date: day._id,
-        finalizadas: day.finalizadas,
-        asignadas: day.asignadas,
-      }));
+    const crewData = crewMap.get(crewId)!;
+    const orderSummary = transformToOrderSummary(order);
 
-      const totales = breakdown.reduce(
-        (acc, day) => ({
-          finalizadas: acc.finalizadas + day.finalizadas,
-          asignadas: acc.asignadas + day.asignadas,
-        }),
-        { finalizadas: 0, asignadas: 0 }
-      );
+    if (order.status === "completed") {
+      crewData.completadas.push(orderSummary);
+      crewData.totales.completadas++;
+    } else {
+      crewData.noCompletadas.push(orderSummary);
+      crewData.totales.noCompletadas++;
+    }
+  }
 
-      return { breakdown, totales };
-    },
-    sessionUser
+  // Convertir Map a array y ordenar por número de cuadrilla
+  const cuadrillas = Array.from(crewMap.values()).sort(
+    (a, b) => a.crewNumber - b.crewNumber
   );
 
-  return { ...result.data, cached: result.cached };
+  // Calcular totales generales
+  const totales = cuadrillas.reduce(
+    (acc, crew) => ({
+      completadas: acc.completadas + crew.totales.completadas,
+      noCompletadas: acc.noCompletadas + crew.totales.noCompletadas,
+    }),
+    { completadas: 0, noCompletadas: 0 }
+  );
+
+  return {
+    fecha: format(monthDate, "yyyy-MM"),
+    cuadrillas,
+    totales,
+  };
 }
 
 /**
- * 3. Reporte de inventario
- * Material en instalaciones, averías, averiado y recuperado
+ * 3. Reporte de movimiento de inventario de bodega
+ * Entradas desde Netuno, salidas a cuadrillas, y devoluciones
  */
 export async function getInventoryReport(
   dateRange: { start: string; end: string },
   sessionUser?: SessionUser
-): Promise<InventoryReportData> {
+): Promise<any> {
+
   await connectDB();
 
-  const result = await GeneratedReportModel.findOrGenerate(
-    "inventory_report",
-    { startDate: dateRange.start, endDate: dateRange.end },
-    async () => {
-      const startDate = parseISO(dateRange.start);
-      const endDate = parseISO(dateRange.end);
+  const startDate = parseISO(dateRange.start);
+  const endDate = parseISO(dateRange.end);
+  endDate.setHours(23, 59, 59, 999);
 
-      // Material usado en instalaciones
-      const instalaciones = await InventoryHistoryModel.aggregate([
-        {
-          $match: {
-            type: "usage_order",
-            createdAt: { $gte: startDate, $lte: endDate },
-          },
-        },
-        {
-          $lookup: {
-            from: "orders",
-            localField: "order",
-            foreignField: "_id",
-            as: "orderInfo",
-          },
-        },
-        { $unwind: "$orderInfo" },
-        { $match: { "orderInfo.type": "instalacion" } },
-        {
-          $lookup: {
-            from: "inventories",
-            localField: "item",
-            foreignField: "_id",
-            as: "itemInfo",
-          },
-        },
-        { $unwind: "$itemInfo" },
-        {
-          $group: {
-            _id: "$item",
-            code: { $first: "$itemInfo.code" },
-            description: { $first: "$itemInfo.description" },
-            usado: { $sum: "$quantityChange" },
-          },
-        },
-      ]);
-
-      // Material usado en averías
-      const averias = await InventoryHistoryModel.aggregate([
-        {
-          $match: {
-            type: "usage_order",
-            createdAt: { $gte: startDate, $lte: endDate },
-          },
-        },
-        {
-          $lookup: {
-            from: "orders",
-            localField: "order",
-            foreignField: "_id",
-            as: "orderInfo",
-          },
-        },
-        { $unwind: "$orderInfo" },
-        { $match: { "orderInfo.type": "averia" } },
-        {
-          $lookup: {
-            from: "inventories",
-            localField: "item",
-            foreignField: "_id",
-            as: "itemInfo",
-          },
-        },
-        { $unwind: "$itemInfo" },
-        {
-          $group: {
-            _id: "$item",
-            code: { $first: "$itemInfo.code" },
-            description: { $first: "$itemInfo.description" },
-            usado: { $sum: "$quantityChange" },
-          },
-        },
-      ]);
-
-      // Material averiado (adjustments con quantityChange negativo)
-      const materialAveriado = await InventoryHistoryModel.aggregate([
-        {
-          $match: {
-            type: "adjustment",
-            quantityChange: { $lt: 0 },
-            reason: /damaged|averiado/i,
-            createdAt: { $gte: startDate, $lte: endDate },
-          },
-        },
-        {
-          $lookup: {
-            from: "inventories",
-            localField: "item",
-            foreignField: "_id",
-            as: "itemInfo",
-          },
-        },
-        { $unwind: "$itemInfo" },
-        {
-          $group: {
-            _id: "$item",
-            code: { $first: "$itemInfo.code" },
-            description: { $first: "$itemInfo.description" },
-            quantity: { $sum: { $abs: "$quantityChange" } },
-          },
-        },
-      ]);
-
-      // Material recuperado (returns)
-      const materialRecuperado = await InventoryHistoryModel.aggregate([
-        {
-          $match: {
-            type: "return",
-            createdAt: { $gte: startDate, $lte: endDate },
-          },
-        },
-        {
-          $lookup: {
-            from: "inventories",
-            localField: "item",
-            foreignField: "_id",
-            as: "itemInfo",
-          },
-        },
-        { $unwind: "$itemInfo" },
-        {
-          $group: {
-            _id: "$item",
-            code: { $first: "$itemInfo.code" },
-            description: { $first: "$itemInfo.description" },
-            quantity: { $sum: "$quantityChange" },
-          },
-        },
-      ]);
-
-      return {
-        instalaciones,
-        averias,
-        materialAveriado,
-        materialRecuperado,
-      };
+  // 1. Entradas desde Netuno (type: "entry")
+  const entradasNetuno = await InventoryHistoryModel.aggregate([
+    {
+      $match: {
+        type: "entry",
+        createdAt: { $gte: startDate, $lte: endDate },
+      },
     },
-    sessionUser
-  );
+    {
+      $lookup: {
+        from: "inventories",
+        localField: "item",
+        foreignField: "_id",
+        as: "itemInfo",
+      },
+    },
+    { $unwind: "$itemInfo" },
+    {
+      $project: {
+        _id: 1,
+        itemCode: "$itemInfo.code",
+        itemDescription: "$itemInfo.description",
+        quantity: "$quantityChange",
+        date: "$createdAt",
+        reason: 1,
+      },
+    },
+    { $sort: { date: -1 } },
+  ]);
 
-  return result.data;
+  // 2. Salidas a cuadrillas (type: "assignment")
+  const salidasCuadrillas = await InventoryHistoryModel.aggregate([
+    {
+      $match: {
+        type: "assignment",
+        createdAt: { $gte: startDate, $lte: endDate },
+        crew: { $exists: true, $ne: null },
+      },
+    },
+    {
+      $lookup: {
+        from: "inventories",
+        localField: "item",
+        foreignField: "_id",
+        as: "itemInfo",
+      },
+    },
+    { $unwind: "$itemInfo" },
+    {
+      $lookup: {
+        from: "crews",
+        localField: "crew",
+        foreignField: "_id",
+        as: "crewInfo",
+      },
+    },
+    { $unwind: { path: "$crewInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 1,
+        itemCode: "$itemInfo.code",
+        itemDescription: "$itemInfo.description",
+        quantity: { $abs: "$quantityChange" },
+        date: "$createdAt",
+        crewNumber: "$crewInfo.number",
+        crewName: {
+          $concat: ["Cuadrilla ", { $toString: "$crewInfo.number" }]
+        },
+        reason: 1,
+      },
+    },
+    { $sort: { date: -1 } },
+  ]);
+
+  // 3. Devoluciones al inventario (type: "return")
+  const devolucionesInventario = await InventoryHistoryModel.aggregate([
+    {
+      $match: {
+        type: "return",
+        createdAt: { $gte: startDate, $lte: endDate },
+      },
+    },
+    {
+      $lookup: {
+        from: "inventories",
+        localField: "item",
+        foreignField: "_id",
+        as: "itemInfo",
+      },
+    },
+    { $unwind: "$itemInfo" },
+    {
+      $lookup: {
+        from: "crews",
+        localField: "crew",
+        foreignField: "_id",
+        as: "crewInfo",
+      },
+    },
+    { $unwind: { path: "$crewInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        _id: 1,
+        itemCode: "$itemInfo.code",
+        itemDescription: "$itemInfo.description",
+        quantity: "$quantityChange",
+        date: "$createdAt",
+        crewNumber: "$crewInfo.number",
+        crewName: {
+          $cond: {
+            if: { $ifNull: ["$crewInfo.number", false] },
+            then: { $concat: ["Cuadrilla ", { $toString: "$crewInfo.number" }] },
+            else: "N/A"
+          }
+        },
+        reason: 1,
+      },
+    },
+    { $sort: { date: -1 } },
+  ]);
+
+  return {
+    entradasNetuno,
+    salidasCuadrillas,
+    devolucionesInventario,
+  };
 }
 
 /**
@@ -538,6 +551,69 @@ export async function getCrewInventoryReport(
       lastUpdated: inv.lastUpdated,
     })),
   }));
+}
+
+/**
+ * 7. Reporte de visitas por cuadrilla
+ * Suma del visitCount de todas las órdenes agrupadas por cuadrilla
+ */
+export async function getCrewVisitsReport(
+  dateRange: { start: string; end: string },
+  sessionUser?: SessionUser
+): Promise<CrewVisitsData[]> {
+  await connectDB();
+
+
+  const startDate = parseISO(dateRange.start);
+  const endDate = parseISO(dateRange.end);
+
+  // Agregación para sumar visitCount por cuadrilla y contar por tipo de orden
+  const visitsData = await OrderModel.aggregate([
+    {
+      $match: {
+        assignedTo: { $exists: true, $ne: null },
+        createdAt: { $gte: startDate, $lte: endDate },
+      },
+    },
+    {
+      $group: {
+        _id: "$assignedTo",
+        totalVisits: { $sum: { $ifNull: ["$visitCount", 0] } },
+        orderCount: { $sum: 1 },
+        instalaciones: {
+          $sum: { $cond: [{ $eq: ["$type", "instalacion"] }, 1, 0] }
+        },
+        averias: {
+          $sum: { $cond: [{ $eq: ["$type", "averia"] }, 1, 0] }
+        },
+        recuperaciones: {
+          $sum: { $cond: [{ $eq: ["$type", "recuperacion"] }, 1, 0] }
+        },
+      },
+    },
+    { $sort: { totalVisits: -1 } },
+  ]);
+
+  // Populate crew information
+  const populatedData = await CrewModel.populate(visitsData, {
+    path: "_id",
+    select: "number",
+  });
+
+  return populatedData.map((crew) => {
+    const otros = crew.orderCount - (crew.instalaciones + crew.averias + crew.recuperaciones);
+    return {
+      crewId: crew._id._id.toString(),
+      crewNumber: crew._id.number,
+      crewName: `Cuadrilla ${crew._id.number}`,
+      totalVisits: crew.totalVisits,
+      orderCount: crew.orderCount,
+      instalaciones: crew.instalaciones,
+      averias: crew.averias,
+      recuperaciones: crew.recuperaciones,
+      otros: otros,
+    };
+  });
 }
 
 /**

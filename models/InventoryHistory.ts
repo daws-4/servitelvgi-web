@@ -16,11 +16,11 @@ const InventoryHistorySchema = new mongoose.Schema(
     },
     quantityChange: {
       type: Number,
-      required: true, 
+      required: true,
     },
     reason: { type: String },
-    
-    
+
+
     // --- NUEVO CAMPO ---
     // Permite filtrar movimientos por cuadrilla en los reportes
     crew: {
@@ -31,6 +31,11 @@ const InventoryHistorySchema = new mongoose.Schema(
     order: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Order",
+    },
+
+    batch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "InventoryBatch",
     },
 
     // Usuario/Instalador que realizó la operación
@@ -44,7 +49,7 @@ const InventoryHistorySchema = new mongoose.Schema(
     },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
-); 
+);
 
 const InventoryHistoryModel =
   mongoose.models?.InventoryHistory ||

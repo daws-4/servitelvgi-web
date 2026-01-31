@@ -67,7 +67,7 @@ export async function PUT(request: NextRequest) {
         }
 
         const oldQuantity = batch.currentQuantity;
-        const quantityDifference = currentQuantity - oldQuantity;
+        const oldItemId = batch.item.toString(); // Ensure string comparison
 
         // Update batch
         batch.item = itemId;
@@ -83,22 +83,51 @@ export async function PUT(request: NextRequest) {
         await batch.save();
 
         // Update inventory totals
-        if (quantityDifference !== 0) {
+        if (oldItemId !== itemId) {
+            // CASE 1: Item Changed
+
+            // 1. Revert Old Item Stock (Remove old quantity)
+            const oldItem = await InventoryModel.findById(oldItemId);
+            if (oldItem) {
+                const newOldStock = Math.max(0, (oldItem.currentStock || 0) - oldQuantity);
+                await InventoryModel.findByIdAndUpdate(oldItemId, {
+                    currentStock: newOldStock
+                });
+            }
+
+            // 2. Add to New Item Stock (Add new quantity)
             await InventoryModel.findByIdAndUpdate(itemId, {
-                $inc: { currentStock: quantityDifference }
+                $inc: { currentStock: currentQuantity }
             });
+
+        } else {
+            // CASE 2: Same Item, Quantity Changed
+            const quantityDifference = currentQuantity - oldQuantity;
+
+            if (quantityDifference !== 0) {
+                const currentItem = await InventoryModel.findById(itemId);
+                if (currentItem) {
+                    // Ensure we don't go below zero if reducing stock
+                    const newStock = Math.max(0, (currentItem.currentStock || 0) + quantityDifference);
+                    await InventoryModel.findByIdAndUpdate(itemId, {
+                        currentStock: newStock
+                    });
+                }
+            }
         }
 
         // Log the change in history
         const InventoryHistoryModel = (await import("@/models/InventoryHistory")).default;
         await InventoryHistoryModel.create({
             item: itemId,
-            type: quantityDifference > 0 ? "inbound" : "outbound",
-            quantity: Math.abs(quantityDifference),
-            user: sessionUser?.name || "Sistema",
-            location: "warehouse",
-            description: `Edición de bobina ${batchCode}: ${oldQuantity}m → ${currentQuantity}m`,
-            batchCode,
+            type: "adjustment",
+            quantityChange: currentQuantity - oldQuantity, // Net change for the record (might be confusing if item changed, but standardizes the field)
+            batch: batch._id, // Ensure batch link is preserved
+            reason: oldItemId !== itemId
+                ? `Cambio de ítem (${oldItemId} -> ${itemId}) y ajuste: ${oldQuantity}m -> ${currentQuantity}m`
+                : `Edición de bobina ${batchCode}: ${oldQuantity}m -> ${currentQuantity}m`,
+            performedBy: sessionUser?.userId,
+            performedByModel: sessionUser?.userModel,
         });
 
         return NextResponse.json(

@@ -10,6 +10,7 @@ import {
   getNetunoOrdersReport,
   getCrewPerformanceReport,
   getCrewInventoryReport,
+  getCrewVisitsReport,
 } from "@/lib/reportService";
 
 /**
@@ -50,21 +51,14 @@ export async function GET(request: NextRequest) {
     switch (reportType) {
       case "daily_installations":
       case "daily_repairs":
-        if (!startDate) {
-          return NextResponse.json(
-            { error: "El parámetro 'startDate' es requerido para reportes diarios" },
-            { status: 400 }
-          );
-        }
-        
+        // No requiere fecha - siempre usa fecha actual
         const dailyType = reportType === "daily_installations" ? "instalacion" : "averia";
-        data = await getDailyReport(startDate, dailyType, sessionUser);
+        data = await getDailyReport(dailyType, sessionUser);
         metadata = {
           reportType,
           generatedAt: new Date(),
-          filters: { date: startDate, type: dailyType },
-          totalRecords: data.totales.finalizadas + data.totales.asignadas,
-          cached: data.cached,
+          filters: { date: data.fecha, type: dailyType },
+          totalRecords: data.totales.completadas + data.totales.noCompletadas,
         };
         break;
 
@@ -79,14 +73,13 @@ export async function GET(request: NextRequest) {
 
         const [year, month] = startDate.split("-").map(Number);
         const monthlyType = reportType === "monthly_installations" ? "instalacion" : "averia";
-        
+
         data = await getMonthlyReport(month, year, monthlyType, sessionUser);
         metadata = {
           reportType,
           generatedAt: new Date(),
           filters: { month, year, type: monthlyType },
-          totalRecords: data.totales.finalizadas + data.totales.asignadas,
-          cached: data.cached,
+          totalRecords: data.totales.completadas + data.totales.noCompletadas,
         };
         break;
 
@@ -104,10 +97,9 @@ export async function GET(request: NextRequest) {
           generatedAt: new Date(),
           filters: { startDate, endDate },
           totalRecords:
-            data.instalaciones.length +
-            data.averias.length +
-            data.materialAveriado.length +
-            data.materialRecuperado.length,
+            (data.entradasNetuno?.length || 0) +
+            (data.salidasCuadrillas?.length || 0) +
+            (data.devolucionesInventario?.length || 0),
         };
         break;
 
@@ -151,6 +143,23 @@ export async function GET(request: NextRequest) {
           reportType,
           generatedAt: new Date(),
           filters: { crewId: crewId || "all" },
+          totalRecords: data.length,
+        };
+        break;
+
+      case "crew_visits":
+        if (!startDate || !endDate) {
+          return NextResponse.json(
+            { error: "Los parámetros 'startDate' y 'endDate' son requeridos" },
+            { status: 400 }
+          );
+        }
+
+        data = await getCrewVisitsReport({ start: startDate, end: endDate }, sessionUser);
+        metadata = {
+          reportType,
+          generatedAt: new Date(),
+          filters: { startDate, endDate },
           totalRecords: data.length,
         };
         break;

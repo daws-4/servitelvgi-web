@@ -325,7 +325,9 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
         }));
 
     const regularInventoryItems = inventoryItems.filter(item =>
-        !itemsWithBobbins.has(item._id) && item.type !== "equipment"
+        !itemsWithBobbins.has(item._id) &&
+        item.type !== "equipment" &&
+        item.unit !== "metros"
     );
 
     const equipmentItems = inventoryItems.filter(item => item.type === "equipment");

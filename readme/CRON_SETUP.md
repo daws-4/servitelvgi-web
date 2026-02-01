@@ -1,146 +1,87 @@
-# Configuración del Cronjob para Snapshots Diarios
+# Implementación de Cron Job para Snapshots Diarios en N8n
 
-## 📋 Resumen
+Este documento detalla los pasos para configurar la automatización de **Snapshots de Inventario** utilizando n8n.
 
-El sistema de inventario incluye un endpoint que ejecuta snapshots diarios del inventario completo (bodega + cuadrillas). Este endpoint **ya está creado** y listo para usar, solo necesitas configurar cómo se ejecutará automáticamente.
+## 📋 Contexto Actual
+
+Aunque el sistema ahora soporta **"Cálculo Inverso"** para reportes históricos inmediatos, mantener snapshots diarios es recomendado para:
+- **Redundancia de datos**: Respaldo diario del estado exacto del inventario.
+- **Rendimiento**: Análisis de tendencias a largo plazo sin re-calcular movimientos de años.
+- **Auditoría**: "Foto" estática inmutable del inventario en un momento dado.
+
+El endpoint para generar snapshots ya está implementado en la API del proyecto:
+- **Ruta**: `/api/cron/daily-snapshot`
+- **Método**: `POST`
+- **Seguridad**: Token Bearer (Custom Header)
 
 ---
 
-## 🔐 Paso 1: Configurar Variable de Entorno
+## 🔐 Paso 1: Configuración de Seguridad en el Servidor
 
-Agrega esta variable a tu archivo `.env.local`:
+Asegúrate de que tu entorno de producción (Vercel, VPS, etc.) tenga definida la siguiente variable de entorno. Esto protege el endpoint de ejecuciones no autorizadas.
 
+**Archivo `.env.local` o Configuración de Vercel/Hosting:**
 ```env
-CRON_SECRET=servitelv_cron_snapshot_2025_abc123xyz
-```
-
-> [!IMPORTANT]
-> Cambia `servitelv_cron_snapshot_2025_abc123xyz` por un token secreto de tu elección. Guárdalo de forma segura, lo necesitarás para configurar N8n.
+CRON_SECRET=tusecreto_super_seguro_v2026
+```.
+> ⚠️ **Nota:** Cambia el valor por una contraseña fuerte y guárdala. La necesitarás para n8n.
 
 ---
 
-## 🤖 Paso 2: Configurar Workflow en N8n
+## 🤖 Paso 2: Configuración del Workflow en N8n
 
-### Crear Nuevo Workflow
+Sigue estos pasos para crear el cron job en tu instancia de n8n.
 
-1. Abre N8n y crea un nuevo workflow
-2. Nómbralo: **"Snapshot Diario Inventario Servitelv"**
+### 1. Crear Nuevo Workflow
+- Nombre sugerido: **"ServitelV - Daily Inventory Snapshot"**
 
-### Nodo 1: Schedule Trigger
+### 2. Agregar Nodo "Schedule Trigger"
+Este nodo iniciará el proceso automáticamente cada día.
+- **Trigger Interval**: `Every Day`
+- **Hour**: `23`
+- **Minute**: `59`
+- **Timezone**: `America/Caracas` (GMT-4)
 
-- **Tipo**: Schedule Trigger
-- **Configuración**:
-  - Trigger Times: `Cron`
-  - Cron Expression: `59 23 * * *` (cada día a las 23:59)
-  - Timezone: `America/Caracas` (UTC-4)
+### 3. Agregar Nodo "HTTP Request"
+Este nodo llamará a tu API para ejecutar el snapshot.
+- **Method**: `POST`
+- **URL**: `https://tudominio.com/api/cron/daily-snapshot`
+    - *Reemplaza `tudominio.com` con la URL real de tu aplicación web.*
+- **Authentication**: `Generic Credential Type` -> `Header Auth` (o simplemente agrega el header manualmente abajo).
+- **Headers** (Si lo haces manual):
+    - **Name**: `Authorization`
+    - **Value**: `tusecreto_super_seguro_v2026` (El valor de tu `CRON_SECRET`)
 
-### Nodo 2: HTTP Request
-
-- **Tipo**: HTTP Request
-- **Configuración**:
-  - **Method**: `POST`
-  - **URL**: `https://tudominio.com/api/cron/daily-snapshot`
-    - ⚠️ Reemplaza `tudominio.com` con tu dominio real
-  - **Authentication**: None
-  - **Headers**:
-    ```
-    Authorization: servitelv_cron_snapshot_2025_abc123xyz
-    Content-Type: application/json
-    ```
-    - ⚠️ Usa el mismo token que configuraste en `.env.local`
-
-### Nodo 3: IF (Verificación de Éxito)
-
-- **Tipo**: IF
-- **Configuración**:
-  - Condition: `{{ $json.success }} === true`
-  
-**Ruta SI (Success)**:
-- Conectar a nodo de notificación (WhatsApp/Email):
-  - Mensaje: "✅ Snapshot diario creado exitosamente"
-
-**Ruta NO (Error)**:
-- Conectar a nodo de alerta (WhatsApp/Email):
-  - Mensaje: "❌ Error al crear snapshot: {{ $json.error }}"
+### 4. (Opcional) Agregar Notificación de Éxito/Fallo
+Es buena práctica conectar un nodo de Slack, Telegram o Email después del HTTP Request.
+- **On Success**: Enviar mensaje "✅ Snapshot de inventario generado exitosamente. Total items: {{ $json.body.snapshot.totalItems }}".
+- **On Error**: Enviar mensaje "❌ Falló el snapshot de inventario. Error: {{ $json.body.error }}".
 
 ---
 
-## ✅ Paso 3: Probar el Endpoint Manualmente
+## ✅ Paso 3: Verificación y Pruebas
 
-Antes de activar el cron, prueba que el endpoint funciona:
+Antes de confiar en la ejecución automática, realiza una prueba manual:
 
-### Usando Thunder Client / Postman:
+1. **Prueba desde N8n**:
+   - Haz clic en "Execute Node" en el nodo HTTP Request.
+   - Verifica que el Output sea `Status: 200` y el JSON incluya `success: true`.
 
-```
-POST https://tudominio.com/api/cron/daily-snapshot
+2. **Prueba vía cURL / Postman**:
+   ```bash
+   curl -X POST https://tudominio.com/api/cron/daily-snapshot \
+     -H "Authorization: tusecreto_super_seguro_v2026"
+   ```
 
-Headers:
-Authorization: servitelv_cron_snapshot_2025_abc123xyz
-Content-Type: application/json
-```
-
-**Respuesta Esperada**:
-```json
-{
-  "success": true,
-  "message": "Snapshot diario creado correctamente",
-  "snapshot": {
-    "id": "...",
-    "date": "2025-12-15T23:59:59.000Z",
-    "totalItems": 25,
-    "totalWarehouseStock": 5430,
-    "crewsTracked": 8
-  }
-}
-```
+3. **Verificar en Base de Datos**:
+   - Revisa la colección `inventorysnapshots` en MongoDB. Debería aparecer un nuevo documento con la fecha actual.
 
 ---
 
-## 🔍 Verificar que Está Funcionando
+## 🛠️ Solución de Problemas Comunes
 
-### 1. En N8n:
-- Activa el workflow
-- Espera a las 23:59 o prueba manualmente con "Execute Workflow"
-- Verifica que recibes la notificación de éxito
-
-### 2. En tu Base de Datos:
-```javascript
-// Consultar los últimos snapshots
-db.inventorysnapshots.find().sort({ snapshotDate: -1 }).limit(5)
-```
-
-### 3. Desde tu API:
-```
-GET https://tudominio.com/api/web/inventory/snapshots
-```
-
----
-
-## 🆘 Solución de Problemas
-
-### Error 401 "No autorizado"
-- Verifica que el header `Authorization` en N8n coincida exactamente con `CRON_SECRET` en `.env.local`
-- Reinicia el servidor después de cambiar `.env.local`
-
-### Error 500 "Configuración de servidor incorrecta"
-- `CRON_SECRET` no está configurado en `.env.local`
-- Asegúrate de reiniciar el servidor Next.js
-
-### El snapshot se crea vacío
-- Verifica que tienes ítems de inventario creados
-- Verifica que las cuadrillas tienen inventario asignado
-
----
-
-## 📊 Ver Estadísticas de Uso
-
-Una vez tengas al menos 2 snapshots, puedes obtener estadísticas:
-
-```
-GET https://tudominio.com/api/web/inventory/statistics?startDate=2025-12-01&endDate=2025-12-15
-```
-
-Esto te devolverá:
-- Total de materiales consumidos por ítem
-- Movimientos agrupados por tipo
-- Comparación entre estados de inventario
+| Error | Causa Probable | Solución |
+|-------|----------------|----------|
+| **401 Unauthorized** | El header `Authorization` no coincide con `CRON_SECRET`. | Verifica que el token sea idéntico en n8n y en las variables de entorno del servidor. |
+| **500 Internal Server Error** | Error de conexión a BD o variable no configurada. | Revisa los logs del servidor (Vercel/PM2). Asegura que `MONGODB_URI` y `CRON_SECRET` estén cargados. |
+| **Timeouts** | La base de datos es muy grande y el snapshot tarda > 10s. | Aumenta el timeout en el nodo HTTP Request de n8n y en la configuración de la función serverless (si usas Vercel Pro). |

@@ -73,6 +73,7 @@ export interface OrderEditData {
         color: "verde" | "rojo" | "azul";
         numero: number;
     };
+    sentToNetuno?: boolean;
 }
 
 interface OrderEditFormProps {

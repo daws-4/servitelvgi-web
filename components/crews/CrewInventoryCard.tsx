@@ -20,6 +20,7 @@ interface CrewInventoryCardProps {
     onReturnClick: (item: InventoryItem) => void;
     onRefresh: () => void;
     onEquipmentClick?: () => void;
+    onBobbinClick?: (item: InventoryItem) => void;
 }
 
 export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
@@ -28,6 +29,7 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
     onReturnClick,
     onRefresh,
     onEquipmentClick,
+    onBobbinClick,
 }) => {
     // Filter out equipment items - they are shown in the equipment modal
     const regularInventory = assignedInventory.filter(
@@ -78,53 +80,71 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
                             </tr>
                         </thead>
                         <tbody>
-                            {regularInventory.map((inventoryItem, index) => (
-                                <tr
-                                    key={inventoryItem.item._id || index}
-                                    className="border-b border-neutral/5 hover:bg-gray-50/50 transition-colors"
-                                >
-                                    <td className="py-3">
-                                        <span className="font-mono text-sm font-semibold text-dark flex items-center gap-2">
-                                            {inventoryItem.item.type === 'equipment' && (
-                                                <i className="fa-solid fa-microchip text-purple-600" title="Equipo"></i>
-                                            )}
-                                            {inventoryItem.item.code}
-                                        </span>
-                                    </td>
-                                    <td className="py-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-dark">
-                                                {inventoryItem.item.description}
+                            {regularInventory.map((inventoryItem, index) => {
+                                const isMeter = inventoryItem.item.unit.toLowerCase() === 'metros';
+
+                                return (
+                                    <tr
+                                        key={inventoryItem.item._id || index}
+                                        className="border-b border-neutral/5 hover:bg-gray-50/50 transition-colors"
+                                    >
+                                        <td className="py-3">
+                                            <span className="font-mono text-sm font-semibold text-dark flex items-center gap-2">
+                                                {inventoryItem.item.type === 'equipment' && (
+                                                    <i className="fa-solid fa-microchip text-purple-600" title="Equipo"></i>
+                                                )}
+                                                {isMeter && (
+                                                    <i className="fa-solid fa-ring text-orange-600" title="Bobina / Cable"></i>
+                                                )}
+                                                {inventoryItem.item.code}
                                             </span>
-                                            {inventoryItem.item.type === 'equipment' && (
-                                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">
-                                                    {inventoryItem.quantity} instancia{inventoryItem.quantity > 1 ? 's' : ''}
+                                        </td>
+                                        <td className="py-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-dark">
+                                                    {inventoryItem.item.description}
                                                 </span>
+                                                {inventoryItem.item.type === 'equipment' && (
+                                                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">
+                                                        {inventoryItem.quantity} instancia{inventoryItem.quantity > 1 ? 's' : ''}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="py-3 text-right">
+                                            <span className="font-semibold text-dark">
+                                                {inventoryItem.quantity}
+                                            </span>
+                                        </td>
+                                        <td className="py-3">
+                                            <span className="text-sm text-neutral">
+                                                {inventoryItem.item.unit}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 text-center">
+                                            {isMeter && onBobbinClick ? (
+                                                <button
+                                                    onClick={() => onBobbinClick(inventoryItem)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors shadow-sm cursor-pointer"
+                                                    title="Ver bobinas asignadas"
+                                                >
+                                                    <i className="fa-solid fa-eye text-xs"></i>
+                                                    Ver Bobinas
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => onReturnClick(inventoryItem)}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors shadow-sm cursor-pointer"
+                                                    title="Devolver material al almacén"
+                                                >
+                                                    <i className="fa-solid fa-rotate-left text-xs"></i>
+                                                    Devolver
+                                                </button>
                                             )}
-                                        </div>
-                                    </td>
-                                    <td className="py-3 text-right">
-                                        <span className="font-semibold text-dark">
-                                            {inventoryItem.quantity}
-                                        </span>
-                                    </td>
-                                    <td className="py-3">
-                                        <span className="text-sm text-neutral">
-                                            {inventoryItem.item.unit}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 text-center">
-                                        <button
-                                            onClick={() => onReturnClick(inventoryItem)}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors shadow-sm cursor-pointer"
-                                            title="Devolver material al almacén"
-                                        >
-                                            <i className="fa-solid fa-rotate-left text-xs"></i>
-                                            Devolver
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>

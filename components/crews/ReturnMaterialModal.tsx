@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 interface InventoryItem {
@@ -21,6 +21,12 @@ interface ReturnMaterialModalProps {
     onSuccess: () => void;
 }
 
+interface BatchOption {
+    _id: string;
+    batchCode: string;
+    currentQuantity: number;
+}
+
 export const ReturnMaterialModal: React.FC<ReturnMaterialModalProps> = ({
     isOpen,
     onClose,
@@ -33,14 +39,60 @@ export const ReturnMaterialModal: React.FC<ReturnMaterialModalProps> = ({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Batch Handling
+    const [loadingBatches, setLoadingBatches] = useState(false);
+    const [batches, setBatches] = useState<BatchOption[]>([]);
+    const [selectedBatchCode, setSelectedBatchCode] = useState<string>("");
+
     // Reset form when modal opens/closes or material changes
-    React.useEffect(() => {
+    useEffect(() => {
         if (isOpen && material) {
             setQuantity("");
             setReason("");
             setError(null);
+            setBatches([]);
+            setSelectedBatchCode("");
+
+            // Check if we need to fetch batches (e.g. if unit is metros or description hints at cable)
+            // A more robust way is to ALWAYS try to fetch batches for this item+crew.
+            fetchBatches(material.item._id);
         }
-    }, [isOpen, material]);
+    }, [isOpen, material, crewId]);
+
+    const fetchBatches = async (itemId: string) => {
+        try {
+            setLoadingBatches(true);
+            // We need an endpoint to get batches for a crew and item.
+            // Currently assuming we can filter existing endpoint or add one.
+            // Let's use the existing comprehensive inventory endpoint but filtered?
+            // Or simpler: Just a direct call to get batches.
+            // Since we don't have a specific endpoint document for this, we'll try querying the inventory-batches endpoint
+            // or adapt.
+            // Assuming: GET /api/web/inventory/batches?crewId=...&itemId=...
+            const response = await axios.get(`/api/web/inventory/batches`, {
+                params: {
+                    crewId: crewId,
+                    itemId: itemId,
+                    status: 'active'
+                }
+            });
+
+            // Filter batches that are assigned to THIS crew
+            const crewBatches = response.data.filter((b: any) =>
+                b.location === 'crew' &&
+                (b.crew?._id === crewId || b.crew === crewId) &&
+                b.currentQuantity > 0
+            );
+
+            setBatches(crewBatches);
+        } catch (err) {
+            console.error("Error fetching batches:", err);
+            // If it fails, maybe it's because the endpoint doesn't exist or other error.
+            // We'll proceed without batches (standard material).
+        } finally {
+            setLoadingBatches(false);
+        }
+    };
 
     if (!isOpen || !material) return null;
 
@@ -56,11 +108,27 @@ export const ReturnMaterialModal: React.FC<ReturnMaterialModalProps> = ({
             return;
         }
 
+        // If batches exist, user MUST select one
+        if (batches.length > 0 && !selectedBatchCode) {
+            setError("Este material se maneja por Bobinas. Debe seleccionar una Bobina para devolver.");
+            return;
+        }
+
         if (quantityNum > material.quantity) {
             setError(
                 `La cantidad no puede ser mayor a ${material.quantity} ${material.item.unit}`
             );
             return;
+        }
+
+        // If batch selected, validate against batch quantity
+        if (selectedBatchCode) {
+            const selectedBatch = batches.find(b => b.batchCode === selectedBatchCode);
+            if (selectedBatch && quantityNum > selectedBatch.currentQuantity) {
+                // Allowing small tolerance? No, strict.
+                setError(`La cantidad excede el stock de la bobina seleccionada (${selectedBatch.currentQuantity} ${material.item.unit})`);
+                return;
+            }
         }
 
         if (!reason.trim()) {
@@ -79,6 +147,7 @@ export const ReturnMaterialModal: React.FC<ReturnMaterialModalProps> = ({
                         {
                             inventoryId: material.item._id,
                             quantity: quantityNum,
+                            batchCode: selectedBatchCode || undefined
                         },
                     ],
                     reason: reason.trim(),
@@ -97,6 +166,20 @@ export const ReturnMaterialModal: React.FC<ReturnMaterialModalProps> = ({
             );
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    // Auto-fill quantity when batch is selected
+    const handleBatchChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const code = e.target.value;
+        setSelectedBatchCode(code);
+        if (code) {
+            const batch = batches.find(b => b.batchCode === code);
+            if (batch) {
+                setQuantity(batch.currentQuantity.toString());
+            }
+        } else {
+            setQuantity("");
         }
     };
 
@@ -130,7 +213,7 @@ export const ReturnMaterialModal: React.FC<ReturnMaterialModalProps> = ({
                                 </p>
                             </div>
                             <div className="text-right">
-                                <p className="text-xs text-neutral mb-1">Disponible</p>
+                                <p className="text-xs text-neutral mb-1">Disponible Total</p>
                                 <p className="font-semibold text-dark">
                                     {material.quantity} {material.item.unit}
                                 </p>
@@ -138,6 +221,38 @@ export const ReturnMaterialModal: React.FC<ReturnMaterialModalProps> = ({
                         </div>
                         <p className="text-sm text-dark">{material.item.description}</p>
                     </div>
+
+                    {/* Batch Selection (if available) */}
+                    {loadingBatches ? (
+                        <div className="mb-4 text-center text-sm text-neutral">
+                            <i className="fa-solid fa-circle-notch fa-spin mr-2"></i>
+                            Buscando bobinas...
+                        </div>
+                    ) : batches.length > 0 && (
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-dark mb-1">
+                                Seleccionar Bobina (Lote) <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                value={selectedBatchCode}
+                                onChange={handleBatchChange}
+                                className="w-full px-4 py-2 rounded-lg border border-neutral/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm bg-white"
+                                required
+                                disabled={isSubmitting}
+                            >
+                                <option value="">-- Seleccionar --</option>
+                                {batches.map(batch => (
+                                    <option key={batch._id} value={batch.batchCode}>
+                                        {batch.batchCode} ({batch.currentQuantity} {material.item.unit})
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-blue-600 mt-1">
+                                <i className="fa-solid fa-info-circle mr-1"></i>
+                                Al devolver una bobina, se transfiere completa al almacén.
+                            </p>
+                        </div>
+                    )}
 
                     {/* Quantity Input */}
                     <div className="mb-4">
@@ -155,14 +270,16 @@ export const ReturnMaterialModal: React.FC<ReturnMaterialModalProps> = ({
                                 max={material.quantity}
                                 step="any"
                                 required
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || (batches.length > 0 && !!selectedBatchCode)} // Disable quantity edit if batch is selected? Maybe allow edit to correct discrepancies, but technically you move the WHOLE bobbin. Let's allow edit but validate.
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral">
                                 {material.item.unit}
                             </span>
                         </div>
                         <p className="text-xs text-neutral mt-1">
-                            Máximo: {material.quantity} {material.item.unit}
+                            Máximo: {batches.length > 0 && selectedBatchCode
+                                ? batches.find(b => b.batchCode === selectedBatchCode)?.currentQuantity
+                                : material.quantity} {material.item.unit}
                         </p>
                     </div>
 

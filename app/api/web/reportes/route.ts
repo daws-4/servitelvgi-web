@@ -11,6 +11,7 @@ import {
   getCrewPerformanceReport,
   getCrewInventoryReport,
   getCrewVisitsReport,
+  getCrewStockReport,
 } from "@/lib/reportService";
 
 /**
@@ -64,21 +65,23 @@ export async function GET(request: NextRequest) {
 
       case "monthly_installations":
       case "monthly_repairs":
-        if (!startDate) {
+      case "monthly_recoveries":
+        if (!startDate || !endDate) {
           return NextResponse.json(
-            { error: "El parámetro 'startDate' es requerido para reportes mensuales" },
+            { error: "Los parámetros 'startDate' y 'endDate' son requeridos para reportes mensuales" },
             { status: 400 }
           );
         }
 
-        const [year, month] = startDate.split("-").map(Number);
-        const monthlyType = reportType === "monthly_installations" ? "instalacion" : "averia";
+        let monthlyType: "instalacion" | "averia" | "recuperacion" = "instalacion";
+        if (reportType === "monthly_repairs") monthlyType = "averia";
+        if (reportType === "monthly_recoveries") monthlyType = "recuperacion";
 
-        data = await getMonthlyReport(month, year, monthlyType, sessionUser);
+        data = await getMonthlyReport({ start: startDate, end: endDate }, monthlyType, sessionUser);
         metadata = {
           reportType,
           generatedAt: new Date(),
-          filters: { month, year, type: monthlyType },
+          filters: { startDate, endDate, type: monthlyType },
           totalRecords: data.totales.completadas + data.totales.noCompletadas,
         };
         break;
@@ -111,7 +114,7 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        data = await getNetunoOrdersReport({ start: startDate, end: endDate }, sessionUser);
+        data = await getNetunoOrdersReport({ start: startDate, end: endDate }, sessionUser, crewId || undefined);
         metadata = {
           reportType,
           generatedAt: new Date(),
@@ -128,21 +131,28 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        data = await getCrewPerformanceReport({ start: startDate, end: endDate }, sessionUser);
+        data = await getCrewPerformanceReport({ start: startDate, end: endDate }, sessionUser, crewId || undefined);
         metadata = {
           reportType,
           generatedAt: new Date(),
-          filters: { startDate, endDate },
-          totalRecords: data.length,
+          filters: { startDate, endDate, crewId: crewId || "all" },
+          totalRecords: (data.orders || []).length, // Count total orders
         };
         break;
 
       case "crew_inventory":
-        data = await getCrewInventoryReport(crewId || undefined);
+        if (!startDate || !endDate) {
+          return NextResponse.json(
+            { error: "Los parámetros 'startDate' y 'endDate' son requeridos" },
+            { status: 400 }
+          );
+        }
+
+        data = await getCrewInventoryReport({ start: startDate, end: endDate }, sessionUser, crewId || undefined);
         metadata = {
           reportType,
           generatedAt: new Date(),
-          filters: { crewId: crewId || "all" },
+          filters: { startDate, endDate, crewId: crewId || "all" },
           totalRecords: data.length,
         };
         break;
@@ -160,6 +170,22 @@ export async function GET(request: NextRequest) {
           reportType,
           generatedAt: new Date(),
           filters: { startDate, endDate },
+          totalRecords: data.length,
+        };
+        metadata = {
+          reportType,
+          generatedAt: new Date(),
+          filters: { startDate, endDate },
+          totalRecords: data.length,
+        };
+        break;
+
+      case "crew_stock":
+        data = await getCrewStockReport(startDate && endDate ? { start: startDate, end: endDate } : undefined, crewId || undefined);
+        metadata = {
+          reportType,
+          generatedAt: new Date(),
+          filters: { crewId: crewId || "all" },
           totalRecords: data.length,
         };
         break;

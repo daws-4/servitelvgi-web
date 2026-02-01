@@ -79,6 +79,7 @@ export default function OrderEditPage() {
                         powerRoseta: order.powerRoseta || '',
                         remainingPorts: order.remainingPorts || undefined,
                         etiqueta: order.etiqueta || undefined,
+                        sentToNetuno: order.sentToNetuno || false,
                     };
 
                     setOrderData(formData);
@@ -172,6 +173,7 @@ export default function OrderEditPage() {
             });
 
             if (response.data.success) {
+                setOrderData(prev => prev ? ({ ...prev, sentToNetuno: true }) : null);
                 alert(`¡Éxito! \n\n1. Certificado Guardado\n2. Datos enviados a Netuno/WhatsApp`);
             } else {
                 alert('Certificado guardado, pero error al enviar a Netuno: ' + (response.data.error || 'Error desconocido'));

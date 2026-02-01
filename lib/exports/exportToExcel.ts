@@ -75,8 +75,9 @@ export function exportReportToExcel(
 
     case "monthly_installations":
     case "monthly_repairs":
+    case "monthly_recoveries":
       // Misma estructura agrupada por cuadrilla
-      sheetName = "Órdenes del Mes";
+      sheetName = "Órdenes del Período";
       const monthlyOrders: any[] = [];
 
       // Filtrar cuadrillas si hay filtro activo
@@ -130,32 +131,42 @@ export function exportReportToExcel(
       break;
 
     case "crew_performance":
-      sheetName = "Rendimiento Cuadrillas";
-      worksheetData = data.map((crew: any) => ({
-        "Cuadrilla": crew.crewName,
-        "Total Órdenes": crew.totalOrders,
-        "Instalaciones": crew.instalaciones,
-        "Averías": crew.averias,
-        "Tiempo Promedio (días)": crew.tiempoPromedioDias,
+      sheetName = "Rendimiento Detallado";
+      worksheetData = (data.orders || []).map((order: any) => ({
+        "Cuadrilla": order.crewName,
+        "Ticket": order.ticket,
+        "Abonado": order.subscriber,
+        "Creado": formatDateVenezuela(order.createdAt),
+        "Completado": formatDateVenezuela(order.updatedAt),
+        "Duración": order.duration,
       }));
       break;
 
     case "crew_inventory":
-      sheetName = "Inventario Cuadrillas";
-      const allCrewInventory: any[] = [];
+      sheetName = "Movimientos Cuadrillas";
+      worksheetData = data.map((item: any) => ({
+        "Fecha": formatDateVenezuela(item.date),
+        "Cuadrilla": item.crewName,
+        "Tipo": item.type === 'assignment' ? 'Asignación' : item.type === 'return' ? 'Devolución' : 'Gasto en Orden',
+      }));
+      break;
+
+    case "crew_stock":
+      sheetName = "Stock Cuadrillas";
       data.forEach((crew: any) => {
         crew.inventory.forEach((item: any) => {
-          allCrewInventory.push({
+          worksheetData.push({
             "Cuadrilla": crew.crewName,
             "Código": item.code,
             "Descripción": item.description,
-            "Cantidad": item.quantity,
-            "Unidad": item.unit,
+            "Inicial": item.startQty,
+            "Final": item.endQty,
+            "Diferencia": item.diff
           });
         });
       });
-      worksheetData = allCrewInventory;
       break;
+
 
     case "crew_visits":
       sheetName = "Visitas por Cuadrilla";
@@ -169,6 +180,33 @@ export function exportReportToExcel(
       }));
       break;
 
+    case "crew_stock":
+      sheetName = "Stock Cuadrillas";
+      worksheetData = [];
+      (data || []).forEach((crew: any) => {
+        (crew.inventory || []).forEach((inv: any) => {
+          // Flatten details
+          let detailsStr = "-";
+          if (inv.details && inv.details.length > 0) {
+            detailsStr = inv.details.map((d: any) =>
+              d.type === 'bobbin' ? `${d.label} (${d.value}m)` : `${d.label}: ${d.value}`
+            ).join(", ");
+          }
+
+          worksheetData.push({
+            "Cuadrilla": crew.crewName,
+            "Código": inv.code,
+            "Descripción": inv.description,
+            "Cantidad": inv.quantity,
+            "Tipo": inv.type || "-",
+            "Detalles": detailsStr
+          });
+        });
+      });
+      break;
+
+    case "crew_visits":
+
     case "netuno_orders":
       sheetName = "Órdenes Netuno";
       worksheetData = (data.pendientes || []).map((order: any) => ({
@@ -179,6 +217,7 @@ export function exportReportToExcel(
         "Servicios": Array.isArray(order.servicesToInstall)
           ? order.servicesToInstall.join(", ")
           : "",
+        "Cuadrilla": (order.assignedTo?.number !== undefined && order.assignedTo?.number !== null) ? `Cuadrilla ${order.assignedTo.number}` : "S/A",
         "Estado": order.status,
       }));
       break;
@@ -217,10 +256,12 @@ export function exportReportToExcel(
     daily_repairs: "averia_diaria",
     monthly_installations: "instalacion_mensual",
     monthly_repairs: "averia_mensual",
+    monthly_recoveries: "recuperaciones_mensual",
     inventory_report: "reporte_inventario",
     netuno_orders: "ordenes_netuno",
     crew_performance: "rendimiento_cuadrillas",
     crew_inventory: "inventario_cuadrillas",
+    crew_stock: "stock_actual_cuadrillas",
     crew_visits: "visitas_cuadrillas",
   };
 

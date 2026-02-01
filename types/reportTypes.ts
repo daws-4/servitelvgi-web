@@ -6,11 +6,13 @@ export type ReportType =
   | 'daily_repairs'
   | 'monthly_installations'
   | 'monthly_repairs'
+  | 'monthly_recoveries'
   | 'inventory_report'
   | 'netuno_orders'
   | 'crew_performance'
   | 'crew_inventory'
-  | 'crew_visits';
+  | 'crew_visits'
+  | 'crew_stock';
 
 export interface ReportFilters {
   reportType: ReportType;

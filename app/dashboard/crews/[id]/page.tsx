@@ -7,6 +7,7 @@ import { CrewEditForm } from "@/components/crews/CrewEditForm";
 import { CrewInventoryCard } from "@/components/crews/CrewInventoryCard";
 import { ReturnMaterialModal } from "@/components/crews/ReturnMaterialModal";
 import CrewEquipmentModal from "@/components/crews/CrewEquipmentModal";
+import CrewBobbinModal from "@/components/crews/CrewBobbinModal";
 import MonthSelector from "@/components/crews/MonthSelector";
 import CrewMonthlySummary from "@/components/crews/CrewMonthlySummary";
 import CrewMovementHistory from "@/components/crews/CrewMovementHistory";
@@ -59,6 +60,9 @@ export default function CrewEditPage() {
     const [returnModalOpen, setReturnModalOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<InventoryItem | null>(null);
     const [equipmentModalOpen, setEquipmentModalOpen] = useState(false);
+    // Bobbin Modal State
+    const [bobbinModalOpen, setBobbinModalOpen] = useState(false);
+    const [bobbinModalItem, setBobbinModalItem] = useState<{ id: string, code: string, description: string } | null>(null);
 
     // Get current month in YYYY-MM format
     const getCurrentMonth = () => {
@@ -138,6 +142,16 @@ export default function CrewEditPage() {
         await fetchData(); // Refresh crew data to show updated inventory
     };
 
+    // Handler for Bobbin click
+    const handleBobbinClick = (material: InventoryItem) => {
+        setBobbinModalItem({
+            id: material.item._id,
+            code: material.item.code,
+            description: material.item.description
+        });
+        setBobbinModalOpen(true);
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -202,6 +216,7 @@ export default function CrewEditPage() {
                         onReturnClick={handleReturnClick}
                         onRefresh={fetchData}
                         onEquipmentClick={() => setEquipmentModalOpen(true)}
+                        onBobbinClick={handleBobbinClick}
                     />
                 </div>
 
@@ -248,6 +263,21 @@ export default function CrewEditPage() {
                     crewNumber={crew.number}
                     onSuccess={async () => {
                         setEquipmentModalOpen(false);
+                        await fetchData();
+                    }}
+                />
+
+                {/* Bobbin Modal */}
+                <CrewBobbinModal
+                    isOpen={bobbinModalOpen}
+                    onClose={() => setBobbinModalOpen(false)}
+                    crewId={crew._id}
+                    crewNumber={crew.number}
+                    materialId={bobbinModalItem?.id || null}
+                    materialCode={bobbinModalItem?.code || null}
+                    materialDescription={bobbinModalItem?.description || null}
+                    onSuccess={async () => {
+                        setBobbinModalOpen(false);
                         await fetchData();
                     }}
                 />

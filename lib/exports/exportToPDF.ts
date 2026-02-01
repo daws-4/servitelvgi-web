@@ -46,15 +46,29 @@ export function exportReportToPDF(
     case "daily_repairs":
     case "monthly_installations":
     case "monthly_repairs":
+    case "monthly_recoveries":
       columns = ["N° Abonado", "Nombre", "Dirección", "Tipo", "Estado", "Cuadrilla"];
-      const allOrders = [...(data.finalizadas || []), ...(data.asignadas || [])];
+      const allOrders: any[] = [];
+
+      // Flatten cuadrillas data
+      (data.cuadrillas || []).forEach((crew: any) => {
+        // Add completed
+        (crew.completadas || []).forEach((order: any) => {
+          allOrders.push({ ...order, statusDisplayName: "Finalizada", crewName: crew.crewName });
+        });
+        // Add not completed
+        (crew.noCompletadas || []).forEach((order: any) => {
+          allOrders.push({ ...order, statusDisplayName: "Pendiente", crewName: crew.crewName });
+        });
+      });
+
       rows = allOrders.map((order: any) => [
         order.subscriberNumber,
         order.subscriberName?.substring(0, 25) || "",
         order.address?.substring(0, 30) || "",
-        order.type === "instalacion" ? "Instalación" : "Avería",
-        order.status === "completed" ? "Finalizada" : "Asignada",
-        order.assignedTo?.name || "N/A",
+        order.type === "instalacion" ? "Instalación" : order.type === "averia" ? "Avería" : "Recuperación",
+        order.statusDisplayName,
+        order.crewName || "N/A",
       ]);
       break;
 
@@ -98,6 +112,22 @@ export function exportReportToPDF(
             item.code,
             item.description?.substring(0, 35) || "",
             item.quantity,
+          ]);
+        });
+      });
+      break;
+
+    case "crew_stock":
+      columns = ["Cuadrilla", "Código", "Descripción", "Inicial", "Final", "Dif."];
+      data.forEach((crew: any) => {
+        crew.inventory.forEach((item: any) => {
+          rows.push([
+            crew.crewName,
+            item.code,
+            item.description?.substring(0, 35) || "",
+            item.startQty,
+            item.endQty,
+            item.diff > 0 ? `+${item.diff}` : item.diff,
           ]);
         });
       });
@@ -180,9 +210,11 @@ function getReportTypeName(type: ReportType): string {
     daily_repairs: "Diario - Averías",
     monthly_installations: "Mensual - Instalaciones",
     monthly_repairs: "Mensual - Averías",
+    monthly_recoveries: "Mensual - Recuperaciones",
     inventory_report: "Inventario",
     netuno_orders: "Órdenes Netuno",
     crew_performance: "Rendimiento Cuadrillas",
+    crew_stock: "Inventario en Cuadrillas (Stock)", // Added
     crew_inventory: "Inventario Cuadrillas",
     crew_visits: "Visitas por Cuadrilla",
   };

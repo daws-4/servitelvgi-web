@@ -11,10 +11,10 @@ const toast = {
     error: (message: string) => addToast({ title: message, color: "danger" }),
 };
 
+
 import ReportFilters from "../../../components/reports/ReportFilters";
 import ReportTable from "../../../components/reports/ReportTable";
 import ExportActions from "../../../components/reports/ExportActions";
-import ReportHistoryDrawer from "../../../components/reports/ReportHistoryDrawer";
 import type { ReportType, ReportFilters as IReportFilters } from "@/types/reportTypes";
 
 export default function ReportsPage() {
@@ -22,7 +22,6 @@ export default function ReportsPage() {
     const [reportData, setReportData] = useState<any>(null);
     const [metadata, setMetadata] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
     const handleGenerateReport = async (selectedFilters: IReportFilters) => {
         setIsLoading(true);
@@ -70,13 +69,6 @@ export default function ReportsPage() {
         }
     };
 
-    const handleSelectFromHistory = (fullReport: any) => {
-        setReportData(fullReport.data);
-        setMetadata(fullReport.metadata);
-        setFilters(fullReport.filters);
-        setIsHistoryOpen(false);
-    };
-
     return (
         <div className="min-h-screen pb-8">
             <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
@@ -87,14 +79,6 @@ export default function ReportsPage() {
                         <h1 className="text-2xl font-bold text-[#0f0f0f]">Sistema de Reportes</h1>
                         <p className="text-sm text-[#bcabae] mt-1">Generación y exportación de métricas operativas</p>
                     </div>
-                    <Button
-                        variant="flat"
-                        className="bg-white text-[#3e78b2] border border-[#3e78b2]/30 shadow-sm"
-                        onPress={() => setIsHistoryOpen(true)}
-                        startContent={<i className="fa-solid fa-clock-rotate-left"></i>}
-                    >
-                        Historial Generado
-                    </Button>
                 </div>
 
                 {/* Filters Card */}
@@ -140,12 +124,7 @@ export default function ReportsPage() {
                     </div>
                 )}
 
-                {/* Drawers/Modals */}
-                <ReportHistoryDrawer
-                    isOpen={isHistoryOpen}
-                    onClose={() => setIsHistoryOpen(false)}
-                    onSelectReport={handleSelectFromHistory}
-                />
+
             </div>
         </div>
     );

@@ -7,7 +7,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Card } from "@heroui/card";
 import DateFilter from "@/components/interactiveForms/DateRangePicker"; // Asegúrate de la ruta correcta
 import type { ReportFilters as IReportFilters, ReportType } from "@/types/reportTypes";
-import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO, startOfWeek, endOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 
 interface ReportFiltersProps {
@@ -20,33 +20,46 @@ const REPORT_OPTIONS: { value: ReportType; label: string; icon: string }[] = [
     { value: "daily_repairs", label: "Diario - Averías", icon: "fa-screwdriver-wrench" },
     { value: "monthly_installations", label: "Mensual - Instalaciones", icon: "fa-calendar-check" },
     { value: "monthly_repairs", label: "Mensual - Averías", icon: "fa-calendar-xmark" },
+    { value: "monthly_recoveries", label: "Mensual - Recuperaciones", icon: "fa-recycle" },
     { value: "inventory_report", label: "Movimiento de Inventario", icon: "fa-boxes-stacked" },
     { value: "netuno_orders", label: "Órdenes Netuno Pendientes", icon: "fa-file-export" },
     { value: "crew_performance", label: "Rendimiento Cuadrillas", icon: "fa-chart-line" },
-    { value: "crew_inventory", label: "Inventario Cuadrillas", icon: "fa-clipboard-list" },
+    { value: "crew_inventory", label: "Movimientos inventario Cuadrilla", icon: "fa-clipboard-list" },
+    { value: "crew_stock", label: "Inventario en Cuadrillas", icon: "fa-boxes-packing" },
     { value: "crew_visits", label: "Visitas por Cuadrilla", icon: "fa-clipboard-check" },
 ];
 
 export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersProps) {
     const [selectedType, setSelectedType] = useState<ReportType | "">("");
     const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
-    const [selectedMonth, setSelectedMonth] = useState<string>(""); // Revertido a vacío inicial
     const [crewId, setCrewId] = useState<string>("");
     const [crews, setCrews] = useState<{ id: string; name: string }[]>([]);
 
-    // Establecer mes actual por defecto al seleccionar reporte mensual
+    // Establecer rango de fechas del mes actual para reportes mensuales y otros de rango
     useEffect(() => {
-        if (['monthly_installations', 'monthly_repairs'].includes(selectedType) && !selectedMonth) {
-            setSelectedMonth(format(new Date(), 'yyyy-MM'));
-        }
-    }, [selectedType, selectedMonth]);
+        const needsRange = [
+            'monthly_installations',
+            'monthly_repairs',
+            'monthly_recoveries',
+            'crew_visits',
+            'crew_performance',
+            'inventory_report',
+            'netuno_orders',
+            'crew_inventory',
+            'crew_stock'
+        ].includes(selectedType);
 
-    // Establecer rango de fechas del mes actual para crew_visits, crew_performance, y otros reportes de rango
-    useEffect(() => {
-        if (['crew_visits', 'crew_performance', 'inventory_report', 'netuno_orders'].includes(selectedType) && !dateRange) {
+        if (needsRange && !dateRange) {
             const now = new Date();
-            const start = startOfMonth(now);
-            const end = endOfMonth(now);
+            let start = startOfMonth(now);
+            let end = endOfMonth(now);
+
+            // Para Rendimiento de Cuadrillas, default es la semana en curso (Dom-Sab)
+            if (selectedType === 'crew_performance') {
+                start = startOfWeek(now, { weekStartsOn: 0 }); // 0 = Sunday
+                end = endOfWeek(now, { weekStartsOn: 0 });
+            }
+
             setDateRange({
                 start: format(start, 'yyyy-MM-dd'),
                 end: format(end, 'yyyy-MM-dd')
@@ -70,11 +83,9 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
         if (!selectedType) return;
 
         // Validaciones por tipo de reporte
-        const isMonthly = ['monthly_installations', 'monthly_repairs'].includes(selectedType);
         const isDaily = ['daily_installations', 'daily_repairs'].includes(selectedType);
-        const needsDate = !isDaily && !isMonthly && !['crew_inventory'].includes(selectedType);
+        const needsDate = !isDaily && !['crew_inventory'].includes(selectedType);
 
-        if (isMonthly && !selectedMonth) return;
         if (needsDate && !dateRange) return;
 
         // Preparar filtros
@@ -86,12 +97,8 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
             const today = format(new Date(), "yyyy-MM-dd");
             startDate = today;
             endDate = today;
-        } else if (isMonthly) {
-            // Monthly reports usan selectedMonth
-            startDate = selectedMonth;
-            endDate = selectedMonth;
         } else {
-            // Otros reportes usan date range
+            // Todos los demás usan date range
             startDate = dateRange?.start || format(new Date(), "yyyy-MM-dd");
             endDate = dateRange?.end || format(new Date(), "yyyy-MM-dd");
         }
@@ -113,12 +120,11 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
     const isFormValid = () => {
         if (!selectedType) return false;
 
-        const isMonthly = ['monthly_installations', 'monthly_repairs'].includes(selectedType);
         const isDaily = ['daily_installations', 'daily_repairs'].includes(selectedType);
 
         if (isDaily) return true; // Daily no requiere validación de fechas
-        if (isMonthly) return !!selectedMonth; // Monthly requiere mes seleccionado
-        if (selectedType === "crew_inventory") return true;
+        if (isDaily) return true; // Daily no requiere validación de fechas
+        if (selectedType === "crew_inventory" || selectedType === "crew_stock") return !!dateRange;
 
         return !!dateRange; // Otros requieren dateRange
     };
@@ -128,7 +134,6 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
         const valid = isFormValid();
         console.log("[FE DEBUG] Auto-gen effect triggered:", {
             selectedType,
-            selectedMonth,
             crewId,
             isValid: valid
         });
@@ -139,7 +144,7 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
             console.log("[FE DEBUG] Form invalid, skipping generation");
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedType, selectedMonth, dateRange, crewId]);
+    }, [selectedType, dateRange, crewId]);
 
     return (
         <div className="flex flex-col gap-6">
@@ -170,8 +175,8 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
                     </Select>
                 </div>
 
-                {/* Selector de Fechas - oculto para daily reports y monthly reports */}
-                {selectedType && !['daily_installations', 'daily_repairs', 'monthly_installations', 'monthly_repairs'].includes(selectedType) && (
+                {/* Selector de Fechas - oculto para daily reports */}
+                {selectedType && !['daily_installations', 'daily_repairs'].includes(selectedType) && (
                     <div className="w-full sm:w-80">
                         <DateFilter
                             label="Rango de Fechas"
@@ -194,23 +199,6 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
                                 </span>
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {/* Selector de mes/año para reportes mensuales */}
-                {selectedType && ['monthly_installations', 'monthly_repairs'].includes(selectedType) && (
-                    <div className="w-full sm:w-80">
-                        <label className="block text-xs font-semibold text-[#bcabae] uppercase mb-1 ml-1">
-                            Mes y Año
-                        </label>
-                        <input
-                            type="month"
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value)}
-                            max={format(new Date(), 'yyyy-MM')}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3e78b2] focus:border-transparent"
-                            disabled={isLoading}
-                        />
                     </div>
                 )}
 

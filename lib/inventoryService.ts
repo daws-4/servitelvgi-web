@@ -346,7 +346,7 @@ export async function assignMaterialToCrew(
  */
 export async function returnMaterialFromCrew(
   crewId: string,
-  items: { inventoryId: string; quantity: number }[],
+  items: { inventoryId: string; quantity: number; batchCode?: string }[],
   reason: string,
   sessionUser?: SessionUser
 ) {
@@ -364,60 +364,147 @@ export async function returnMaterialFromCrew(
 
     // 2. Validar y procesar cada ítem
     for (const item of items) {
-      // Buscar el ítem en el inventario de la cuadrilla
-      const itemIndex = crew.assignedInventory.findIndex(
-        (inv: any) => inv.item.toString() === item.inventoryId
-      );
+      // 2a. Manejo de Bobinas (Batch)
+      if (item.batchCode) {
+        const batch = await InventoryBatchModel.findOne({
+          batchCode: item.batchCode.toUpperCase(),
+          crew: crewId
+        }).session(session);
 
-      if (itemIndex < 0) {
-        const inventoryItem = await InventoryModel.findById(item.inventoryId);
-        throw new Error(
-          `La cuadrilla no tiene asignado el material: ${inventoryItem?.description || item.inventoryId
-          }`
+        if (!batch) {
+          throw new Error(`Bobina ${item.batchCode} no encontrada en esta cuadrilla`);
+        }
+
+        // Devolver Bobina al Almacén
+        batch.location = 'warehouse';
+        batch.crew = null;
+        // Si estaba agotada, reactivarla (aunque teóricamente si se devuelve es porque tiene algo, o se devuelve vacía)
+        if (batch.status === 'depleted' && batch.currentQuantity > 0) {
+          batch.status = 'active';
+        }
+
+        // Actualizar la cantidad de la bobina si se especifica (aunque normalmente se devuelve la bobina ENTERA con lo que le quede)
+        // Para simplificar y evitar errores, asumimos que la cantidad que viene del frontend es la cantidad ACTUAL de la bobina
+        // o si es un ajuste.
+        // Pero la lógica de "Devolver Material" suele ser "Devuelvo X cantidad".
+        // Si devuelvo UNA BOBINA, devuelvo el OBJETO.
+        // Vamos a asumir que si pasan batchCode, están devolviendo la bobina completa con su metraje actual.
+        // O si pasan cantidad, validamos.
+
+        // Opción segura: La cantidad que se devuelve se suma al Stock de Bodega (InventoryItem) 
+        // y se resta de la Cuadrilla. La Bobina en sí pasa a Bodega.
+
+        // Validar cantidad
+        if (batch.currentQuantity < item.quantity) {
+          // Es posible que el usuario quiera corregir stock?
+          // Por seguridad, error si intenta devolver más de lo que la bobina dice tener.
+          // A menos que sea un ajuste.
+          // Vamos a permitirlo pero warning? No, mejor estricto.
+          // throw new Error(`Inconsistencia: Intenta devolver ${item.quantity}m pero la bobina tiene ${batch.currentQuantity}m`);
+          // Actually, let's just trust the batch's current quantity for the transfer?
+          // No, let's use the provided quantity but ensure it matches or is less.
+        }
+
+        // Simplemente movemos la bobina. Su quantity viaja con ella.
+        // El quantity que restamos a la cuadrilla es el quantity ACTUAL de la bobina.
+        const quantityToReturn = batch.currentQuantity;
+
+        await batch.save({ session });
+
+        // 2b. Restar del inventario de la cuadrilla (TOTAL ASIGNADO)
+        // Buscamos el item padre
+        const itemIndex = crew.assignedInventory.findIndex(
+          (inv: any) => inv.item.toString() === item.inventoryId
+        );
+
+        if (itemIndex >= 0) {
+          crew.assignedInventory[itemIndex].quantity -= quantityToReturn;
+          crew.assignedInventory[itemIndex].lastUpdate = new Date();
+
+          if (crew.assignedInventory[itemIndex].quantity <= 0) {
+            crew.assignedInventory.splice(itemIndex, 1);
+          }
+        }
+
+        // 2c. Sumar al stock de bodega (InventoryItem)
+        await InventoryModel.findByIdAndUpdate(
+          item.inventoryId,
+          { $inc: { currentStock: quantityToReturn } },
+          { session }
+        );
+
+        // 2d. Historial
+        await InventoryHistoryModel.create([{
+          item: item.inventoryId,
+          batch: batch._id,
+          type: "return",
+          quantityChange: quantityToReturn,
+          reason: `Devolución de Bobina ${batch.batchCode}: ${reason}`,
+          crew: crewId,
+          performedBy: sessionUser?.userId,
+          performedByModel: sessionUser?.userModel,
+        }], { session });
+
+      } else {
+        // Lógica estándar para materiales sin batch
+
+        // Buscar el ítem en el inventario de la cuadrilla
+        const itemIndex = crew.assignedInventory.findIndex(
+          (inv: any) => inv.item.toString() === item.inventoryId
+        );
+
+        if (itemIndex < 0) {
+          const inventoryItem = await InventoryModel.findById(item.inventoryId);
+          throw new Error(
+            `La cuadrilla no tiene asignado el material: ${inventoryItem?.description || item.inventoryId
+            }`
+          );
+        }
+
+        const currentCrewQty = crew.assignedInventory[itemIndex].quantity;
+
+        // Verificar que tenga suficiente cantidad (Optimistic Check)
+        if (currentCrewQty < item.quantity) {
+          const inventoryItem = await InventoryModel.findById(item.inventoryId);
+          throw new Error(
+            `Cantidad insuficiente de ${inventoryItem?.description || "material"}. ` +
+            `Disponible: ${currentCrewQty}, ` +
+            `Solicitado: ${item.quantity}`
+          );
+        }
+
+        // 3. Restar del inventario de la cuadrilla
+        crew.assignedInventory[itemIndex].quantity -= item.quantity;
+        crew.assignedInventory[itemIndex].lastUpdate = new Date();
+
+        // Si la cantidad llega a 0, eliminar el ítem del array
+        if (crew.assignedInventory[itemIndex].quantity === 0) {
+          crew.assignedInventory.splice(itemIndex, 1);
+        }
+
+        // 4. Incrementar en el inventario de bodega
+        await InventoryModel.findByIdAndUpdate(
+          item.inventoryId,
+          { $inc: { currentStock: item.quantity } },
+          { session }
+        );
+
+        // 5. Crear registro en historial
+        await InventoryHistoryModel.create(
+          [
+            {
+              item: item.inventoryId,
+              type: "return",
+              quantityChange: item.quantity, // Positivo porque regresa al almacén
+              reason: reason,
+              crew: crewId,
+              performedBy: sessionUser?.userId,
+              performedByModel: sessionUser?.userModel,
+            },
+          ],
+          { session }
         );
       }
-
-      // Verificar que tenga suficiente cantidad
-      if (crew.assignedInventory[itemIndex].quantity < item.quantity) {
-        const inventoryItem = await InventoryModel.findById(item.inventoryId);
-        throw new Error(
-          `Cantidad insuficiente de ${inventoryItem?.description || "material"}. ` +
-          `Disponible: ${crew.assignedInventory[itemIndex].quantity}, ` +
-          `Solicitado: ${item.quantity}`
-        );
-      }
-
-      // 3. Restar del inventario de la cuadrilla
-      crew.assignedInventory[itemIndex].quantity -= item.quantity;
-      crew.assignedInventory[itemIndex].lastUpdate = new Date();
-
-      // Si la cantidad llega a 0, eliminar el ítem del array
-      if (crew.assignedInventory[itemIndex].quantity === 0) {
-        crew.assignedInventory.splice(itemIndex, 1);
-      }
-
-      // 4. Incrementar en el inventario de bodega
-      await InventoryModel.findByIdAndUpdate(
-        item.inventoryId,
-        { $inc: { currentStock: item.quantity } },
-        { session }
-      );
-
-      // 5. Crear registro en historial
-      await InventoryHistoryModel.create(
-        [
-          {
-            item: item.inventoryId,
-            type: "return",
-            quantityChange: item.quantity, // Positivo porque regresa al almacén
-            reason: reason,
-            crew: crewId,
-            performedBy: sessionUser?.userId,
-            performedByModel: sessionUser?.userModel,
-          },
-        ],
-        { session }
-      );
     }
 
     await crew.save({ session });
@@ -1233,14 +1320,30 @@ export async function updateInventory(id: string, data: any) {
 export async function deleteInventory(id: string) {
   await connectDB();
 
-  // Usar una sesión para garantizar la atomicidad si es posible, 
-  // pero aquí mantendremos la consistencia básica
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  // 1. Eliminar todas las bobinas asociadas a este ítem
-  await InventoryBatchModel.deleteMany({ item: id });
+  try {
+    // 1. Eliminar este ítem del inventario asignado de TODAS las cuadrillas
+    await CrewModel.updateMany(
+      {},
+      { $pull: { assignedInventory: { item: id } } }
+    ).session(session);
 
-  // 2. Eliminar el ítem de inventario
-  return await InventoryModel.findByIdAndDelete(id).lean();
+    // 2. Eliminar todas las bobinas asociadas a este ítem
+    await InventoryBatchModel.deleteMany({ item: id }).session(session);
+
+    // 3. Eliminar el ítem de inventario
+    const deletedItem = await InventoryModel.findByIdAndDelete(id).session(session).lean();
+
+    await session.commitTransaction();
+    return deletedItem;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 }
 
 // ============================================================================
@@ -1898,21 +2001,36 @@ export async function deleteBatch(
     // Guardar la cantidad actual para ajustar el inventario
     const currentQuantity = batch.currentQuantity;
 
-    // Si la bobina tiene cantidad restante, descontarla del inventario asegurando no negativos
+    // Si la bobina tiene cantidad restante
     if (currentQuantity > 0) {
-      const parentItem = await InventoryModel.findById(batch.item).session(session);
+      if (batch.location === 'crew' && batch.crew) {
+        // Caso A: Está en una cuadrilla -> Descontar del inventario de la cuadrilla
+        await CrewModel.updateOne(
+          { _id: batch.crew, "assignedInventory.item": batch.item },
+          { $inc: { "assignedInventory.$.quantity": -currentQuantity } }
+        ).session(session);
 
-      if (parentItem) {
-        // Calcular nuevo stock asegurando que no sea negativo
-        const newStock = Math.max(0, (parentItem.currentStock || 0) - currentQuantity);
+        // Opcional: Limpiar items con cantidad 0 o negativa (si se desea)
+        // await CrewModel.updateMany(
+        //   { _id: batch.crew },
+        //   { $pull: { assignedInventory: { quantity: { $lte: 0 } } } }
+        // ).session(session);
 
-        await InventoryModel.findByIdAndUpdate(
-          batch.item,
-          { currentStock: newStock },
-          { session }
-        );
+      } else {
+        // Caso B: Está en almacén (o undefined) -> Descontar del stock central
+        const parentItem = await InventoryModel.findById(batch.item).session(session);
+
+        if (parentItem) {
+          // Calcular nuevo stock asegurando que no sea negativo
+          const newStock = Math.max(0, (parentItem.currentStock || 0) - currentQuantity);
+
+          await InventoryModel.findByIdAndUpdate(
+            batch.item,
+            { currentStock: newStock },
+            { session }
+          );
+        }
       }
-      // Si el item padre no existe, no hacemos nada con el stock y continuamos con la eliminación de la bobina
     }
 
     // Eliminar físicamente de la base de datos
@@ -1926,7 +2044,7 @@ export async function deleteBatch(
           batch: batch._id,
           type: "adjustment",
           quantityChange: currentQuantity > 0 ? -currentQuantity : 0,
-          reason: `Bobina ${batchCode} eliminada físicamente de la base de datos${currentQuantity > 0 ? ` (${currentQuantity} metros descontados del inventario)` : ''}`,
+          reason: `Bobina ${batchCode} eliminada físicamente (${batch.location === 'crew' ? 'Descontada de cuadrilla' : 'Descontada de almacén'})`,
           performedBy: sessionUser?.userId,
           performedByModel: sessionUser?.userModel,
         },

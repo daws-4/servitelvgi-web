@@ -60,6 +60,7 @@ export interface IOrder {
     };
   }; // No aplica para recuperación
   googleFormReported?: boolean;
+  sentToNetuno?: boolean;
   certificateUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -221,6 +222,10 @@ const OrderSchema = new mongoose.Schema(
 
     // Control de reporte a Netuno
     googleFormReported: {
+      type: Boolean,
+      default: false,
+    },
+    sentToNetuno: {
       type: Boolean,
       default: false,
     },

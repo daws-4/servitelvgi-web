@@ -424,6 +424,10 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
 
     if (response.ok) {
       console.log(`✅ Webhook sent to n8n for order ${order.ticket_id || id}. Status: ${response.status}`);
+
+      // Marcar como enviado a Netuno
+      await OrderModel.findByIdAndUpdate(id, { $set: { sentToNetuno: true } });
+
       return { success: true, status: response.status };
     } else {
       const errorText = await response.text();

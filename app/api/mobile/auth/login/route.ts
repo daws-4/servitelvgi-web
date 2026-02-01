@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     // Find installer by username
     const installer = await InstallerModel.findOne({ username }).exec();
-    
+
     if (!installer) {
       return NextResponse.json(
         { message: "Usuario o contraseña inválidos" },
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     // Check if installer is active
     if (installer.status !== "active") {
       return NextResponse.json(
-        { 
+        {
           message: "Su cuenta está inactiva. Contacte al administrador.",
           code: "INSTALLER_INACTIVE"
         },
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       const crew = await CrewModel.findById(installer.currentCrew)
         .select("number")
         .lean() as any;
-      
+
       if (crew) {
         crewData = {
           _id: crew._id.toString(),
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create JWT token (30 days for mobile apps)
+    // Create JWT token (8 hours for mobile apps)
     const tokenPayload: InstallerTokenPayload = {
       sub: installer._id.toString(),
       _id: installer._id.toString(),
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     const token = jwt.sign(
       tokenPayload,
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "8h" }
     );
 
     // Return token in response body (not in cookies for mobile)

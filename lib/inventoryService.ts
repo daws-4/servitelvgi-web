@@ -8,6 +8,7 @@ import CrewModel from "@/models/Crew";
 import InventoryHistoryModel from "@/models/InventoryHistory";
 import InventorySnapshotModel from "@/models/InventorySnapshot";
 import InventoryBatchModel from "@/models/InventoryBatch";
+import OrderModel from "@/models/Order";
 import { SessionUser } from "@/lib/authHelpers";
 import mongoose from "mongoose";
 
@@ -545,6 +546,12 @@ export async function processOrderUsage(
       throw new Error(`Cuadrilla no encontrada: ${crewId}`);
     }
 
+    // Get order to determine if we should show ticket_id or order_id
+    const orderObj = await OrderModel.findById(orderId).select("ticket_id").session(session).lean() as any;
+    const orderRef = orderObj?.ticket_id
+      ? `ticket ${orderObj.ticket_id}`
+      : `orden ${orderId}`;
+
     // Procesar cada material usado
     for (const material of materials) {
       // Si tiene batchCode, es una bobina - manejar diferente
@@ -601,7 +608,7 @@ export async function processOrderUsage(
               batch: batch._id,
               type: "usage_order",
               quantityChange: -material.quantity,
-              reason: `Bobina ${material.batchCode}: ${material.quantity}m usados en orden ${orderId}`,
+              reason: `Bobina ${material.batchCode}: ${material.quantity}m usados en ${orderRef}`,
               crew: crewId,
               order: orderId,
               performedBy: sessionUser?.userId,
@@ -745,7 +752,7 @@ export async function processOrderUsage(
               item: material.inventoryId,
               type: "usage_order",
               quantityChange: -material.quantity,
-              reason: `Usado en orden ${orderId}`,
+              reason: `Usado en ${orderRef}`,
               crew: crewId,
               order: orderId,
               performedBy: sessionUser?.userId,

@@ -13,11 +13,13 @@ export async function getInventoryHistories(filters: {
   endDate?: string;
   crewId?: string;
   itemId?: string;
+  page?: number;
+  limit?: number;
 } = {}) {
   await connectDB();
-  
+
   const query: any = {};
-  
+
   // Filtro por rango de fechas
   if (filters.startDate || filters.endDate) {
     query.createdAt = {};
@@ -31,18 +33,32 @@ export async function getInventoryHistories(filters: {
       query.createdAt.$lte = endDate;
     }
   }
-  
+
   // Filtros adicionales
   if (filters.crewId) query.crew = filters.crewId;
   if (filters.itemId) query.item = filters.itemId;
-  
-  const results = await InventoryHistoryModel.find(query)
+
+  // Pagination logic
+  const page = filters.page || 1;
+  const limit = filters.limit || 0; // 0 means no limit (all records)
+  const skip = (page - 1) * limit;
+
+  // Get total count for pagination metadata
+  const total = await InventoryHistoryModel.countDocuments(query);
+
+  let queryBuilder = InventoryHistoryModel.find(query)
     .populate("item", "code description")
     .populate("crew", "name")
-    .populate("order", "subscriberNumber")
-    .sort({ createdAt: -1 })
-    .lean();
-  
+    .populate("order", "subscriberNumber ticket_id")
+    .sort({ createdAt: -1 });
+
+  // Apply limit and skip only if limit is set
+  if (limit > 0) {
+    queryBuilder = queryBuilder.skip(skip).limit(limit);
+  }
+
+  const results = await queryBuilder.lean();
+
   // Manually populate performedBy based on performedByModel
   const populatedResults = await Promise.all(
     results.map(async (doc: any) => {
@@ -67,8 +83,16 @@ export async function getInventoryHistories(filters: {
       return doc;
     })
   );
-  
-  return populatedResults;
+
+  return {
+    data: populatedResults,
+    pagination: {
+      total,
+      page,
+      limit,
+      pages: limit > 0 ? Math.ceil(total / limit) : 1
+    }
+  };
 }
 
 export async function getInventoryHistoryById(id: string) {
@@ -76,11 +100,11 @@ export async function getInventoryHistoryById(id: string) {
   const doc = await InventoryHistoryModel.findById(id)
     .populate("item", "code description")
     .populate("crew", "name")
-    .populate("order", "subscriberNumber")
+    .populate("order", "subscriberNumber ticket_id")
     .lean();
-  
+
   if (!doc) return null;
-  
+
   // Manually populate performedBy
   const result: any = doc;
   if (result.performedBy && result.performedByModel) {
@@ -100,7 +124,7 @@ export async function getInventoryHistoryById(id: string) {
       console.error('Error populating performedBy:', error);
     }
   }
-  
+
   return result;
 }
 

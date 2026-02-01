@@ -12,7 +12,8 @@ Aunque el sistema ahora soporta **"Cálculo Inverso"** para reportes históricos
 El endpoint para generar snapshots ya está implementado en la API del proyecto:
 - **Ruta**: `/api/cron/daily-snapshot`
 - **Método**: `POST`
-- **Seguridad**: Token Bearer (Custom Header)
+- **Seguridad**: Header `Authorization` con el valor de `CRON_SECRET`.
+
 
 ---
 
@@ -23,7 +24,7 @@ Asegúrate de que tu entorno de producción (Vercel, VPS, etc.) tenga definida l
 **Archivo `.env.local` o Configuración de Vercel/Hosting:**
 ```env
 CRON_SECRET=tusecreto_super_seguro_v2026
-```.
+```
 > ⚠️ **Nota:** Cambia el valor por una contraseña fuerte y guárdala. La necesitarás para n8n.
 
 ---
@@ -59,6 +60,37 @@ Es buena práctica conectar un nodo de Slack, Telegram o Email después del HTTP
 
 ---
 
+## 🧪 Cómo Probar Localmente (Explicación de Ngrok)
+
+Si quieres probar que N8n puede disparar el snapshot en tu **computadora local** antes de subir el código a producción, necesitas una herramienta llamada **Ngrok**.
+
+### ¿Qué es Ngrok?
+Tu computadora local (`localhost:3000`) es privada; N8n (que está en la nube) no puede "verla". Ngrok crea un **túnel seguro** temporal que le da a tu localhost una dirección web pública accesible desde internet.
+
+### Pasos para probar:
+
+1.  **Ejecutar Ngrok**:
+    Es recomendable usar `npx` para evitar problemas de instalación. Ejecuta en tu terminal:
+    ```bash
+    npx ngrok http 3000
+    ```
+    > **Nota:** Si es la primera vez, te pedirá autenticarte. Regístrate gratis en [ngrok.com](https://dashboard.ngrok.com/signup), obtén tu **Authtoken** y ejecuta el comando que te indiquen (ej: `npx ngrok config add-authtoken <TOKEN>`).
+
+2.  **Copiar la URL pública**:
+    Verás una interfaz en tu terminal. Busca la línea "Forwarding". Copia la URL que se ve así: `https://a1b2-c3d4.ngrok-free.app`.
+
+3.  **Configurar N8n para la prueba**:
+    - En el nodo **HTTP Request**, cambia temporalmente la URL:
+      - De: `https://tudominio.com/api/cron/daily-snapshot`
+      - A: `https://a1b2-c3d4.ngrok-free.app/api/cron/daily-snapshot`
+    - Ejecuta el nodo.
+
+4.  **Verificar**:
+    - Deberías ver la petición llegar a tu terminal local.
+    - El snapshot se creará en tu MongoDB local (si estás conectado a local) o en la nube (si tu `.env.local` apunta a Atlas).
+
+---
+
 ## ✅ Paso 3: Verificación y Pruebas
 
 Antes de confiar en la ejecución automática, realiza una prueba manual:
@@ -82,6 +114,7 @@ Antes de confiar en la ejecución automática, realiza una prueba manual:
 
 | Error | Causa Probable | Solución |
 |-------|----------------|----------|
+| **Se cierra la terminal de Ngrok** | Falta el Authtoken o error de instalación. | Usa `npx ngrok http 3000`. Si falla, ve a ngrok.com y configura tu token con `npx ngrok config add-authtoken <TOKEN>`. |
 | **401 Unauthorized** | El header `Authorization` no coincide con `CRON_SECRET`. | Verifica que el token sea idéntico en n8n y en las variables de entorno del servidor. |
 | **500 Internal Server Error** | Error de conexión a BD o variable no configurada. | Revisa los logs del servidor (Vercel/PM2). Asegura que `MONGODB_URI` y `CRON_SECRET` estén cargados. |
 | **Timeouts** | La base de datos es muy grande y el snapshot tarda > 10s. | Aumenta el timeout en el nodo HTTP Request de n8n y en la configuración de la función serverless (si usas Vercel Pro). |

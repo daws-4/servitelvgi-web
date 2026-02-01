@@ -45,8 +45,8 @@ const InventorySnapshotSchema = new mongoose.Schema(
           ref: "Crew",
           required: true,
         },
-        crewName: {
-          type: String,
+        crewNumber: {
+          type: String, // String to handle potential formatting, or Number if strict
           required: true,
         },
         items: [

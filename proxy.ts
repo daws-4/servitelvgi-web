@@ -35,12 +35,13 @@ export function proxy(req: NextRequest) {
   const isRecoveryPath = pathname.startsWith("/recuperar-contrasena");
   const isCreateAdminPath = pathname.startsWith("/create-admin");
   const isPublicApkPage = pathname === "/apk" || pathname === "/apk/";
+  const isCronApi = pathname.startsWith("/api/cron");
 
   if (!token) {
     // No session: allow only the login page, auth APIs, agent webhook API, and public routes.
     // External services (N8N, webhooks) can call /api/agent/* without authentication.
     // Public APK download page and public APIs are accessible to everyone.
-    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isPublicApi || isRecoveryPath || isPublicApkPage) {
+    if (isLoginPath || isAuthApi || isAgentApi || isMobileApi || isPublicApi || isRecoveryPath || isPublicApkPage || isCronApi) {
       return NextResponse.next();
     }
 

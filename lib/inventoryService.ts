@@ -1133,20 +1133,24 @@ export async function createDailySnapshot() {
       .filter((crew: any) => crew.assignedInventory && crew.assignedInventory.length > 0)
       .map((crew: any) => ({
         crew: crew._id,
-        crewNumber: crew.number,
-        items: crew.assignedInventory.map((inv: any) => ({
-          item: inv.item._id,
-          quantity: inv.quantity,
-          code: inv.item.code,
-          description: inv.item.description,
-        })),
+        crewNumber: crew.number ? crew.number.toString() : "0",
+        items: (crew.assignedInventory || [])
+          .filter((inv: any) => inv.item) // Filter out orphaned items (null after populate)
+          .map((inv: any) => ({
+            item: inv.item._id,
+            quantity: inv.quantity,
+            code: inv.item.code,
+            description: inv.item.description,
+          })),
       }));
 
     // 3. Calcular metadatos
     const totalItems = new Set([
       ...warehouseItems.map((i: any) => i._id.toString()),
       ...crews.flatMap((c: any) =>
-        (c.assignedInventory || []).map((i: any) => i.item.toString())
+        (c.assignedInventory || [])
+          .filter((i: any) => i.item) // Filter out orphaned items
+          .map((i: any) => i.item._id.toString()) // Use ._id because it is populated
       ),
     ]).size;
 

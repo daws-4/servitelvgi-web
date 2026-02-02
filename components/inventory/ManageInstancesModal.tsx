@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Modal,
     ModalContent,
@@ -75,6 +75,11 @@ export const ManageInstancesModal: React.FC<ManageInstancesModalProps> = ({
         notes: "",
     });
 
+    // Search and Scanner State
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const scannerRef = useRef<any>(null);
+
     const fetchInstances = async () => {
         setLoading(true);
         try {
@@ -102,12 +107,26 @@ export const ManageInstancesModal: React.FC<ManageInstancesModalProps> = ({
     }, [isOpen]);
 
     useEffect(() => {
-        if (statusFilter === "all") {
-            setFilteredInstances(instances);
-        } else {
-            setFilteredInstances(instances.filter((inst) => inst.status === statusFilter));
+        let result = instances;
+
+        // Filter by status
+        if (statusFilter !== "all") {
+            result = result.filter((inst) => inst.status === statusFilter);
         }
-    }, [instances, statusFilter]);
+
+        // Filter by search query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(
+                (inst) =>
+                    inst.uniqueId.toLowerCase().includes(query) ||
+                    inst.serialNumber?.toLowerCase().includes(query) ||
+                    inst.macAddress?.toLowerCase().includes(query)
+            );
+        }
+
+        setFilteredInstances(result);
+    }, [instances, statusFilter, searchQuery]);
 
     const handleAddInstance = async () => {
         if (!newInstanceForm.uniqueId.trim()) {
@@ -151,6 +170,70 @@ export const ManageInstancesModal: React.FC<ManageInstancesModalProps> = ({
         }
     };
 
+    // Barcode Scanner Handlers
+    const startScanner = async () => {
+        setIsScannerOpen(true);
+
+        // Dynamically import html5-qrcode
+        const { Html5Qrcode } = await import('html5-qrcode');
+
+        // Wait for next tick to ensure DOM is ready
+        setTimeout(() => {
+            const html5QrCode = new Html5Qrcode("barcode-reader-instance");
+            scannerRef.current = html5QrCode;
+
+            // Request permission explicitly first
+            Html5Qrcode.getCameras().then((devices) => {
+                if (devices && devices.length) {
+                    return html5QrCode.start(
+                        { facingMode: "environment" },
+                        {
+                            fps: 10,
+                            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                                const minEdgePercentage = 0.7;
+                                const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
+                                const boxSize = Math.floor(minDimension * minEdgePercentage);
+                                return { width: boxSize, height: boxSize };
+                            },
+                            aspectRatio: 1.0
+                        },
+                        (decodedText) => {
+                            setSearchQuery(decodedText);
+                            stopScanner();
+                        },
+                        (errorMessage) => {
+                            // ignore
+                        }
+                    );
+                } else {
+                    throw new Error("No se detectaron cámaras.");
+                }
+            }).catch((err: unknown) => {
+                console.error("Unable to start scanner:", err);
+                let errorMessage = "No se pudo iniciar la cámara.";
+                if (!window.isSecureContext) {
+                    errorMessage = "La cámara requiere HTTPS o localhost.";
+                }
+                setError(errorMessage);
+                setIsScannerOpen(false);
+            });
+        }, 100);
+    };
+
+    const stopScanner = () => {
+        if (scannerRef.current) {
+            scannerRef.current.stop().then(() => {
+                scannerRef.current = null;
+                setIsScannerOpen(false);
+            }).catch((err: unknown) => {
+                console.error("Error stopping scanner:", err);
+                setIsScannerOpen(false);
+            });
+        } else {
+            setIsScannerOpen(false);
+        }
+    };
+
     const handleDeleteInstance = async (uniqueId: string) => {
         if (!confirm(`¿Eliminar la instancia ${uniqueId}?`)) return;
 
@@ -184,6 +267,15 @@ export const ManageInstancesModal: React.FC<ManageInstancesModalProps> = ({
             macAddress: "",
             notes: "",
         });
+        setError("");
+        stopScanner();
+        setNewInstanceForm({
+            uniqueId: "",
+            serialNumber: "",
+            macAddress: "",
+            notes: "",
+        });
+        setSearchQuery("");
         setError("");
         onClose();
     };
@@ -259,6 +351,57 @@ export const ManageInstancesModal: React.FC<ManageInstancesModalProps> = ({
                             Añadir Instancia
                         </FormButton>
                     </div>
+
+                    {/* Buscador y Escáner */}
+                    <div className="mb-4 flex gap-2">
+                        <div className="flex-1 relative">
+                            <FormInput
+                                placeholder="Buscar por ID, Serie o MAC..."
+                                value={searchQuery}
+                                onValueChange={setSearchQuery}
+                                startContent={<i className="fa-solid fa-search text-neutral/50"></i>}
+                                size="sm"
+                            />
+                        </div>
+                        <FormButton
+                            size="sm"
+                            onPress={isScannerOpen ? stopScanner : startScanner}
+                            variant={isScannerOpen ? "flat" : "secondary"}
+                            color={isScannerOpen ? "danger" : "default"}
+                            className="w-12 px-0 min-w-12"
+                            title={isScannerOpen ? "Detener cámara" : "Escanear código"}
+                        >
+                            <i className={`fa-solid ${isScannerOpen ? 'fa-stop' : 'fa-qrcode'}`}></i>
+                        </FormButton>
+                    </div>
+
+                    {/* Contenedor del escáner - Modal Overlay */}
+                    {isScannerOpen && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 relative">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-bold text-dark">Escanear Código</h3>
+                                    <button
+                                        onClick={stopScanner}
+                                        className="text-neutral hover:text-dark transition-colors"
+                                    >
+                                        <i className="fa-solid fa-times text-xl"></i>
+                                    </button>
+                                </div>
+
+                                <div className="mb-4">
+                                    <div id="barcode-reader-instance" className="w-full rounded-lg overflow-hidden border-2 border-blue-500 min-h-[300px] bg-black"></div>
+                                </div>
+
+                                <p className="text-xs text-neutral/70 text-center mb-2">
+                                    Si el navegador solicita permiso de cámara, por favor acéptalo.
+                                </p>
+                                <p className="text-sm text-neutral text-center">
+                                    Coloca el código dentro del cuadro para escanearlo
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Formulario de añadir */}
                     {showAddForm && (

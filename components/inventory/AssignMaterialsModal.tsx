@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Modal,
     ModalContent,
@@ -50,6 +50,11 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
     const [selectedEquipmentId, setSelectedEquipmentId] = useState("");
     const [availableInstances, setAvailableInstances] = useState<any[]>([]);
     const [selectedInstanceIds, setSelectedInstanceIds] = useState<Set<string>>(new Set());
+
+    // Barcode Scanner State
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const scannerRef = useRef<any>(null);
 
     // Fetch crews, inventory items and bobbins
     useEffect(() => {
@@ -128,6 +133,76 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
         }
     };
 
+    // Barcode Scanner Handlers
+    const startScanner = async () => {
+        setIsScannerOpen(true);
+
+        // Dynamically import html5-qrcode
+        const { Html5Qrcode } = await import('html5-qrcode');
+
+        // Wait for next tick to ensure DOM is ready
+        setTimeout(() => {
+            const html5QrCode = new Html5Qrcode("barcode-reader-assign");
+            scannerRef.current = html5QrCode;
+
+            // Request permission explicitly first
+            Html5Qrcode.getCameras().then((devices) => {
+                if (devices && devices.length) {
+                    return html5QrCode.start(
+                        { facingMode: "environment" },
+                        {
+                            fps: 10,
+                            qrbox: (viewfinderWidth, viewfinderHeight) => {
+                                const minEdgePercentage = 0.7;
+                                const minDimension = Math.min(viewfinderWidth, viewfinderHeight);
+                                const boxSize = Math.floor(minDimension * minEdgePercentage);
+                                return { width: boxSize, height: boxSize };
+                            },
+                            aspectRatio: 1.0
+                        },
+                        (decodedText) => {
+                            // Feedback: Populate search query so user sees what was scanned
+                            setSearchQuery(decodedText);
+
+                            // Attempt to toggle instance
+                            const found = handleToggleInstance(decodedText);
+
+                            // Stop scanner after successful scan
+                            stopScanner();
+                        },
+                        (errorMessage) => {
+                            // ignore
+                        }
+                    );
+                } else {
+                    throw new Error("No se detectaron cámaras.");
+                }
+            }).catch((err: unknown) => {
+                console.error("Unable to start scanner:", err);
+                let errorMessage = "No se pudo iniciar la cámara.";
+                if (!window.isSecureContext) {
+                    errorMessage = "La cámara requiere HTTPS o localhost.";
+                }
+                setError(errorMessage);
+                setIsScannerOpen(false);
+            });
+        }, 100);
+    };
+
+    const stopScanner = () => {
+        if (scannerRef.current) {
+            scannerRef.current.stop().then(() => {
+                scannerRef.current = null;
+                setIsScannerOpen(false);
+            }).catch((err: unknown) => {
+                console.error("Error stopping scanner:", err);
+                setIsScannerOpen(false);
+            });
+        } else {
+            setIsScannerOpen(false);
+        }
+    };
+
     const handleAddItem = () => {
         if (!selectedItemId || !quantity || Number(quantity) <= 0) {
             setError("Selecciona un ítem y cantidad válida");
@@ -201,14 +276,27 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
         setError("");
     };
 
-    const handleToggleInstance = (instanceId: string) => {
-        const newSelection = new Set(selectedInstanceIds);
-        if (newSelection.has(instanceId)) {
-            newSelection.delete(instanceId);
-        } else {
-            newSelection.add(instanceId);
+    const handleToggleInstance = (instanceId: string): boolean => {
+        const query = instanceId.trim().toLowerCase();
+
+        const instance = availableInstances.find(i =>
+            i.uniqueId.toLowerCase() === query ||
+            (i.serialNumber && i.serialNumber.toLowerCase() === query) ||
+            (i.macAddress && i.macAddress.toLowerCase() === query)
+        );
+
+        if (instance) {
+            const targetId = instance.uniqueId;
+            const newSelection = new Set(selectedInstanceIds);
+            if (newSelection.has(targetId)) {
+                newSelection.delete(targetId);
+            } else {
+                newSelection.add(targetId);
+            }
+            setSelectedInstanceIds(newSelection);
+            return true;
         }
-        setSelectedInstanceIds(newSelection);
+        return false;
     };
 
     const handleAddEquipment = () => {
@@ -313,6 +401,7 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
             setError("");
             setSelectedCrewId("");
             setItems([]);
+            stopScanner();
             onClose();
         }
     };
@@ -503,6 +592,58 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                                     ))}
                                 </Autocomplete>
 
+                                {/* Search and Scanner Controls */}
+                                {selectedEquipmentId && (
+                                    <div className="flex gap-2 mb-3">
+                                        <div className="flex-1">
+                                            <FormInput
+                                                placeholder="Buscar por ID, Serie o MAC..."
+                                                value={searchQuery}
+                                                onValueChange={setSearchQuery}
+                                                startContent={<i className="fa-solid fa-search text-neutral/50"></i>}
+                                                size="sm"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={startScanner}
+                                            className="px-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center min-w-[48px]"
+                                            disabled={loading || isScannerOpen}
+                                            title="Escanear con cámara"
+                                        >
+                                            <i className="fa-solid fa-qrcode text-lg"></i>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Scanner Modal Overlay */}
+                                {isScannerOpen && (
+                                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                                        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 relative">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="text-lg font-bold text-dark">Escanear Código</h3>
+                                                <button
+                                                    onClick={stopScanner}
+                                                    className="text-neutral hover:text-dark transition-colors"
+                                                >
+                                                    <i className="fa-solid fa-times text-xl"></i>
+                                                </button>
+                                            </div>
+
+                                            <div className="mb-4">
+                                                <div id="barcode-reader-assign" className="w-full rounded-lg overflow-hidden border-2 border-blue-500 min-h-[300px] bg-black"></div>
+                                            </div>
+
+                                            <p className="text-xs text-neutral/70 text-center mb-2">
+                                                Si el navegador solicita permiso de cámara, por favor acéptalo.
+                                            </p>
+                                            <p className="text-sm text-neutral text-center">
+                                                Coloca el código dentro del cuadro para escanearlo
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Show instances when equipment is selected */}
                                 {selectedEquipmentId && availableInstances.length > 0 && (
                                     <div className="mt-2 max-h-48 overflow-y-auto border border-purple-200 rounded-lg p-3 bg-white">
@@ -515,34 +656,44 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
                                             </div>
                                         ) : (
                                             <div className="space-y-2">
-                                                {availableInstances.map((instance) => (
-                                                    <label
-                                                        key={instance.uniqueId}
-                                                        className="flex items-start gap-2 p-2 hover:bg-purple-50 rounded cursor-pointer"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={selectedInstanceIds.has(instance.uniqueId)}
-                                                            onChange={() => handleToggleInstance(instance.uniqueId)}
-                                                            className="mt-1"
-                                                        />
-                                                        <div className="flex-1 text-sm">
-                                                            <div className="font-semibold text-purple-700">
-                                                                {instance.uniqueId}
+                                                {availableInstances
+                                                    .filter(instance => {
+                                                        if (!searchQuery.trim()) return true;
+                                                        const query = searchQuery.toLowerCase();
+                                                        return (
+                                                            instance.uniqueId.toLowerCase().includes(query) ||
+                                                            (instance.serialNumber && instance.serialNumber.toLowerCase().includes(query)) ||
+                                                            (instance.macAddress && instance.macAddress.toLowerCase().includes(query))
+                                                        );
+                                                    })
+                                                    .map((instance) => (
+                                                        <label
+                                                            key={instance.uniqueId}
+                                                            className="flex items-start gap-2 p-2 hover:bg-purple-50 rounded cursor-pointer"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedInstanceIds.has(instance.uniqueId)}
+                                                                onChange={() => handleToggleInstance(instance.uniqueId)}
+                                                                className="mt-1"
+                                                            />
+                                                            <div className="flex-1 text-sm">
+                                                                <div className="font-semibold text-purple-700">
+                                                                    {instance.uniqueId}
+                                                                </div>
+                                                                {instance.serialNumber && (
+                                                                    <div className="text-xs text-neutral">
+                                                                        SN: {instance.serialNumber}
+                                                                    </div>
+                                                                )}
+                                                                {instance.macAddress && (
+                                                                    <div className="text-xs text-neutral">
+                                                                        MAC: {instance.macAddress}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            {instance.serialNumber && (
-                                                                <div className="text-xs text-neutral">
-                                                                    SN: {instance.serialNumber}
-                                                                </div>
-                                                            )}
-                                                            {instance.macAddress && (
-                                                                <div className="text-xs text-neutral">
-                                                                    MAC: {instance.macAddress}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </label>
-                                                ))}
+                                                        </label>
+                                                    ))}
                                             </div>
                                         )}
                                     </div>

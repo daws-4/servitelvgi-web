@@ -208,7 +208,7 @@ export const ManageInstancesModal: React.FC<ManageInstancesModalProps> = ({
         >
             <ModalContent>
                 <ModalHeader className="flex flex-col gap-2 border-b border-neutral/10 bg-gray-50">
-                    <h3 className="text-lg font-bold text-dark">Gestionar Instancias</h3>
+                    <h3 className="text-lg font-bold text-dark">Gestión de Instancias</h3>
                     <p className="text-sm text-neutral font-normal">{itemDescription}</p>
 
                     {/* Estadísticas */}
@@ -335,9 +335,9 @@ export const ManageInstancesModal: React.FC<ManageInstancesModalProps> = ({
                             <p>No hay instancias {statusFilter !== "all" ? `con estado "${statusFilterOptions.find(o => o.key === statusFilter)?.label}"` : ""}</p>
                         </div>
                     ) : (
-                        <div className="border rounded-lg overflow-hidden">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-100 text-dark font-semibold">
+                        <div className="border rounded-lg overflow-auto max-h-[60vh]">
+                            <table className="w-full text-sm relative">
+                                <thead className="bg-gray-100 text-dark font-semibold sticky top-0 z-10">
                                     <tr>
                                         <th className="px-4 py-3 text-left">ID Único</th>
                                         <th className="px-4 py-3 text-left">Serial / MAC</th>

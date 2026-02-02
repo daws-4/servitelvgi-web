@@ -123,6 +123,22 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                             <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Puertos Restantes:</span>
                             <span className="font-medium text-[10px]">{data.remainingPorts !== undefined ? data.remainingPorts : 'N/A'}</span>
                         </div>
+                        {/* Etiqueta Info */}
+                        <div className="grid grid-cols-2 gap-2 mt-1 pt-1" style={{ borderTop: `1px dashed ${colors.gray200}` }}>
+                            <div>
+                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Color Etiqueta:</span>
+                                <span className="font-medium text-[10px] capitalize">
+                                    {data.etiqueta?.color === 'verde' ? '🟢 Verde' :
+                                        data.etiqueta?.color === 'rojo' ? '🔴 Rojo' :
+                                            data.etiqueta?.color === 'azul' ? '🔵 Azul' :
+                                                data.etiqueta?.color || 'N/A'}
+                                </span>
+                            </div>
+                            <div>
+                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Nº Etiqueta:</span>
+                                <span className="font-medium text-[10px]">{data.etiqueta?.numero || 'N/A'}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

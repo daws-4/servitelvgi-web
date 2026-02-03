@@ -39,12 +39,46 @@ export async function GET(request: Request) {
     const assignedTo = url.searchParams.get("assignedTo");
     const status = url.searchParams.get("status");
     const type = url.searchParams.get("type");
+    const updatedAfter = url.searchParams.get("updatedAfter");
+    const search = url.searchParams.get("search");
 
     if (assignedTo) filters.assignedTo = assignedTo;
     if (status) filters.status = status;
     if (type) filters.type = type;
 
-    const items = await getOrders(filters);
+    // Search logic takes precedence over date filter for "Global Search"
+    if (search) {
+      const searchRegex = { $regex: search, $options: 'i' };
+      filters.$or = [
+        { subscriberName: searchRegex },
+        { subscriberNumber: searchRegex },
+        { ticket_id: searchRegex }
+      ];
+      // Note: We deliberately do NOT apply updatedAfter if searching, 
+      // to allow finding old orders.
+    } else if (updatedAfter) {
+      filters.updatedAt = { $gte: new Date(updatedAfter) };
+    }
+
+    // Optimization: if updatedAfter is used (typically mobile sync), limit fields
+    // If searching, we also want optimized fields but make sure we return what's needed
+    const projection = (updatedAfter || search) ? {
+      _id: 1,
+      subscriberNumber: 1,
+      subscriberName: 1,
+      status: 1,
+      type: 1,
+      address: 1,
+      city: 1,
+      createdAt: 1,
+      updatedAt: 1,
+      assignedTo: 1,
+      ticket_id: 1,
+      coordinates: 1,
+      priority: 1
+    } : null;
+
+    const items = await getOrders(filters, projection);
     return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     console.error("Error fetching orders:", err);

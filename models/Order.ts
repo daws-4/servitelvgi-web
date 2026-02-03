@@ -68,6 +68,8 @@ export interface IOrder {
   powerNap?: string;
   powerRoseta?: string;
   remainingPorts?: number;
+  serialNap?: string;
+  usedPort?: string;
   etiqueta?: {
     color: "verde" | "rojo" | "azul";
     numero: number;
@@ -141,6 +143,8 @@ const OrderSchema = new mongoose.Schema(
     powerNap: { type: String },
     powerRoseta: { type: String },
     remainingPorts: { type: Number },
+    serialNap: { type: String },
+    usedPort: { type: String },
     servicesToInstall: {
       type: [String], // Para instalación/avería
     },

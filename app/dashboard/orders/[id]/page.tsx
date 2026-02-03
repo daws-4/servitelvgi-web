@@ -80,6 +80,8 @@ export default function OrderEditPage() {
                         remainingPorts: order.remainingPorts || undefined,
                         etiqueta: order.etiqueta || undefined,
                         sentToNetuno: order.sentToNetuno || false,
+                        serialNap: order.serialNap || '',
+                        usedPort: order.usedPort || '',
                     };
 
                     setOrderData(formData);
@@ -111,6 +113,8 @@ export default function OrderEditPage() {
             remainingPorts: data.remainingPorts,
             phones: data.phones.split(',').map(p => p.trim()).filter(p => p),
             servicesToInstall: data.servicesToInstall.split(',').map(s => s.trim()).filter(s => s),
+            serialNap: data.serialNap,
+            usedPort: data.usedPort,
         });
 
         if (response.status === 200) {

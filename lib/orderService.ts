@@ -71,9 +71,9 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
 }
 
 // Función reutilizable para LISTAR ordenes
-export async function getOrders(filters = {}) {
+export async function getOrders(filters = {}, projection: any = null) {
   await connectDB();
-  return await OrderModel.find(filters)
+  return await OrderModel.find(filters, projection)
     .populate('assignedTo', 'number')
     .sort({ createdAt: -1 })
     .lean();
@@ -402,7 +402,15 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
       }
       // Regular material -> code as key, quantity as value
       else {
-        payload[code] = quantity;
+        // Ensure code is trimmed to avoid key mismatch
+        let cleanCode = code.trim();
+
+        // Fix specific known issue with Rj-45 where DB might differ from Spreadsheet expectation
+        if (cleanCode.includes('805-2069')) {
+          cleanCode = 'Rj-45 (805-2069)';
+        }
+
+        payload[cleanCode] = quantity;
       }
     });
   }

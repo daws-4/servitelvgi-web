@@ -69,6 +69,8 @@ export interface OrderEditData {
     powerNap?: string;
     powerRoseta?: string;
     remainingPorts?: number;
+    serialNap?: string;
+    usedPort?: string;
     etiqueta?: {
         color: "verde" | "rojo" | "azul";
         numero: number;
@@ -287,6 +289,20 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                             value={formData.node}
                             onValueChange={(value) => handleInputChange('node', value)}
                         />
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormInput
+                                label="Serial NAP"
+                                value={formData.serialNap || ''}
+                                onValueChange={(value) => handleInputChange('serialNap', value)}
+                                placeholder="Ej: NAP-001"
+                            />
+                            <FormInput
+                                label="Puerto Usado"
+                                value={formData.usedPort || ''}
+                                onValueChange={(value) => handleInputChange('usedPort', value)}
+                                placeholder="Ej: 3"
+                            />
+                        </div>
                         <div className="grid grid-cols-2 gap-4">
                             <FormInput
                                 label="Potencia Nap"

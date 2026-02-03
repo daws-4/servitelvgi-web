@@ -32,7 +32,8 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
     return (
         <div ref={ref} className="p-4 w-[800px] mx-auto font-sans" style={{ backgroundColor: colors.white, color: colors.black }}>
             {/* HEADER */}
-            <div className="flex justify-between items-start pb-2 mb-3" style={{ borderBottom: `2px solid ${colors.primary}` }}>
+            <div className="flex justify-between items-center pb-2 mb-3" style={{ borderBottom: `2px solid ${colors.primary}` }}>
+                {/* LEFT: LOGO */}
                 <div className="flex items-center gap-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -42,14 +43,16 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                         height={126}
                         style={{ objectFit: 'contain' }}
                     />
-                    {/* <div>
-                        <h1 className="text-xl font-bold tracking-wider" style={{ color: colors.primary }}>NETUNO</h1>
-                        <p className="text-[10px] uppercase tracking-widest" style={{ color: colors.gray500 }}>Telecomunicaciones</p>
-                    </div> */}
                 </div>
-                <div className="text-right">
+
+                {/* CENTER: TITLE & ORDER INFO */}
+                <div className="text-center absolute left-1/2 transform -translate-x-1/2">
                     <h2 className="text-base font-bold" style={{ color: colors.gray800 }}>FORMATO DE FINALIZACIÓN</h2>
                     <p className="text-xs" style={{ color: colors.gray600 }}>Orden #{data.ticket_id || data.subscriberNumber}</p>
+                </div>
+
+                {/* RIGHT: METADATA (Date, Technician) */}
+                <div className="text-right">
                     {/* Finalization Date */}
                     {data.updatedAt && (
                         <p className="text-xs font-medium mt-0.5" style={{ color: colors.gray600 }}>
@@ -117,6 +120,15 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                             <div>
                                 <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Potencia Roseta:</span>
                                 <span className="font-medium text-[10px]">{data.powerRoseta || 'N/A'}</span>
+                            </div>
+                            {/* New Fields: Serial NAP & Used Port */}
+                            <div>
+                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Serial Nap:</span>
+                                <span className="font-medium text-[10px]">{data.serialNap || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Puerto Usado:</span>
+                                <span className="font-medium text-[10px]">{data.usedPort || 'N/A'}</span>
                             </div>
                         </div>
                         <div>
@@ -213,12 +225,12 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                         const lastLog = data.installerLog[data.installerLog.length - 1];
                         return (
                             <div className="p-2 rounded" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
-                                <div className="flex justify-end mb-1.5">
+                                <p className="text-[10px] leading-relaxed" style={{ color: colors.gray700 }}>{lastLog.log}</p>
+                                <div className="flex justify-end mt-1.5">
                                     <span className="text-[9px]" style={{ color: colors.gray500 }}>
                                         {new Date(lastLog.timestamp).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })} {new Date(lastLog.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
-                                <p className="text-[10px] leading-relaxed" style={{ color: colors.gray700 }}>{lastLog.log}</p>
                             </div>
                         );
                     })() : (

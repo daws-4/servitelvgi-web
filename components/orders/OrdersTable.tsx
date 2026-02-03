@@ -27,6 +27,7 @@ export interface OrderData {
     servicesToInstall?: string[];
     createdAt?: string;
     updatedAt?: string;
+    sentToNetuno?: boolean;
 }
 
 interface OrdersTableProps {
@@ -346,6 +347,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                 <th className="p-4">Cliente</th>
                                 <th className="p-4">Tipo</th>
                                 <th className="p-4">Dirección</th>
+                                <th className="p-4">Netuno</th>
                                 <th className="p-4">Estado</th>
                                 <th className="p-4">Cuadrilla</th>
                                 <th className="p-4 text-right">Acciones</th>
@@ -379,6 +381,14 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                         </td>
                                         <td className="p-4">{getTypeBadge(order.type)}</td>
                                         <td className="p-4 text-gray-500 max-w-xs truncate">{order.address}</td>
+                                        <td className="p-4">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${order.sentToNetuno
+                                                ? 'bg-blue-100 text-blue-800'
+                                                : 'bg-gray-100 text-gray-600'
+                                                }`}>
+                                                {order.sentToNetuno ? 'Enviado' : 'Sin enviar'}
+                                            </span>
+                                        </td>
                                         <td className="p-4">{getStatusBadge(order.status)}</td>
                                         <td className="p-4">
                                             {order.assignedTo && crewNumber !== null ? (

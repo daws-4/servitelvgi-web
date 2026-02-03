@@ -93,13 +93,15 @@ export const MassCertificateGenerator = () => {
 
                 // Capture
                 const canvas = await html2canvas(printContainerRef.current, {
-                    scale: 2, // Higher quality
+                    scale: 1.5, // Reduced from 2 for compression (good enough for A4)
                     useCORS: true,
                     logging: false,
                     backgroundColor: '#ffffff'
                 });
 
-                const imgData = canvas.toDataURL('image/png');
+                // Use JPEG instead of PNG for massive compression
+                // Quality 0.75 is usually indistinguishable for documents but 5x smaller
+                const imgData = canvas.toDataURL('image/jpeg', 0.75);
 
                 // Add to PDF
                 if (itemsOnPage === 3) {
@@ -108,7 +110,7 @@ export const MassCertificateGenerator = () => {
                     itemsOnPage = 0;
                 }
 
-                pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight);
+                pdf.addImage(imgData, 'JPEG', margin, currentY, imgWidth, imgHeight);
 
                 // Draw a light border around the certificate if desired, or just spacing
                 // pdf.rect(margin, currentY, imgWidth, imgHeight);

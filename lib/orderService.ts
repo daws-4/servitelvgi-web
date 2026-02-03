@@ -73,10 +73,41 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
 // Función reutilizable para LISTAR ordenes
 export async function getOrders(filters = {}, projection: any = null) {
   await connectDB();
-  return await OrderModel.find(filters, projection)
+  const orders = await OrderModel.find(filters, projection)
     .populate('assignedTo', 'number')
+    .populate('materialsUsed.item', 'code description unit type')
     .sort({ createdAt: -1 })
     .lean();
+
+  // Manually populate instance details (serial numbers) for equipment in List View
+  // This is needed for reports that rely on the list endpoint
+  for (const order of orders) {
+    if (order.materialsUsed && order.materialsUsed.length > 0) {
+      for (const material of order.materialsUsed) {
+        if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
+          try {
+            const inventory = await InventoryModel.findById((material.item as any)._id)
+              .select('instances')
+              .lean() as unknown as IInventory | null;
+
+            if (inventory && inventory.instances) {
+              (material as any).instanceDetails = material.instanceIds.map((id: string) => {
+                const inst = inventory.instances?.find((i: any) => i.uniqueId === id);
+                return {
+                  uniqueId: id,
+                  serialNumber: inst?.serialNumber || 'N/A'
+                };
+              });
+            }
+          } catch (err) {
+            // calculated field, ignore error
+          }
+        }
+      }
+    }
+  }
+
+  return orders;
 }
 
 // Obtener una orden por id

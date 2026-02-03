@@ -51,7 +51,8 @@ export default function OrdersPage() {
             filtered = filtered.filter(order =>
                 order.subscriberNumber.toLowerCase().includes(search) ||
                 order.subscriberName.toLowerCase().includes(search) ||
-                order.email?.toLowerCase().includes(search)
+                order.email?.toLowerCase().includes(search) ||
+                order.ticket_id?.toLowerCase().includes(search)
             );
         }
 

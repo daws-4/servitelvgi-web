@@ -148,9 +148,21 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                     {usedMaterials.length > 0 ? (
                         <div className="grid grid-cols-2 gap-1.5">
                             {usedMaterials.map((mat: any, idx) => (
-                                <div key={idx} className="flex items-center justify-between px-2 py-1 rounded text-[9px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
-                                    <span className="font-mono font-semibold break-words" style={{ color: colors.gray700 }}>{mat.item.code}</span>
-                                    <span className="font-bold ml-2" style={{ color: colors.gray800 }}>×{mat.quantity}</span>
+                                <div key={idx} className="flex flex-col px-2 py-1 rounded text-[9px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-mono font-semibold break-words" style={{ color: colors.gray700 }}>{mat.item.code}</span>
+                                        <span className="font-bold ml-2" style={{ color: colors.gray800 }}>×{mat.quantity}</span>
+                                    </div>
+                                    {/* Mostrar seriales si existen (para equipos) */}
+                                    {mat.instanceDetails && mat.instanceDetails.length > 0 && (
+                                        <div className="mt-0.5 flex flex-wrap gap-1">
+                                            {mat.instanceDetails.map((inst: any, i: number) => (
+                                                <span key={i} className="text-[7px] font-mono" style={{ color: colors.gray600 }}>
+                                                    SN:{inst.uniqueId}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

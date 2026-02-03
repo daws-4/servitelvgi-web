@@ -80,7 +80,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
                     <input
                         type="text"
-                        placeholder="Buscar abonado, nombre..."
+                        placeholder="Buscar abonado, nombre, ticket..."
                         value={searchValue}
                         onChange={(e) => onSearchChange?.(e.target.value)}
                         className="pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-primary w-64 shadow-sm h-10"

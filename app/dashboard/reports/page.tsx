@@ -15,6 +15,7 @@ const toast = {
 import ReportFilters from "../../../components/reports/ReportFilters";
 import ReportTable from "../../../components/reports/ReportTable";
 import ExportActions from "../../../components/reports/ExportActions";
+import { MassCertificateGenerator } from "@/components/reports/MassCertificateGenerator";
 import type { ReportType, ReportFilters as IReportFilters } from "@/types/reportTypes";
 
 export default function ReportsPage() {
@@ -22,6 +23,7 @@ export default function ReportsPage() {
     const [reportData, setReportData] = useState<any>(null);
     const [metadata, setMetadata] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState<"metrics" | "certificates">("metrics");
 
     const handleGenerateReport = async (selectedFilters: IReportFilters) => {
         setIsLoading(true);
@@ -81,49 +83,91 @@ export default function ReportsPage() {
                     </div>
                 </div>
 
-                {/* Filters Card */}
-                <Card className="p-6 bg-white shadow-sm border border-[#bcabae]/10 rounded-xl">
-                    <ReportFilters
-                        onGenerate={handleGenerateReport}
-                        isLoading={isLoading}
-                    />
-                </Card>
+                {/* Tab Selection */}
+                <div className="flex space-x-1 rounded-xl bg-gray-100 p-1 w-full md:w-fit">
+                    <button
+                        onClick={() => setActiveTab("metrics")}
+                        className={`w-full md:w-auto px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "metrics"
+                            ? "bg-white text-gray-900 shadow-sm"
+                            : "text-gray-500 hover:text-gray-700"
+                            }`}
+                    >
+                        <i className="fa-solid fa-chart-pie mr-2"></i>
+                        Métricas Generales
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("certificates")}
+                        className={`w-full md:w-auto px-4 py-2 text-sm font-medium rounded-lg transition-all ${activeTab === "certificates"
+                            ? "bg-white text-gray-900 shadow-sm"
+                            : "text-gray-500 hover:text-gray-700"
+                            }`}
+                    >
+                        <i className="fa-solid fa-file-pdf mr-2"></i>
+                        Certificados Masivos
+                    </button>
+                </div>
 
-                {/* Results Section */}
-                {(reportData || isLoading) && filters?.reportType && (
-                    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="flex justify-between items-end border-b border-[#bcabae]/10 pb-4">
-                            <div>
-                                <h2 className="text-lg font-bold text-[#0f0f0f] flex items-center gap-2">
-                                    <i className="fa-solid fa-table-list text-[#3e78b2]"></i>
-                                    Resultados
-                                </h2>
-                                <div className="text-xs text-[#bcabae] mt-1">
-                                    {isLoading ? "Cargando datos..." :
-                                        metadata ? `${metadata.totalRecords || 0} registros encontrados • Generado: ${new Date().toLocaleTimeString()}` : ""}
+                {activeTab === "metrics" ? (
+                    <>
+                        {/* Filters Card */}
+                        <Card className="p-6 bg-white shadow-sm border border-[#bcabae]/10 rounded-xl">
+                            <ReportFilters
+                                onGenerate={handleGenerateReport}
+                                isLoading={isLoading}
+                            />
+                        </Card>
+
+                        {/* Results Section */}
+                        {(reportData || isLoading) && filters?.reportType && (
+                            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="flex justify-between items-end border-b border-[#bcabae]/10 pb-4">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-[#0f0f0f] flex items-center gap-2">
+                                            <i className="fa-solid fa-table-list text-[#3e78b2]"></i>
+                                            Resultados
+                                        </h2>
+                                        <div className="text-xs text-[#bcabae] mt-1">
+                                            {isLoading ? "Cargando datos..." :
+                                                metadata ? `${metadata.totalRecords || 0} registros encontrados • Generado: ${new Date().toLocaleTimeString()}` : ""}
+                                        </div>
+                                    </div>
+
+                                    {!isLoading && reportData && (
+                                        <ExportActions
+                                            reportType={filters.reportType}
+                                            data={reportData}
+                                            metadata={metadata}
+                                        />
+                                    )}
+                                </div>
+
+                                <div className="overflow-x-auto">
+                                    <ReportTable
+                                        reportType={filters.reportType}
+                                        data={reportData}
+                                        isLoading={isLoading}
+                                        crewId={filters?.crewId}
+                                    />
                                 </div>
                             </div>
-
-                            {!isLoading && reportData && (
-                                <ExportActions
-                                    reportType={filters.reportType}
-                                    data={reportData}
-                                    metadata={metadata}
-                                />
-                            )}
+                        )}
+                    </>
+                ) : (
+                    <Card className="p-6 bg-white shadow-sm border border-[#bcabae]/10 rounded-xl">
+                        <div className="mb-6">
+                            <h2 className="text-lg font-bold text-gray-900">Generación de Certificados Masivos</h2>
+                            <p className="text-sm text-gray-500">
+                                Genera un único archivo PDF que contiene los certificados de finalización
+                                de todas las órdenes completadas en el rango de fechas seleccionado.
+                            </p>
+                            <div className="mt-2 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100 inline-block">
+                                <i className="fa-solid fa-info-circle mr-1"></i>
+                                El PDF contendrá 3 certificados por página para optimizar la impresión.
+                            </div>
                         </div>
-
-                        <div className="overflow-x-auto">
-                            <ReportTable
-                                reportType={filters.reportType}
-                                data={reportData}
-                                isLoading={isLoading}
-                                crewId={filters?.crewId}
-                            />
-                        </div>
-                    </div>
+                        <MassCertificateGenerator />
+                    </Card>
                 )}
-
 
             </div>
         </div>

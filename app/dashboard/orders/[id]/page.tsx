@@ -379,6 +379,21 @@ export default function OrderEditPage() {
                         )}
                     </button>
 
+                    {/* Sent to Netuno Status */}
+                    <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border transition-colors ${orderData.sentToNetuno
+                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                        : 'bg-gray-50 border-gray-200 text-gray-500'
+                        }`}
+                        title={orderData.sentToNetuno ? "Enviado a Netuno" : "No enviado a Netuno"}>
+                        <input
+                            type="checkbox"
+                            checked={orderData.sentToNetuno || false}
+                            disabled
+                            className={`w-4 h-4 rounded border-gray-300 cursor-not-allowed ${orderData.sentToNetuno ? 'text-blue-600 accent-blue-600' : 'text-gray-400'}`}
+                        />
+                        <span className="text-xs font-medium hidden sm:inline">Enviado</span>
+                    </div>
+
                     {/* SYNC BUTTON - Hidden on mobile */}
                     <button
                         onClick={handleSyncNetuno}

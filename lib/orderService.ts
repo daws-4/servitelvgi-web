@@ -74,7 +74,14 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
 export async function getOrders(filters = {}, projection: any = null) {
   await connectDB();
   const orders = await OrderModel.find(filters, projection)
-    .populate('assignedTo', 'number')
+    .populate({
+      path: 'assignedTo',
+      select: 'number leader',
+      populate: {
+        path: 'leader',
+        select: 'name surname'
+      }
+    })
     .populate('materialsUsed.item', 'code description unit type')
     .sort({ createdAt: -1 })
     .lean();

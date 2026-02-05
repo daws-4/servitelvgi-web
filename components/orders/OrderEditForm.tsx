@@ -114,6 +114,13 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
+    // Sync sentToNetuno from parent (when updated via handleSyncNetuno)
+    useEffect(() => {
+        if (initialData.sentToNetuno !== undefined && initialData.sentToNetuno !== formData.sentToNetuno) {
+            setFormData(prev => ({ ...prev, sentToNetuno: initialData.sentToNetuno }));
+        }
+    }, [initialData.sentToNetuno]);
+
     const handleStatusManagerSave = async (data: {
         status: OrderStatus;
         type: OrderType;

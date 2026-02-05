@@ -393,8 +393,14 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
-  // Build simplified payload
+  // Build detailed payload with requested aliases and backward compatibility
   const payload: any = {
+    // 1. Requested Aliases (User specific request)
+    technician: '', // Will be populated below
+    ticket: order.ticket_id || order.subscriberNumber,
+    enlace_imagen: certificateUrlOverride || order.certificateUrl || '',
+
+    // 2. Standard Logic (Backward Compatibility for existing n8n nodes)
     timestamp: formatTimestamp(order.updatedAt || new Date()),
     ticket_id: order.ticket_id || order.subscriberNumber,
     certificateUrl: certificateUrlOverride || order.certificateUrl || '',
@@ -408,9 +414,12 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
     // Get leader name
     if (crew.leader && typeof crew.leader === 'object') {
       const leaderName = `${crew.leader.name || ''} ${crew.leader.surname || ''}`.trim();
-      payload.technician = leaderName || `Cuadrilla ${crew.number || 'Sin asignar'}`;
+      const techName = leaderName || `Cuadrilla ${crew.number || 'Sin asignar'}`;
+
+      payload.technician = techName;
     } else {
-      payload.technician = `Cuadrilla ${crew.number || 'Sin asignar'}`;
+      const techName = `Cuadrilla ${crew.number || 'Sin asignar'}`;
+      payload.technician = techName;
     }
   } else {
     payload.technician = 'Sin asignar';

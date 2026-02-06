@@ -15,6 +15,7 @@ export default function OrdersPage() {
     const [typeFilter, setTypeFilter] = useState("all");
     const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
     const [crewFilter, setCrewFilter] = useState("all");
+    const [isSentFilter, setIsSentFilter] = useState("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
     const [orders, setOrders] = useState<OrderData[]>([]);
@@ -71,6 +72,12 @@ export default function OrdersPage() {
             filtered = filtered.filter(order => order.assignedTo?._id === crewFilter);
         }
 
+        // Apply isSent filter
+        if (isSentFilter !== "all") {
+            const isSent = isSentFilter === "true";
+            filtered = filtered.filter(order => !!order.sentToNetuno === isSent);
+        }
+
         // Apply date range filter
         if (dateRange) {
             filtered = filtered.filter(order => {
@@ -95,7 +102,7 @@ export default function OrdersPage() {
         }
 
         return filtered;
-    }, [orders, searchValue, statusFilter, typeFilter, dateRange, crewFilter]);
+    }, [orders, searchValue, statusFilter, typeFilter, dateRange, crewFilter, isSentFilter]);
 
     // Pagination logic
     const itemsPerPage = 10;
@@ -157,6 +164,12 @@ export default function OrdersPage() {
         setSelectedOrders(new Set());
     };
 
+    const handleIsSentChange = (value: string) => {
+        setIsSentFilter(value);
+        setCurrentPage(1);
+        setSelectedOrders(new Set());
+    };
+
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
         setSelectedOrders(new Set()); // Clear selection on page change
@@ -194,6 +207,8 @@ export default function OrdersPage() {
                 onDateRangeChange={handleDateRangeChange}
                 crewFilter={crewFilter}
                 onCrewChange={handleCrewChange}
+                isSentFilter={isSentFilter}
+                onIsSentChange={handleIsSentChange}
                 onNewOrder={handleNewOrder}
             />
 

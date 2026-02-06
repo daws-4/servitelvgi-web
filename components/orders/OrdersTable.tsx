@@ -182,7 +182,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
     };
 
     const handleEditRedirect = (orderId: string) => {
-        router.push(`/dashboard/orders/${orderId}`);
+        window.open(`/dashboard/orders/${orderId}`, '_blank');
     };
 
 

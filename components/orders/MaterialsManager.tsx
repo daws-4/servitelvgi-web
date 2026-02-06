@@ -944,7 +944,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    {assignedCrewId && (
+                                                    {/* {assignedCrewId && (
                                                         <button
                                                             type="button"
                                                             onClick={() => handleReturnClick(material)}
@@ -953,7 +953,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
                                                         >
                                                             <i className="fa-solid fa-rotate-left"></i>
                                                         </button>
-                                                    )}
+                                                    )} */}
                                                     <button
                                                         type="button"
                                                         onClick={() => handleRemoveMaterial(index)}

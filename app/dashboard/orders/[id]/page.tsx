@@ -20,6 +20,15 @@ export default function OrderEditPage() {
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [isAvaliableToSend, setIsAvaliableToSend] = useState(false);
+
+
+    // Logic to enable or disable sent button
+    useEffect(() => {
+        if (orderData) {
+            setIsAvaliableToSend(orderData.status === 'completed' || orderData.status === 'cancelled');
+        }
+    }, [orderData]);
 
     // Ref for the certificate component
     const certificateRef = useRef<HTMLDivElement>(null);
@@ -126,6 +135,11 @@ export default function OrderEditPage() {
 
     const handleSyncNetuno = async () => {
         if (!orderId || !orderData || !certificateRef.current) return;
+
+        if (orderData.status !== 'completed' && orderData.status !== 'cancelled') {
+            alert('La orden debe estar completada o cancelada para sincronizar con Netuno');
+            return;
+        }
 
         if (!confirm('¿Estás seguro de que quieres generar el certificado, guardarlo y enviar los datos a Netuno (WhatsApp)?')) {
             return;
@@ -397,8 +411,8 @@ export default function OrderEditPage() {
                     {/* SYNC BUTTON - Hidden on mobile */}
                     <button
                         onClick={handleSyncNetuno}
-                        disabled={syncing}
-                        className={`flex items-center gap-2 cursor-pointer px-2 md:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${syncing
+                        disabled={syncing || !isAvaliableToSend}
+                        className={`flex items-center gap-2 cursor-pointer px-2 md:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${syncing || !isAvaliableToSend
                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
                             : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 border border-indigo-200'
                             }`}

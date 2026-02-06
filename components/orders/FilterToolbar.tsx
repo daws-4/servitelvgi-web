@@ -17,6 +17,8 @@ interface FilterToolbarProps {
     onDateRangeChange?: (range: { start: string; end: string } | null) => void;
     crewFilter?: string;
     onCrewChange?: (value: string) => void;
+    isSentFilter?: string;
+    onIsSentChange?: (value: string) => void;
     onNewOrder?: () => void;
 }
 
@@ -50,6 +52,8 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     onDateRangeChange,
     crewFilter = "all",
     onCrewChange,
+    isSentFilter = "all",
+    onIsSentChange,
     onNewOrder,
 }) => {
     const [crews, setCrews] = useState<{ _id: string; number: number }[]>([]);
@@ -132,6 +136,19 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                                 Cuadrilla {crew.number}
                             </option>
                         ))}
+                    </select>
+                    <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
+                </div>
+                {/* Filtro IsSent */}
+                <div className="relative">
+                    <select
+                        value={isSentFilter}
+                        onChange={(e) => onIsSentChange?.(e.target.value)}
+                        className="appearance-none bg-white border border-gray-200 text-gray-700 py-2 px-4 pr-8 rounded-lg text-sm focus:outline-none focus:border-primary shadow-sm cursor-pointer h-10"
+                    >
+                        <option value="all">Netuno: Todos</option>
+                        <option value="true">Enviado</option>
+                        <option value="false">No Enviado</option>
                     </select>
                     <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
                 </div>

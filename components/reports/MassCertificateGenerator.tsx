@@ -51,11 +51,28 @@ export const MassCertificateGenerator = () => {
                 return;
             }
 
-            // Sort orders by date (Oldest first)
+            // Sort orders by technician, then by date (Most recent first within each technician)
             orders.sort((a: any, b: any) => {
+                // Get technician name (from assignedTo.leader or crew number)
+                const getTechName = (order: any) => {
+                    if (order.assignedTo?.leader?.name) {
+                        return `${order.assignedTo.leader.name} ${order.assignedTo.leader.surname || ''}`.trim();
+                    }
+                    return order.assignedTo?.number ? `Cuadrilla ${order.assignedTo.number}` : 'Sin asignar';
+                };
+
+                const techA = getTechName(a);
+                const techB = getTechName(b);
+
+                // First compare by technician name
+                if (techA !== techB) {
+                    return techA.localeCompare(techB);
+                }
+
+                // If same technician, sort by date (most recent first)
                 const dateA = new Date(a.updatedAt || a.createdAt).getTime();
                 const dateB = new Date(b.updatedAt || b.createdAt).getTime();
-                return dateA - dateB;
+                return dateB - dateA; // Descending order (most recent first)
             });
 
             setStatusText(`Procesando ${orders.length} órdenes...`);
@@ -76,11 +93,33 @@ export const MassCertificateGenerator = () => {
 
             let currentY = margin;
             let itemsOnPage = 0;
+            let lastTechnician = ''; // Track current technician
+
+            // Helper function to get technician name
+            const getTechName = (order: any) => {
+                if (order.assignedTo?.leader?.name) {
+                    return `${order.assignedTo.leader.name} ${order.assignedTo.leader.surname || ''}`.trim();
+                }
+                return order.assignedTo?.number ? `Cuadrilla ${order.assignedTo.number}` : 'Sin asignar';
+            };
 
             for (let i = 0; i < orders.length; i++) {
                 const order = orders[i];
                 setStatusText(`Generando certificado ${i + 1} de ${orders.length}...`);
                 setProgress(((i + 1) / orders.length) * 100);
+
+                // Check if technician changed
+                const currentTechnician = getTechName(order);
+                const technicianChanged = lastTechnician !== '' && currentTechnician !== lastTechnician;
+
+                // If technician changed and there's content on current page, start new page
+                if (technicianChanged && itemsOnPage > 0) {
+                    pdf.addPage();
+                    currentY = margin;
+                    itemsOnPage = 0;
+                }
+
+                lastTechnician = currentTechnician;
 
                 // Transform data
                 const orderData = transformOrderToEditData(order);
@@ -103,7 +142,7 @@ export const MassCertificateGenerator = () => {
                 // Quality 0.75 is usually indistinguishable for documents but 5x smaller
                 const imgData = canvas.toDataURL('image/jpeg', 0.75);
 
-                // Add to PDF
+                // Add to PDF - check if page is full
                 if (itemsOnPage === 3) {
                     pdf.addPage();
                     currentY = margin;

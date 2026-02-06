@@ -169,7 +169,7 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                                     {mat.instanceDetails && mat.instanceDetails.length > 0 && (
                                         <div className="mt-0.5 flex flex-wrap gap-1">
                                             {mat.instanceDetails.map((inst: any, i: number) => (
-                                                <span key={i} className="text-[7px] font-mono" style={{ color: colors.gray600 }}>
+                                                <span key={i} className="text-[10px] font-mono font-semibold" style={{ color: colors.gray700 }}>
                                                     SN:{inst.uniqueId}
                                                 </span>
                                             ))}

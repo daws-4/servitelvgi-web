@@ -21,6 +21,11 @@ export interface OrderData {
     assignedTo?: {
         _id: string;
         number?: number;
+        leader?: {
+            _id: string;
+            name: string;
+            surname: string;
+        };
     };
     phones?: string[];
     node?: string;
@@ -349,7 +354,7 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                 <th className="p-4">Dirección</th>
                                 <th className="p-4">Netuno</th>
                                 <th className="p-4">Estado</th>
-                                <th className="p-4">Cuadrilla</th>
+                                <th className="p-4 min-w-[200px]">Cuadrilla</th>
                                 <th className="p-4 text-right">Acciones</th>
                             </tr>
                         </thead>
@@ -390,14 +395,21 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                                             </span>
                                         </td>
                                         <td className="p-4">{getStatusBadge(order.status)}</td>
-                                        <td className="p-4">
+                                        <td className="p-4 min-w-[200px]">
                                             {order.assignedTo && crewNumber !== null ? (
                                                 <div className="flex items-center gap-2">
                                                     <Link href={`/dashboard/crews/${order.assignedTo._id}`}>
                                                         <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs">
                                                             <i className="fa-solid fa-users text-[10px]"></i>
                                                         </div>
-                                                        <span className="text-xs font-medium">Cuadrilla {crewNumber}</span>
+                                                        <span className="text-xs font-medium">
+                                                            Cuadrilla {crewNumber}
+                                                            {order.assignedTo.leader && (
+                                                                <span className="text-gray-500 font-normal ml-1">
+                                                                    ({order.assignedTo.leader.name} {order.assignedTo.leader.surname})
+                                                                </span>
+                                                            )}
+                                                        </span>
                                                     </Link>
                                                 </div>
                                             ) : (

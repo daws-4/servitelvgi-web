@@ -81,13 +81,27 @@ export default function OrdersPage() {
         // Apply date range filter
         if (dateRange) {
             filtered = filtered.filter(order => {
+                // Usar createdAt para el filtro de fecha
                 const orderDate = new Date(order.createdAt || order.updatedAt || Date.now());
-                const start = dateRange.start ? new Date(dateRange.start) : null;
-                const end = dateRange.end ? new Date(dateRange.end) : null;
 
-                // Set end date to end of day for inclusive filtering
-                if (end) {
-                    end.setHours(23, 59, 59, 999);
+                // Crear fechas en GMT-4 (Venezuela)
+                let start: Date | null = null;
+                let end: Date | null = null;
+
+                if (dateRange.start) {
+                    // Parsear la fecha de inicio como YYYY-MM-DD y establecer a las 00:00:00 GMT-4
+                    const [year, month, day] = dateRange.start.split('-').map(Number);
+                    start = new Date(year, month - 1, day, 0, 0, 0, 0);
+                    // Ajustar a GMT-4 (4 horas adelante de GMT)
+                    start.setHours(start.getHours() + 4);
+                }
+
+                if (dateRange.end) {
+                    // Parsear la fecha de fin como YYYY-MM-DD y establecer a las 23:59:59.999 GMT-4
+                    const [year, month, day] = dateRange.end.split('-').map(Number);
+                    end = new Date(year, month - 1, day, 23, 59, 59, 999);
+                    // Ajustar a GMT-4 (4 horas adelante de GMT)
+                    end.setHours(end.getHours() + 4);
                 }
 
                 if (start && end) {

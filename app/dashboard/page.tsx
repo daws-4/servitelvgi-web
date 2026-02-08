@@ -8,7 +8,12 @@ import { OrdersTable, OrderData } from "@/components/orders/OrdersTable";
 import {
   OrdersIcon,
   InstallersIcon,
-  InventoryIcon
+  InventoryIcon,
+  CheckCircleIcon,
+  WrenchIcon,
+  EyeIcon,
+  AlertTriangleIcon,
+  ClockIcon
 } from "@/components/dashboard-icons";
 import axios from "axios";
 import Link from "next/link";
@@ -25,33 +30,11 @@ export default function DashboardPage() {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
   // StatCard data states
-  const [todayOrdersCount, setTodayOrdersCount] = useState<number>(0);
-  const [todayOrdersTrend, setTodayOrdersTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
-  const [pendingOrdersCount, setPendingOrdersCount] = useState<number>(0);
-  const [pendingOrdersTrend, setPendingOrdersTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
-  const [activeCrewsCount, setActiveCrewsCount] = useState<number>(0);
-  const [activeCrewsTrend, setActiveCrewsTrend] = useState<{ value: string; isPositive: boolean } | null>(null);
-  const [criticalInventoryCount, setCriticalInventoryCount] = useState<number>(0);
-
-
-  // Helper function to check if a date is today
-  const isToday = (date: Date | string) => {
-    const d = new Date(date);
-    const today = new Date();
-    return d.getDate() === today.getDate() &&
-      d.getMonth() === today.getMonth() &&
-      d.getFullYear() === today.getFullYear();
-  };
-
-  // Helper function to check if a date is yesterday
-  const isYesterday = (date: Date | string) => {
-    const d = new Date(date);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    return d.getDate() === yesterday.getDate() &&
-      d.getMonth() === yesterday.getMonth() &&
-      d.getFullYear() === yesterday.getFullYear();
-  };
+  const [averiasCompletadas, setAveriasCompletadas] = useState<number>(0);
+  const [instalacionesCompletadas, setInstalacionesCompletadas] = useState<number>(0);
+  const [visitasCompletadas, setVisitasCompletadas] = useState<number>(0);
+  const [averiasSinCompletar, setAveriasSinCompletar] = useState<number>(0);
+  const [instalacionesSinCompletar, setInstalacionesSinCompletar] = useState<number>(0);
 
   // Fetch statCard data
   const fetchStatCardData = async () => {
@@ -60,75 +43,35 @@ export default function DashboardPage() {
       const ordersResponse = await axios.get('/api/web/orders');
       const allOrders = ordersResponse.data;
 
-      // Calculate today's orders
-      const todayOrders = allOrders.filter((order: any) =>
-        isToday(order.receptionDate || order.createdAt)
-      );
-      const yesterdayOrders = allOrders.filter((order: any) =>
-        isYesterday(order.receptionDate || order.createdAt)
-      );
+      // Calcular órdenes de averías completadas
+      const averiasCompletadasCount = allOrders.filter((order: any) =>
+        order.orderType === "averia" && order.status === "completed"
+      ).length;
+      setAveriasCompletadas(averiasCompletadasCount);
 
-      setTodayOrdersCount(todayOrders.length);
+      // Calcular órdenes de instalaciones completadas
+      const instalacionesCompletadasCount = allOrders.filter((order: any) =>
+        order.orderType === "instalacion" && order.status === "completed"
+      ).length;
+      setInstalacionesCompletadas(instalacionesCompletadasCount);
 
-      // Calculate trend for today's orders
-      if (yesterdayOrders.length > 0) {
-        const change = ((todayOrders.length - yesterdayOrders.length) / yesterdayOrders.length) * 100;
-        setTodayOrdersTrend({
-          value: `${Math.abs(Math.round(change))}%`,
-          isPositive: change >= 0
-        });
-      } else if (todayOrders.length > 0) {
-        setTodayOrdersTrend({ value: "100%", isPositive: true });
-      }
+      // Calcular órdenes de visitas completadas
+      const visitasCompletadasCount = allOrders.filter((order: any) =>
+        order.orderType === "visita" && order.status === "completed"
+      ).length;
+      setVisitasCompletadas(visitasCompletadasCount);
 
-      // Calculate pending orders
-      const todayPending = allOrders.filter((order: any) =>
-        order.status === "pending" && isToday(order.receptionDate || order.createdAt)
-      );
-      const yesterdayPending = allOrders.filter((order: any) =>
-        order.status === "pending" && isYesterday(order.receptionDate || order.createdAt)
-      );
+      // Calcular órdenes de averías sin completar (pending, in-progress, etc.)
+      const averiasSinCompletarCount = allOrders.filter((order: any) =>
+        order.orderType === "averia" && order.status !== "completed"
+      ).length;
+      setAveriasSinCompletar(averiasSinCompletarCount);
 
-      setPendingOrdersCount(todayPending.length);
-
-      // Calculate trend for pending orders
-      if (yesterdayPending.length > 0) {
-        const change = todayPending.length - yesterdayPending.length;
-        setPendingOrdersTrend({
-          value: `${Math.abs(change)}`,
-          isPositive: change <= 0 // For pending, less is better
-        });
-      } else if (todayPending.length > 0) {
-        setPendingOrdersTrend({ value: `${todayPending.length}`, isPositive: false });
-      }
-
-      // Fetch active crews
-      const crewsResponse = await axios.get('/api/web/crews');
-      const allCrews = crewsResponse.data;
-
-      // Count crews (all crews are considered active by default)
-      setActiveCrewsCount(allCrews.length);
-
-      // For crews, we could show total count or calculate based on members
-      if (allCrews.length > 0) {
-        setActiveCrewsTrend({
-          value: `${allCrews.length}`,
-          isPositive: true
-        });
-      }
-
-      // Fetch critical inventory (low stock items)
-      const inventoryResponse = await axios.get('/api/web/inventory');
-      const inventoryData = inventoryResponse.data;
-
-      // The API returns { success, count, items } structure
-      const allInventory = inventoryData.items || [];
-
-      // Count items with current stock at or below minimum stock
-      const criticalItems = allInventory.filter((item: any) =>
-        item.currentStock <= item.minimumStock
-      );
-      setCriticalInventoryCount(criticalItems.length);
+      // Calcular órdenes de instalaciones sin completar
+      const instalacionesSinCompletarCount = allOrders.filter((order: any) =>
+        order.orderType === "instalacion" && order.status !== "completed"
+      ).length;
+      setInstalacionesSinCompletar(instalacionesSinCompletarCount);
 
     } catch (err) {
       console.error("Error fetching statCard data:", err);
@@ -194,43 +137,46 @@ export default function DashboardPage() {
           <WelcomeBanner />
 
           {/* KPI CARDS GRID */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
 
             <StatCard
-              title="Órdenes Hoy"
-              value={todayOrdersCount.toString()}
-              icon={<OrdersIcon className="text-lg" size={24} />}
-              iconBgColor="bg-background/50"
-              iconColor="text-primary"
-              trend={todayOrdersTrend ? { ...todayOrdersTrend, label: "vs ayer" } : undefined}
+              title="Averías Completadas"
+              value={averiasCompletadas.toString()}
+              icon={<WrenchIcon size={24} />}
+              iconBgColor="bg-green-100"
+              iconColor="text-green-600"
             />
 
             <StatCard
-              title="Pendientes"
-              value={pendingOrdersCount.toString()}
-              icon={<div className="text-lg font-bold">🕒</div>} // Placeholder for Clock icon if not created
+              title="Instalaciones Completadas"
+              value={instalacionesCompletadas.toString()}
+              icon={<CheckCircleIcon size={24} />}
+              iconBgColor="bg-blue-100"
+              iconColor="text-blue-600"
+            />
+
+            <StatCard
+              title="Visitas Completadas"
+              value={visitasCompletadas.toString()}
+              icon={<EyeIcon size={24} />}
+              iconBgColor="bg-purple-100"
+              iconColor="text-purple-600"
+            />
+
+            <StatCard
+              title="Averías Sin Completar"
+              value={averiasSinCompletar.toString()}
+              icon={<ClockIcon size={24} />}
               iconBgColor="bg-yellow-100"
               iconColor="text-yellow-600"
-              trend={pendingOrdersTrend ? { ...pendingOrdersTrend, label: "vs ayer" } : undefined}
             />
 
             <StatCard
-              title="Cuadrillas Activas"
-              value={activeCrewsCount.toString()}
-              icon={<div className="text-lg font-bold text-secondary"><i className="fa-solid fa-users"></i></div>}
-              iconBgColor="bg-blue-100"
-              iconColor="text-secondary"
-              trend={activeCrewsTrend ? { ...activeCrewsTrend, label: "total" } : undefined}
-            />
-
-            <StatCard
-              title="Inventario Crítico"
-              value={criticalInventoryCount.toString()}
-              subValue="items"
-              icon={<InventoryIcon className="text-lg" size={24} />}
-              iconBgColor="bg-red-100"
-              iconColor="text-red-600"
-              alertMessage={criticalInventoryCount > 0 ? "Requiere atención" : undefined}
+              title="Instalaciones Sin Completar"
+              value={instalacionesSinCompletar.toString()}
+              icon={<AlertTriangleIcon size={24} />}
+              iconBgColor="bg-orange-100"
+              iconColor="text-orange-600"
             />
           </div>
 

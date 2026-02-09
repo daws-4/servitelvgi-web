@@ -110,11 +110,13 @@ export const MassCertificateGenerator = () => {
 
             setStatusText(`Procesando ${filteredOrders.length} órdenes...`);
 
-            // Initialize PDF (A4 Portrait)
-            // A4 size: 210mm x 297mm
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = 210;
-            const pageHeight = 297;
+            // Initialize PDF - use Oficio size for 3 orders per page, A4 for 1-2
+            // Oficio size: 216mm x 330mm (for 3 orders)
+            // A4 size: 210mm x 297mm (for 1-2 orders)
+            const pageSize = ordersPerPage === 3 ? [216, 330] : 'a4';
+            const pdf = new jsPDF('p', 'mm', pageSize as any);
+            const pageWidth = ordersPerPage === 3 ? 216 : 210;
+            const pageHeight = ordersPerPage === 3 ? 330 : 297;
             const margin = 10;
             const contentWidth = pageWidth - (margin * 2);
 

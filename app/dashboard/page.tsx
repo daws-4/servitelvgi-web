@@ -43,33 +43,44 @@ export default function DashboardPage() {
       const ordersResponse = await axios.get('/api/web/orders');
       const allOrders = ordersResponse.data;
 
+      // Filter to only include orders from today
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+
+      const todaysOrders = allOrders.filter((order: any) => {
+        const orderDate = new Date(order.updatedAt || order.createdAt);
+        return orderDate >= startOfDay && orderDate <= endOfDay;
+      });
+
       // Calcular órdenes de averías completadas
-      const averiasCompletadasCount = allOrders.filter((order: any) =>
-        order.orderType === "averia" && order.status === "completed"
+      const averiasCompletadasCount = todaysOrders.filter((order: any) =>
+        order.type === "averia" && order.status === "completed"
       ).length;
       setAveriasCompletadas(averiasCompletadasCount);
 
       // Calcular órdenes de instalaciones completadas
-      const instalacionesCompletadasCount = allOrders.filter((order: any) =>
-        order.orderType === "instalacion" && order.status === "completed"
+      const instalacionesCompletadasCount = todaysOrders.filter((order: any) =>
+        order.type === "instalacion" && order.status === "completed"
       ).length;
       setInstalacionesCompletadas(instalacionesCompletadasCount);
 
       // Calcular órdenes de visitas completadas
-      const visitasCompletadasCount = allOrders.filter((order: any) =>
-        order.orderType === "visita" && order.status === "completed"
+      // Note: 'visita' is a status, not a type. Counting all completed orders with status 'visita'
+      const visitasCompletadasCount = todaysOrders.filter((order: any) =>
+        order.status === "visita"
       ).length;
       setVisitasCompletadas(visitasCompletadasCount);
 
       // Calcular órdenes de averías sin completar (pending, in-progress, etc.)
-      const averiasSinCompletarCount = allOrders.filter((order: any) =>
-        order.orderType === "averia" && order.status !== "completed"
+      const averiasSinCompletarCount = todaysOrders.filter((order: any) =>
+        order.type === "averia" && order.status !== "completed" && order.status !== "visita"
       ).length;
       setAveriasSinCompletar(averiasSinCompletarCount);
 
       // Calcular órdenes de instalaciones sin completar
-      const instalacionesSinCompletarCount = allOrders.filter((order: any) =>
-        order.orderType === "instalacion" && order.status !== "completed"
+      const instalacionesSinCompletarCount = todaysOrders.filter((order: any) =>
+        order.type === "instalacion" && order.status !== "completed" && order.status !== "visita"
       ).length;
       setInstalacionesSinCompletar(instalacionesSinCompletarCount);
 

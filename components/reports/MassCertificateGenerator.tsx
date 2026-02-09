@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card } from "@heroui/card";
 import { Button } from "@heroui/button";
 import { Progress } from "@heroui/progress";
@@ -23,9 +23,27 @@ export const MassCertificateGenerator = () => {
     const [progress, setProgress] = useState(0);
     const [statusText, setStatusText] = useState("");
 
+    // New filter states
+    const [ordersPerPage, setOrdersPerPage] = useState(3); // 1, 2, or 3
+    const [selectedCrew, setSelectedCrew] = useState("all"); // "all" or crew _id
+    const [crews, setCrews] = useState<any[]>([]);
+
     // Container for rendering certificates off-screen
     const printContainerRef = useRef<HTMLDivElement>(null);
     const [currentOrder, setCurrentOrder] = useState<OrderEditData | null>(null);
+
+    // Fetch crews list on component mount
+    useEffect(() => {
+        const fetchCrews = async () => {
+            try {
+                const response = await axios.get('/api/web/crews');
+                setCrews(response.data || []);
+            } catch (error) {
+                console.error("Error fetching crews:", error);
+            }
+        };
+        fetchCrews();
+    }, []);
 
     const generatePDF = async () => {
         if (!startDate || !endDate) return alert("Selecciona un rango de fechas");
@@ -51,8 +69,23 @@ export const MassCertificateGenerator = () => {
                 return;
             }
 
+            // Filter by crew if a specific crew is selected
+            let filteredOrders = orders;
+            if (selectedCrew !== "all") {
+                filteredOrders = orders.filter((order: any) => {
+                    const crewId = order.assignedTo?._id || order.assignedTo;
+                    return String(crewId) === String(selectedCrew);
+                });
+
+                if (filteredOrders.length === 0) {
+                    alert("No se encontraron órdenes para la cuadrilla seleccionada en este rango.");
+                    setIsGenerating(false);
+                    return;
+                }
+            }
+
             // Sort orders by technician, then by date (Most recent first within each technician)
-            orders.sort((a: any, b: any) => {
+            filteredOrders.sort((a: any, b: any) => {
                 // Get technician name (from assignedTo.leader or crew number)
                 const getTechName = (order: any) => {
                     if (order.assignedTo?.leader?.name) {
@@ -75,7 +108,7 @@ export const MassCertificateGenerator = () => {
                 return dateB - dateA; // Descending order (most recent first)
             });
 
-            setStatusText(`Procesando ${orders.length} órdenes...`);
+            setStatusText(`Procesando ${filteredOrders.length} órdenes...`);
 
             // Initialize PDF (A4 Portrait)
             // A4 size: 210mm x 297mm
@@ -85,10 +118,12 @@ export const MassCertificateGenerator = () => {
             const margin = 10;
             const contentWidth = pageWidth - (margin * 2);
 
-            // We want 3 images per page.
+            // Calculate image height based on ordersPerPage
             // Available height = 297 - (margin * 2) = 277mm
-            // Height per image = 277 / 3 ≈ 92mm
-            const imgHeight = 90; // Slightly less for spacing
+            const availableHeight = pageHeight - (margin * 2);
+            const spacing = 2; // spacing between certificates in mm
+            // imgHeight = (availableHeight - (spacing * (ordersPerPage - 1))) / ordersPerPage
+            const imgHeight = (availableHeight - (spacing * (ordersPerPage - 1))) / ordersPerPage;
             const imgWidth = contentWidth; // Full width
 
             let currentY = margin;
@@ -103,10 +138,10 @@ export const MassCertificateGenerator = () => {
                 return order.assignedTo?.number ? `Cuadrilla ${order.assignedTo.number}` : 'Sin asignar';
             };
 
-            for (let i = 0; i < orders.length; i++) {
-                const order = orders[i];
-                setStatusText(`Generando certificado ${i + 1} de ${orders.length}...`);
-                setProgress(((i + 1) / orders.length) * 100);
+            for (let i = 0; i < filteredOrders.length; i++) {
+                const order = filteredOrders[i];
+                setStatusText(`Generando certificado ${i + 1} de ${filteredOrders.length}...`);
+                setProgress(((i + 1) / filteredOrders.length) * 100);
 
                 // Check if technician changed
                 const currentTechnician = getTechName(order);
@@ -143,7 +178,7 @@ export const MassCertificateGenerator = () => {
                 const imgData = canvas.toDataURL('image/jpeg', 0.75);
 
                 // Add to PDF - check if page is full
-                if (itemsOnPage === 3) {
+                if (itemsOnPage === ordersPerPage) {
                     pdf.addPage();
                     currentY = margin;
                     itemsOnPage = 0;
@@ -191,6 +226,33 @@ export const MassCertificateGenerator = () => {
                         onChange={(e) => setEndDate(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary"
                     />
+                </div>
+                <div className="w-full md:w-auto">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Órdenes por Página</label>
+                    <select
+                        value={ordersPerPage}
+                        onChange={(e) => setOrdersPerPage(Number(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary bg-white"
+                    >
+                        <option value={1}>1 orden por página</option>
+                        <option value={2}>2 órdenes por página</option>
+                        <option value={3}>3 órdenes por página</option>
+                    </select>
+                </div>
+                <div className="w-full md:w-auto">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Cuadrilla</label>
+                    <select
+                        value={selectedCrew}
+                        onChange={(e) => setSelectedCrew(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary bg-white"
+                    >
+                        <option value="all">Todas las cuadrillas</option>
+                        {crews.map((crew) => (
+                            <option key={crew._id} value={crew._id}>
+                                Cuadrilla {crew.number}{crew.leader?.name ? ` - ${crew.leader.name}` : ''}
+                            </option>
+                        ))}
+                    </select>
                 </div>
                 <Button
                     color="primary"

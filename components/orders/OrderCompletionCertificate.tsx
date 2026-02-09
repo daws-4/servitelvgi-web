@@ -47,21 +47,21 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
 
                 {/* CENTER: TITLE & ORDER INFO */}
                 <div className="text-center absolute left-1/2 transform -translate-x-1/2">
-                    <h2 className="text-base font-bold" style={{ color: colors.gray800 }}>FORMATO DE FINALIZACIÓN</h2>
-                    <p className="text-xs" style={{ color: colors.gray600 }}>Orden #{data.ticket_id || data.subscriberNumber}</p>
+                    <h2 className="text-lg font-bold" style={{ color: colors.gray800 }}>FORMATO DE FINALIZACIÓN</h2>
+                    <p className="text-[14px]" style={{ color: colors.gray600 }}>Orden #{data.ticket_id || data.subscriberNumber}</p>
                 </div>
 
                 {/* RIGHT: METADATA (Date, Technician) */}
                 <div className="text-right">
                     {/* Finalization Date */}
                     {data.updatedAt && (
-                        <p className="text-xs font-medium mt-0.5" style={{ color: colors.gray600 }}>
+                        <p className="text-[14px] font-medium mt-0.5" style={{ color: colors.gray600 }}>
                             Fecha: <span className="font-bold">{new Date(data.updatedAt).toLocaleDateString()}</span>
                         </p>
                     )}
                     {/* Technician Name in Header */}
                     {data.technicianName && (
-                        <p className="text-xs font-medium mt-0.5" style={{ color: colors.primary }}>
+                        <p className="text-[14px] font-medium mt-0.5" style={{ color: colors.primary }}>
                             Técnico: <span className="font-bold">{data.technicianName}</span>
                         </p>
                     )}
@@ -72,74 +72,74 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
             <div className="grid mb-3" style={{ gridTemplateColumns: '22% 22% 56%', gap: '0.75rem' }}>
                 {/* SUBSCRIBER INFO - 28% */}
                 <div>
-                    <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Datos del Abonado</h3>
-                    <div className="space-y-1.5 text-xs">
+                    <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Datos del Abonado</h3>
+                    <div className="space-y-1.5 text-[14px]">
                         <div>
-                            <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Abonado:</span>
-                            <span className="font-medium text-[10px] break-words">{data.subscriberName}</span>
+                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Abonado:</span>
+                            <span className="font-medium text-[12px] break-words">{data.subscriberName}</span>
                         </div>
                         <div>
-                            <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Nº Abonado:</span>
-                            <span className="font-medium text-[10px]">{data.subscriberNumber}</span>
+                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Nº Abonado:</span>
+                            <span className="font-medium text-[12px]">{data.subscriberNumber}</span>
                         </div>
                         <div>
-                            <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Dirección:</span>
-                            <span className="font-medium text-[10px] leading-tight break-words">{data.address?.substring(0, 50)}{data.address?.length > 50 ? '...' : ''}</span>
+                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Dirección:</span>
+                            <span className="font-medium text-[12px] leading-tight break-words">{data.address?.substring(0, 50)}{data.address?.length > 50 ? '...' : ''}</span>
                         </div>
                         <div>
-                            <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Teléfonos:</span>
-                            <span className="font-medium text-[10px] break-words">{data.phones}</span>
+                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Teléfonos:</span>
+                            <span className="font-medium text-[12px] break-words">{data.phones}</span>
                         </div>
                     </div>
                 </div>
 
                 {/* TECHNICAL DETAILS - 28% */}
                 <div>
-                    <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Detalles Técnicos</h3>
-                    <div className="space-y-1.5 text-xs">
+                    <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Detalles Técnicos</h3>
+                    <div className="space-y-1.5 text-[14px]">
                         <div>
-                            <span className="font-semibold block text-[10px] mb-0.5" style={{ color: colors.gray600 }}>Tipo de Orden:</span>
-                            <div className="uppercase font-medium px-1.5 py-0.5 rounded text-[10px] inline-block" style={{ backgroundColor: colors.gray100 }}>
+                            <span className="font-semibold block text-[12px] mb-0.5" style={{ color: colors.gray600 }}>Tipo de Orden:</span>
+                            <div className="uppercase font-medium px-1.5 py-0.5 rounded text-[12px] inline-block" style={{ backgroundColor: colors.gray100 }}>
                                 {data.type}
                             </div>
                         </div>
                         <div>
-                            <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Nodo:</span>
-                            <span className="font-medium text-[10px] break-words">{data.node || 'N/A'}</span>
+                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Nodo:</span>
+                            <span className="font-medium text-[12px] break-words">{data.node || 'N/A'}</span>
                         </div>
                         <div>
-                            <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Servicios / Trabajo Realizado:</span>
-                            <span className="font-medium text-[10px] break-words">{data.servicesToInstall || 'N/A'}</span>
+                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Servicios / Trabajo Realizado:</span>
+                            <span className="font-medium text-[12px] break-words">{data.servicesToInstall || 'N/A'}</span>
                         </div>
                         {/* New Technical Fields */}
                         <div className="grid grid-cols-2 gap-2 mt-1">
                             <div>
-                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Potencia Nap:</span>
-                                <span className="font-medium text-[10px]">{data.powerNap || 'N/A'}</span>
+                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Potencia Nap:</span>
+                                <span className="font-medium text-[12px]">{data.powerNap || 'N/A'}</span>
                             </div>
                             <div>
-                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Potencia Roseta:</span>
-                                <span className="font-medium text-[10px]">{data.powerRoseta || 'N/A'}</span>
+                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Potencia Roseta:</span>
+                                <span className="font-medium text-[12px]">{data.powerRoseta || 'N/A'}</span>
                             </div>
                             {/* New Fields: Serial NAP & Used Port */}
                             <div>
-                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Serial Nap:</span>
-                                <span className="font-medium text-[10px]">{data.serialNap || 'N/A'}</span>
+                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Serial Nap:</span>
+                                <span className="font-medium text-[12px]">{data.serialNap || 'N/A'}</span>
                             </div>
                             <div>
-                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Puerto Usado:</span>
-                                <span className="font-medium text-[10px]">{data.usedPort || 'N/A'}</span>
+                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Puerto Usado:</span>
+                                <span className="font-medium text-[12px]">{data.usedPort || 'N/A'}</span>
                             </div>
                         </div>
                         <div>
-                            <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Puertos Restantes:</span>
-                            <span className="font-medium text-[10px]">{data.remainingPorts !== undefined ? data.remainingPorts : 'N/A'}</span>
+                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Puertos Restantes:</span>
+                            <span className="font-medium text-[12px]">{data.remainingPorts !== undefined ? data.remainingPorts : 'N/A'}</span>
                         </div>
                         {/* Etiqueta Info */}
                         <div className="grid grid-cols-2 gap-2 mt-1 pt-1" style={{ borderTop: `1px dashed ${colors.gray200}` }}>
                             <div>
-                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Color Etiqueta:</span>
-                                <span className="font-medium text-[10px] capitalize">
+                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Color Etiqueta:</span>
+                                <span className="font-medium text-[12px] capitalize">
                                     {data.etiqueta?.color === 'verde' ? '🟢 Verde' :
                                         data.etiqueta?.color === 'rojo' ? '🔴 Rojo' :
                                             data.etiqueta?.color === 'azul' ? '🔵 Azul' :
@@ -147,8 +147,8 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                                 </span>
                             </div>
                             <div>
-                                <span className="font-semibold block text-[10px]" style={{ color: colors.gray600 }}>Nº Etiqueta:</span>
-                                <span className="font-medium text-[10px]">{data.etiqueta?.numero || 'N/A'}</span>
+                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Nº Etiqueta:</span>
+                                <span className="font-medium text-[12px]">{data.etiqueta?.numero || 'N/A'}</span>
                             </div>
                         </div>
                     </div>
@@ -156,11 +156,11 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
 
                 {/* MATERIALS USED - 44% - CODE AND QUANTITY ONLY */}
                 <div>
-                    <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Materiales Utilizados</h3>
+                    <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Materiales Utilizados</h3>
                     {usedMaterials.length > 0 ? (
                         <div className="grid grid-cols-2 gap-1.5">
                             {usedMaterials.map((mat: any, idx) => (
-                                <div key={idx} className="flex flex-col px-2 py-1 rounded text-[9px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
+                                <div key={idx} className="flex flex-col px-2 py-1 rounded text-[11px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
                                     <div className="flex items-center justify-between">
                                         <span className="font-mono font-semibold break-words" style={{ color: colors.gray700 }}>{mat.item.code}</span>
                                         <span className="font-bold ml-2" style={{ color: colors.gray800 }}>×{mat.quantity}</span>
@@ -169,7 +169,7 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                                     {mat.instanceDetails && mat.instanceDetails.length > 0 && (
                                         <div className="mt-0.5 flex flex-wrap gap-1">
                                             {mat.instanceDetails.map((inst: any, i: number) => (
-                                                <span key={i} className="text-[10px] font-mono font-semibold" style={{ color: colors.gray700 }}>
+                                                <span key={i} className="text-[12px] font-mono font-semibold" style={{ color: colors.gray700 }}>
                                                     SN:{inst.uniqueId}
                                                 </span>
                                             ))}
@@ -179,7 +179,7 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                             ))}
                         </div>
                     ) : (
-                        <p className="italic text-[9px] py-1" style={{ color: colors.gray500 }}>No se registraron materiales.</p>
+                        <p className="italic text-[11px] py-1" style={{ color: colors.gray500 }}>No se registraron materiales.</p>
                     )}
                 </div>
             </div>
@@ -188,23 +188,23 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
             <div className="grid grid-cols-3 gap-3 mb-3">
                 {/* SPEEDTEST - 1 COLUMN */}
                 <div>
-                    <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Prueba de Velocidad</h3>
+                    <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Prueba de Velocidad</h3>
                     {data.internetTest ? (
                         <div className="p-2 rounded" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
                             <div className="space-y-1">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[8px] uppercase" style={{ color: colors.gray500 }}>Descarga</span>
-                                    <span className="text-[10px] font-bold" style={{ color: colors.green600 }}>{data.internetTest.downloadSpeed || 0} <span className="text-[7px]" style={{ color: colors.gray400 }}>Mbps</span></span>
+                                    <span className="text-[10px] uppercase" style={{ color: colors.gray500 }}>Descarga</span>
+                                    <span className="text-[12px] font-bold" style={{ color: colors.green600 }}>{data.internetTest.downloadSpeed || 0} <span className="text-[8px]" style={{ color: colors.gray400 }}>Mbps</span></span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[8px] uppercase" style={{ color: colors.gray500 }}>Carga</span>
-                                    <span className="text-[10px] font-bold" style={{ color: colors.blue600 }}>{data.internetTest.uploadSpeed || 0} <span className="text-[7px]" style={{ color: colors.gray400 }}>Mbps</span></span>
+                                    <span className="text-[10px] uppercase" style={{ color: colors.gray500 }}>Carga</span>
+                                    <span className="text-[12px] font-bold" style={{ color: colors.blue600 }}>{data.internetTest.uploadSpeed || 0} <span className="text-[8px]" style={{ color: colors.gray400 }}>Mbps</span></span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-[8px] uppercase" style={{ color: colors.gray500 }}>Ping</span>
-                                    <span className="text-[10px] font-bold" style={{ color: colors.gray700 }}>{data.internetTest.ping || 0} <span className="text-[7px]" style={{ color: colors.gray400 }}>ms</span></span>
+                                    <span className="text-[10px] uppercase" style={{ color: colors.gray500 }}>Ping</span>
+                                    <span className="text-[12px] font-bold" style={{ color: colors.gray700 }}>{data.internetTest.ping || 0} <span className="text-[8px]" style={{ color: colors.gray400 }}>ms</span></span>
                                 </div>
-                                <div className="pt-1 text-[8px]" style={{ borderTop: `1px solid ${colors.gray200}` }}>
+                                <div className="pt-1 text-[10px]" style={{ borderTop: `1px solid ${colors.gray200}` }}>
                                     <span style={{ color: colors.gray500 }}>Frecuencia:</span> <span className="font-medium" style={{ color: colors.gray700 }}>{data.internetTest.frecuency || 'N/A'}</span>
                                     <span className="mx-1" style={{ color: colors.gray300 }}>•</span>
                                     <span style={{ color: colors.gray500 }}>Señal:</span> <span className="font-medium" style={{ color: colors.gray700 }}>{data.internetTest.wifiSSID || 'N/A'}</span>
@@ -213,21 +213,21 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                         </div>
                     ) : (
                         <div className="p-2 rounded text-center" style={{ backgroundColor: colors.gray50, border: `1px dashed ${colors.gray300}` }}>
-                            <p className="text-[10px] italic py-4" style={{ color: colors.gray500 }}>No se realizó prueba de velocidad.</p>
+                            <p className="text-[12px] italic py-4" style={{ color: colors.gray500 }}>No se realizó prueba de velocidad.</p>
                         </div>
                     )}
                 </div>
 
                 {/* INSTALLER LOG - 1 COLUMN */}
                 <div>
-                    <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Bitácora</h3>
+                    <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Bitácora</h3>
                     {data.installerLog && data.installerLog.length > 0 ? (() => {
                         const lastLog = data.installerLog[data.installerLog.length - 1];
                         return (
                             <div className="p-2 rounded" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
-                                <p className="text-[10px] leading-relaxed" style={{ color: colors.gray700 }}>{lastLog.log}</p>
+                                <p className="text-[12px] leading-relaxed" style={{ color: colors.gray700 }}>{lastLog.log}</p>
                                 <div className="flex justify-end mt-1.5">
-                                    <span className="text-[9px]" style={{ color: colors.gray500 }}>
+                                    <span className="text-[11px]" style={{ color: colors.gray500 }}>
                                         {new Date(lastLog.timestamp).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })} {new Date(lastLog.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
@@ -235,14 +235,14 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                         );
                     })() : (
                         <div className="p-2 rounded text-center" style={{ backgroundColor: colors.gray50, border: `1px dashed ${colors.gray300}` }}>
-                            <p className="text-[10px] italic py-4" style={{ color: colors.gray500 }}>Sin bitácora registrada.</p>
+                            <p className="text-[12px] italic py-4" style={{ color: colors.gray500 }}>Sin bitácora registrada.</p>
                         </div>
                     )}
                 </div>
 
                 {/* SIGNATURE - 1 COLUMN (RIGHT) */}
                 <div>
-                    <h3 className="text-xs font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Firma del Cliente</h3>
+                    <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Firma del Cliente</h3>
                     <div className="flex flex-col items-center">
                         {data.customerSignature ? (
                             <div className="mb-1 pb-1 w-full" style={{ borderBottom: `1px solid ${colors.gray300}` }}>
@@ -257,13 +257,13 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                         ) : (
                             <div className="h-16 mb-1 w-full" style={{ borderBottom: `1px solid ${colors.gray300}` }}></div>
                         )}
-                        <p className="text-[10px] text-center" style={{ color: colors.gray400 }}>Acepto conforme el trabajo realizado</p>
+                        <p className="text-[12px] text-center" style={{ color: colors.gray400 }}>Acepto conforme el trabajo realizado</p>
                     </div>
                 </div>
             </div>
 
             {/* FOOTER */}
-            <div className="mt-4 pt-2 text-center text-[10px]" style={{ borderTop: `1px solid ${colors.gray100}`, color: colors.gray400 }}>
+            <div className="mt-4 pt-2 text-center text-[12px]" style={{ borderTop: `1px solid ${colors.gray100}`, color: colors.gray400 }}>
                 <p>Generado el {new Date().toLocaleDateString()} a las {new Date().toLocaleTimeString()} • ENLARED Web Platform</p>
             </div>
         </div>

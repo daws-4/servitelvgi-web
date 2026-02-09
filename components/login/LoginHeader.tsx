@@ -1,5 +1,5 @@
 import React from "react";
-import { SatelliteDishIcon } from "@/components/icons";
+import { Logo } from "../Logo";
 
 /**
  * LoginHeader - Header section with logo and branding
@@ -12,8 +12,8 @@ export const LoginHeader: React.FC = () => {
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-10 -mt-10"></div>
 
             <div className="relative z-10">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm border border-white/30">
-                    <SatelliteDishIcon className="text-background text-3xl" size={32} />
+                <div className="flex items-center justify-center mx-auto mb-4">
+                    <Logo size={96} />
                 </div>
                 <h1 className="text-2xl font-bold text-white tracking-wide">ENLARED</h1>
                 <p className="text-blue-100 text-sm mt-1">Gestión de Operaciones</p>

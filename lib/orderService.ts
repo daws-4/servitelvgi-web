@@ -405,6 +405,8 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
     ticket_id: order.ticket_id || order.subscriberNumber,
     certificateUrl: certificateUrlOverride || order.certificateUrl || '',
     type: order.type || 'instalacion',
+    status: order.status || 'pending',
+    estado: order.status || 'pending', // Spanish translation for n8n compatibility
   };
 
   // Extract leader name from crew (only leader, not all members)

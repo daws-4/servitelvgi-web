@@ -14,28 +14,32 @@ const InventorySnapshotSchema = new mongoose.Schema(
     },
 
     // Estado del inventario en bodega central
-    warehouseInventory: [
-      {
-        item: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Inventory",
-          required: true,
+    // Opcional: solo se usa en snapshots de tipo 'daily'
+    warehouseInventory: {
+      type: [
+        {
+          item: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Inventory",
+            required: true,
+          },
+          quantity: {
+            type: Number,
+            required: true,
+          },
+          // Datos desnormalizados para consultas rápidas sin populate
+          code: {
+            type: String,
+            required: true,
+          },
+          description: {
+            type: String,
+            required: true,
+          },
         },
-        quantity: {
-          type: Number,
-          required: true,
-        },
-        // Datos desnormalizados para consultas rápidas sin populate
-        code: {
-          type: String,
-          required: true,
-        },
-        description: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
+      ],
+      default: [],
+    },
 
     // Estado del inventario de cada cuadrilla
     crewInventories: [

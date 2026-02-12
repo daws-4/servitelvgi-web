@@ -326,6 +326,33 @@ export async function assignMaterialToCrew(
     }
 
     await crew.save({ session });
+
+    // Crear snapshot de asignación con los materiales recién asignados
+    try {
+      // Preparar items para el snapshot con metadata
+      const snapshotItems = await Promise.all(
+        items.map(async (item) => {
+          const inventoryItem = await InventoryModel.findById(item.inventoryId)
+            .select('code description')
+            .session(session)
+            .lean() as { code: string; description: string } | null;
+
+          return {
+            inventoryId: item.inventoryId,
+            quantity: item.quantity,
+            code: inventoryItem?.code || 'UNKNOWN',
+            description: inventoryItem?.description || 'Item desconocido',
+          };
+        })
+      );
+
+      await createAssignmentSnapshot(crewId, snapshotItems, session);
+    } catch (snapshotError) {
+      // Log el error pero no abortar la transacción principal
+      console.error('Error al crear snapshot de asignación:', snapshotError);
+      // Continuar con la asignación aunque falle el snapshot
+    }
+
     await session.commitTransaction();
 
     return crew;
@@ -1169,6 +1196,7 @@ export async function createDailySnapshot() {
     // 4. Crear el snapshot
     const snapshot = await InventorySnapshotModel.create({
       snapshotDate: new Date(),
+      snapshotType: 'daily',
       warehouseInventory,
       crewInventories,
       totalItems,
@@ -1178,6 +1206,98 @@ export async function createDailySnapshot() {
     return snapshot;
   } catch (error) {
     console.error("Error al crear snapshot diario:", error);
+    throw error;
+  }
+}
+
+/**
+ * Crea un snapshot optimizado de asignación de inventario
+ * Solo registra el material recién asignado a una cuadrilla específica
+ * Funciona como contador acumulativo mensual (filtrado por fecha en consultas)
+ * @param crewId - ID de la cuadrilla que recibió material
+ * @param assignedItems - Array de items asignados con inventoryId, quantity y metadata
+ * @param session - Sesión de MongoDB para transacciones (opcional)
+ * @returns Snapshot de asignación creado
+ */
+export async function createAssignmentSnapshot(
+  crewId: string,
+  assignedItems: { inventoryId: string; quantity: number; code?: string; description?: string }[],
+  session?: any
+) {
+  await connectDB();
+
+  try {
+    // Obtener información de la cuadrilla
+    const crew = await CrewModel.findById(crewId)
+      .select('number')
+      .session(session || null)
+      .lean() as { number: number } | null;
+
+    if (!crew) {
+      throw new Error(`Cuadrilla no encontrada: ${crewId}`);
+    }
+
+    // Obtener metadata de los items si no viene incluida
+    const itemsWithMetadata = await Promise.all(
+      assignedItems.map(async (item) => {
+        if (item.code && item.description) {
+          return {
+            item: new mongoose.Types.ObjectId(item.inventoryId),
+            quantity: item.quantity,
+            code: item.code,
+            description: item.description,
+          };
+        }
+
+        // Buscar metadata del inventario
+        const inventoryItem = await InventoryModel.findById(item.inventoryId)
+          .select('code description')
+          .session(session || null)
+          .lean() as { code: string; description: string } | null;
+
+        if (!inventoryItem) {
+          console.warn(`Item de inventario no encontrado: ${item.inventoryId}`);
+          return {
+            item: new mongoose.Types.ObjectId(item.inventoryId),
+            quantity: item.quantity,
+            code: 'UNKNOWN',
+            description: 'Item no encontrado',
+          };
+        }
+
+        return {
+          item: new mongoose.Types.ObjectId(item.inventoryId),
+          quantity: item.quantity,
+          code: inventoryItem.code,
+          description: inventoryItem.description,
+        };
+      })
+    );
+
+    // Crear el snapshot de asignación
+    const snapshot = await InventorySnapshotModel.create(
+      [
+        {
+          snapshotDate: new Date(),
+          snapshotType: 'assignment',
+          warehouseInventory: [], // No se usa en snapshots de asignación
+          crewInventories: [
+            {
+              crew: new mongoose.Types.ObjectId(crewId),
+              crewNumber: crew.number ? crew.number.toString() : '0',
+              items: itemsWithMetadata,
+            },
+          ],
+          totalItems: assignedItems.length,
+          totalWarehouseStock: 0, // No aplica para snapshots de asignación
+        },
+      ],
+      session ? { session } : {}
+    );
+
+    return snapshot[0];
+  } catch (error) {
+    console.error("Error al crear snapshot de asignación:", error);
     throw error;
   }
 }

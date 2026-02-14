@@ -13,8 +13,10 @@ interface FilterToolbarProps {
     onStatusChange?: (value: string) => void;
     typeFilter?: string;
     onTypeChange?: (value: string) => void;
-    dateRange?: { start: string; end: string } | null;
-    onDateRangeChange?: (range: { start: string; end: string } | null) => void;
+    createdAtRange?: { start: string; end: string } | null;
+    onCreatedAtRangeChange?: (range: { start: string; end: string } | null) => void;
+    updatedAtRange?: { start: string; end: string } | null;
+    onUpdatedAtRangeChange?: (range: { start: string; end: string } | null) => void;
     crewFilter?: string;
     onCrewChange?: (value: string) => void;
     isSentFilter?: string;
@@ -48,8 +50,10 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     onStatusChange,
     typeFilter = "all",
     onTypeChange,
-    dateRange = null,
-    onDateRangeChange,
+    createdAtRange = null,
+    onCreatedAtRangeChange,
+    updatedAtRange = null,
+    onUpdatedAtRangeChange,
     crewFilter = "all",
     onCrewChange,
     isSentFilter = "all",
@@ -76,9 +80,9 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     }, []);
 
     return (
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-            {/* Filtros */}
-            <div className="flex flex-wrap gap-3 items-end ">
+        <div className="flex flex-col gap-4 mb-6">
+            {/* Primera fila: Filtros principales */}
+            <div className="flex flex-wrap gap-3 items-end">
                 {/* Buscador Principal */}
                 <div className="relative">
                     <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10"></i>
@@ -139,6 +143,7 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     </select>
                     <i className="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none"></i>
                 </div>
+
                 {/* Filtro IsSent */}
                 <div className="relative">
                     <select
@@ -154,26 +159,60 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                 </div>
             </div>
 
-            {/* Filtro Rango de Fechas */}
-            <div className="w-80 mb-2">
-                <DateFilter
-                    label="Filtrar por Fecha"
-                    onDateChange={onDateRangeChange}
-                    labelPlacement="outside"
-                    classNames={{
-                        base: "w-full",
-                        inputWrapper: "h-10",
-                    }}
-                />
+            {/* Segunda fila: Filtros de Rango de Fechas */}
+            <div className="flex flex-wrap gap-3 items-end">
+                {/* Filtro Fecha de Asignación (createdAt) */}
+                <div className="w-72">
+                    <DateFilter
+                        label="Fecha de Asignación"
+                        onDateChange={onCreatedAtRangeChange}
+                        value={createdAtRange}
+                        labelPlacement="outside"
+                        classNames={{
+                            base: "w-full",
+                            inputWrapper: "h-10",
+                        }}
+                    />
+                </div>
+
+                {/* Filtro Fecha de Última Edición (updatedAt) */}
+                <div className="w-72">
+                    <DateFilter
+                        label="Fecha de Última Edición"
+                        onDateChange={onUpdatedAtRangeChange}
+                        value={updatedAtRange}
+                        labelPlacement="outside"
+                        classNames={{
+                            base: "w-full",
+                            inputWrapper: "h-10",
+                        }}
+                    />
+                </div>
+
+                {/* Botón para reiniciar fechas */}
+                {(createdAtRange || updatedAtRange) && (
+                    <button
+                        onClick={() => {
+                            onCreatedAtRangeChange?.(null);
+                            onUpdatedAtRangeChange?.(null);
+                        }}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 cursor-pointer h-10"
+                        title="Reiniciar filtros de fecha"
+                    >
+                        <i className="fa-solid fa-rotate-left"></i> Reiniciar Fechas
+                    </button>
+                )}
             </div>
 
-            {/* Acciones Principales */}
-            <button
-                onClick={onNewOrder}
-                className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-primary/20 transition-all flex items-center gap-2 cursor-pointer"
-            >
-                <i className="fa-solid fa-plus "></i> Nueva Orden
-            </button>
+            {/* Tercera fila: Botón Nueva Orden */}
+            <div className="flex justify-end">
+                <button
+                    onClick={onNewOrder}
+                    className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium shadow-md shadow-primary/20 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                    <i className="fa-solid fa-plus "></i> Nueva Orden
+                </button>
+            </div>
         </div>
     );
 };

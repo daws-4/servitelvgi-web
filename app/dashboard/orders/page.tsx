@@ -13,7 +13,8 @@ export default function OrdersPage() {
     const [searchValue, setSearchValue] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [typeFilter, setTypeFilter] = useState("all");
-    const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
+    const [createdAtRange, setCreatedAtRange] = useState<{ start: string; end: string } | null>(null);
+    const [updatedAtRange, setUpdatedAtRange] = useState<{ start: string; end: string } | null>(null);
     const [crewFilter, setCrewFilter] = useState("all");
     const [isSentFilter, setIsSentFilter] = useState("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -78,45 +79,96 @@ export default function OrdersPage() {
             filtered = filtered.filter(order => !!order.sentToNetuno === isSent);
         }
 
-        // Apply date range filter
-        if (dateRange) {
+
+        // Apply date range filters with GMT-4 timezone conversion
+        // Helper function to convert date range to GMT-4 with debugging
+        const convertToGMT4Range = (dateRange: { start: string; end: string }, filterType: 'createdAt' | 'updatedAt') => {
+            const [yearStart, monthStart, dayStart] = dateRange.start.split('-').map(Number);
+            const [yearEnd, monthEnd, dayEnd] = dateRange.end.split('-').map(Number);
+
+            // Create dates at midnight local time
+            const start = new Date(yearStart, monthStart - 1, dayStart, 0, 0, 0, 0);
+            const end = new Date(yearEnd, monthEnd - 1, dayEnd, 23, 59, 59, 999);
+
+            // Add 4 hours for GMT-4 timezone (Venezuela)
+            start.setHours(start.getHours() + 4);
+            end.setHours(end.getHours() + 4);
+
+            console.debug(`[GMT-4 Conversion - ${filterType}]`, {
+                input: dateRange,
+                startDate: start.toISOString(),
+                endDate: end.toISOString(),
+                startLocal: start.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
+                endLocal: end.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
+                timestamp: new Date().toISOString()
+            });
+
+            return { start, end };
+        };
+
+        // Apply createdAt date filter
+        if (createdAtRange) {
+            const { start, end } = convertToGMT4Range(createdAtRange, 'createdAt');
+            const beforeCount = filtered.length;
+
             filtered = filtered.filter(order => {
-                // Usar createdAt para el filtro de fecha
-                const orderDate = new Date(order.createdAt || order.updatedAt || Date.now());
+                const orderDate = new Date(order.createdAt || Date.now());
+                const matches = orderDate >= start && orderDate <= end;
 
-                // Crear fechas en GMT-4 (Venezuela)
-                let start: Date | null = null;
-                let end: Date | null = null;
-
-                if (dateRange.start) {
-                    // Parsear la fecha de inicio como YYYY-MM-DD y establecer a las 00:00:00 GMT-4
-                    const [year, month, day] = dateRange.start.split('-').map(Number);
-                    start = new Date(year, month - 1, day, 0, 0, 0, 0);
-                    // Ajustar a GMT-4 (4 horas adelante de GMT)
-                    start.setHours(start.getHours() + 4);
+                if (!matches) {
+                    console.debug('[createdAt Filter - Excluded]', {
+                        orderId: order._id,
+                        orderDate: orderDate.toISOString(),
+                        orderDateLocal: orderDate.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
+                        rangeStart: start.toISOString(),
+                        rangeEnd: end.toISOString()
+                    });
                 }
 
-                if (dateRange.end) {
-                    // Parsear la fecha de fin como YYYY-MM-DD y establecer a las 23:59:59.999 GMT-4
-                    const [year, month, day] = dateRange.end.split('-').map(Number);
-                    end = new Date(year, month - 1, day, 23, 59, 59, 999);
-                    // Ajustar a GMT-4 (4 horas adelante de GMT)
-                    end.setHours(end.getHours() + 4);
-                }
+                return matches;
+            });
 
-                if (start && end) {
-                    return orderDate >= start && orderDate <= end;
-                } else if (start) {
-                    return orderDate >= start;
-                } else if (end) {
-                    return orderDate <= end;
-                }
-                return true;
+            console.debug('[createdAt Filter Results]', {
+                input: createdAtRange,
+                beforeCount,
+                afterCount: filtered.length,
+                filtered: filtered.length - beforeCount
             });
         }
 
+        // Apply updatedAt date filter
+        if (updatedAtRange) {
+            const { start, end } = convertToGMT4Range(updatedAtRange, 'updatedAt');
+            const beforeCount = filtered.length;
+
+            filtered = filtered.filter(order => {
+                const orderDate = new Date(order.updatedAt || Date.now());
+                const matches = orderDate >= start && orderDate <= end;
+
+                if (!matches) {
+                    console.debug('[updatedAt Filter - Excluded]', {
+                        orderId: order._id,
+                        orderDate: orderDate.toISOString(),
+                        orderDateLocal: orderDate.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
+                        rangeStart: start.toISOString(),
+                        rangeEnd: end.toISOString()
+                    });
+                }
+
+                return matches;
+            });
+
+            console.debug('[updatedAt Filter Results]', {
+                input: updatedAtRange,
+                beforeCount,
+                afterCount: filtered.length,
+                filtered: filtered.length - beforeCount
+            });
+        }
+
+
         return filtered;
-    }, [orders, searchValue, statusFilter, typeFilter, dateRange, crewFilter, isSentFilter]);
+    }, [orders, searchValue, statusFilter, typeFilter, createdAtRange, updatedAtRange, crewFilter, isSentFilter]);
 
     // Pagination logic
     const itemsPerPage = 10;
@@ -166,8 +218,16 @@ export default function OrdersPage() {
         setSelectedOrders(new Set()); // Clear selection
     };
 
-    const handleDateRangeChange = (range: { start: string; end: string } | null) => {
-        setDateRange(range);
+    const handleCreatedAtRangeChange = (range: { start: string; end: string } | null) => {
+        console.debug('[Filter Change] createdAt range:', range);
+        setCreatedAtRange(range);
+        setCurrentPage(1);
+        setSelectedOrders(new Set());
+    };
+
+    const handleUpdatedAtRangeChange = (range: { start: string; end: string } | null) => {
+        console.debug('[Filter Change] updatedAt range:', range);
+        setUpdatedAtRange(range);
         setCurrentPage(1);
         setSelectedOrders(new Set());
     };
@@ -217,8 +277,10 @@ export default function OrdersPage() {
                 onStatusChange={handleStatusChange}
                 typeFilter={typeFilter}
                 onTypeChange={handleTypeChange}
-                dateRange={dateRange}
-                onDateRangeChange={handleDateRangeChange}
+                createdAtRange={createdAtRange}
+                onCreatedAtRangeChange={handleCreatedAtRangeChange}
+                updatedAtRange={updatedAtRange}
+                onUpdatedAtRangeChange={handleUpdatedAtRangeChange}
                 crewFilter={crewFilter}
                 onCrewChange={handleCrewChange}
                 isSentFilter={isSentFilter}

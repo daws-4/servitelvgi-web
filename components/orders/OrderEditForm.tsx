@@ -64,7 +64,9 @@ export interface OrderEditData {
     equipmentRecovered?: EquipmentRecovered; // For recovery orders
     installerLog?: InstallerLogEntry[];
     technicianName?: string;
-    updatedAt?: Date | string; // Order finalization date
+    createdAt?: Date | string; // Order creation date
+    updatedAt?: Date | string; // Last update date
+    completionDate?: Date | string; // Order completion date
     visitCount?: number;
     powerNap?: string;
     powerRoseta?: string;

@@ -52,11 +52,23 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                 </div>
 
                 {/* RIGHT: METADATA (Date, Technician) */}
-                <div className="text-right">
-                    {/* Finalization Date */}
+                <div className="text-right text-[12px]">
+                    {/* Creation Date */}
+                    {data.createdAt && (
+                        <p className="font-medium mt-0.5" style={{ color: colors.gray600 }}>
+                            Hora Asignada: <span className="font-bold">{new Date(data.createdAt).toLocaleDateString()} {new Date(data.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </p>
+                    )}
+                    {/* Last Update Date */}
                     {data.updatedAt && (
-                        <p className="text-[14px] font-medium mt-0.5" style={{ color: colors.gray600 }}>
-                            Fecha: <span className="font-bold">{new Date(data.updatedAt).toLocaleDateString()}</span>
+                        <p className="font-medium mt-0.5" style={{ color: colors.gray600 }}>
+                            Última Edición: <span className="font-bold">{new Date(data.updatedAt).toLocaleDateString()} {new Date(data.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                        </p>
+                    )}
+                    {/* Completion Date */}
+                    {data.completionDate && (
+                        <p className="font-medium mt-0.5" style={{ color: colors.green600 }}>
+                            Completada: <span className="font-bold">{new Date(data.completionDate).toLocaleDateString()} {new Date(data.completionDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                         </p>
                     )}
                     {/* Technician Name in Header */}

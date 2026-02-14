@@ -32,6 +32,7 @@ export interface OrderData {
     servicesToInstall?: string[];
     createdAt?: string;
     updatedAt?: string;
+    completionDate?: string;
     sentToNetuno?: boolean;
 }
 

@@ -236,6 +236,43 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
             {/* LEFT COLUMN (2/3) */}
             <div className="lg:col-span-2 space-y-6">
 
+                {/* Date Info Bar */}
+                {(formData.createdAt || formData.updatedAt || formData.completionDate) && (
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-5 py-3 flex flex-wrap gap-x-6 gap-y-2 items-center text-sm">
+                        {formData.createdAt && (
+                            <div className="flex items-center gap-1.5 text-gray-600">
+                                <i className="fa-regular fa-calendar-plus text-blue-500"></i>
+                                <span className="font-medium">Asignada:</span>
+                                <span>{new Date(formData.createdAt).toLocaleDateString('es-VE')} {new Date(formData.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                        )}
+                        {formData.updatedAt && (
+                            <div className="flex items-center gap-1.5 text-gray-600">
+                                <i className="fa-regular fa-pen-to-square text-amber-500"></i>
+                                <span className="font-medium">Última Edición:</span>
+                                <span>{new Date(formData.updatedAt).toLocaleDateString('es-VE')} {new Date(formData.updatedAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                        )}
+                        {(() => {
+                            // Use completionDate if available, otherwise fallback to installer log with status 'completed'
+                            const completionDate = formData.completionDate
+                                || installerLog
+                                    .filter(entry => entry.status === 'completed')
+                                    .pop()?.timestamp;
+
+                            if (!completionDate) return null;
+
+                            return (
+                                <div className="flex items-center gap-1.5 text-green-600">
+                                    <i className="fa-regular fa-circle-check text-green-500"></i>
+                                    <span className="font-medium">Completada:</span>
+                                    <span>{new Date(completionDate).toLocaleDateString('es-VE')} {new Date(completionDate).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                            );
+                        })()}
+                    </div>
+                )}
+
                 {/* 1. Subscriber Data */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="bg-gray-50/50 border-b border-gray-100 px-6 py-4 flex items-center justify-between">

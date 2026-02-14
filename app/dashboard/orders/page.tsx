@@ -15,6 +15,7 @@ export default function OrdersPage() {
     const [typeFilter, setTypeFilter] = useState("all");
     const [createdAtRange, setCreatedAtRange] = useState<{ start: string; end: string } | null>(null);
     const [updatedAtRange, setUpdatedAtRange] = useState<{ start: string; end: string } | null>(null);
+    const [completionDateRange, setCompletionDateRange] = useState<{ start: string; end: string } | null>(null);
     const [crewFilter, setCrewFilter] = useState("all");
     const [isSentFilter, setIsSentFilter] = useState("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -166,9 +167,39 @@ export default function OrdersPage() {
             });
         }
 
+        // Apply completionDate filter (only completed orders)
+        if (completionDateRange) {
+            const { start, end } = convertToGMT4Range(completionDateRange, 'createdAt');
+            const beforeCount = filtered.length;
+
+            // First filter to only completed orders
+            filtered = filtered.filter(order => order.status === 'completed');
+
+            // Then filter by completionDate
+            filtered = filtered.filter(order => {
+                const orderDate = new Date(order.completionDate || Date.now());
+                const matches = orderDate >= start && orderDate <= end;
+
+                if (!matches) {
+                    console.debug('[completionDate Filter - Excluded]', {
+                        orderId: order._id,
+                        orderDate: orderDate.toISOString(),
+                        orderDateLocal: orderDate.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
+                    });
+                }
+
+                return matches;
+            });
+
+            console.debug('[completionDate Filter Results]', {
+                input: completionDateRange,
+                beforeCount,
+                afterCount: filtered.length,
+            });
+        }
 
         return filtered;
-    }, [orders, searchValue, statusFilter, typeFilter, createdAtRange, updatedAtRange, crewFilter, isSentFilter]);
+    }, [orders, searchValue, statusFilter, typeFilter, createdAtRange, updatedAtRange, completionDateRange, crewFilter, isSentFilter]);
 
     // Pagination logic
     const itemsPerPage = 10;
@@ -232,6 +263,13 @@ export default function OrdersPage() {
         setSelectedOrders(new Set());
     };
 
+    const handleCompletionDateRangeChange = (range: { start: string; end: string } | null) => {
+        console.debug('[Filter Change] completionDate range:', range);
+        setCompletionDateRange(range);
+        setCurrentPage(1);
+        setSelectedOrders(new Set());
+    };
+
     const handleCrewChange = (value: string) => {
         setCrewFilter(value);
         setCurrentPage(1);
@@ -281,6 +319,8 @@ export default function OrdersPage() {
                 onCreatedAtRangeChange={handleCreatedAtRangeChange}
                 updatedAtRange={updatedAtRange}
                 onUpdatedAtRangeChange={handleUpdatedAtRangeChange}
+                completionDateRange={completionDateRange}
+                onCompletionDateRangeChange={handleCompletionDateRangeChange}
                 crewFilter={crewFilter}
                 onCrewChange={handleCrewChange}
                 isSentFilter={isSentFilter}

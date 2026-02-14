@@ -17,6 +17,8 @@ interface FilterToolbarProps {
     onCreatedAtRangeChange?: (range: { start: string; end: string } | null) => void;
     updatedAtRange?: { start: string; end: string } | null;
     onUpdatedAtRangeChange?: (range: { start: string; end: string } | null) => void;
+    completionDateRange?: { start: string; end: string } | null;
+    onCompletionDateRangeChange?: (range: { start: string; end: string } | null) => void;
     crewFilter?: string;
     onCrewChange?: (value: string) => void;
     isSentFilter?: string;
@@ -54,6 +56,8 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
     onCreatedAtRangeChange,
     updatedAtRange = null,
     onUpdatedAtRangeChange,
+    completionDateRange = null,
+    onCompletionDateRangeChange,
     crewFilter = "all",
     onCrewChange,
     isSentFilter = "all",
@@ -189,12 +193,27 @@ export const FilterToolbar: React.FC<FilterToolbarProps> = ({
                     />
                 </div>
 
+                {/* Filtro Fecha de Completación (completionDate) */}
+                <div className="w-72">
+                    <DateFilter
+                        label="Fecha de Finalización"
+                        onDateChange={onCompletionDateRangeChange}
+                        value={completionDateRange}
+                        labelPlacement="outside"
+                        classNames={{
+                            base: "w-full",
+                            inputWrapper: "h-10",
+                        }}
+                    />
+                </div>
+
                 {/* Botón para reiniciar fechas */}
-                {(createdAtRange || updatedAtRange) && (
+                {(createdAtRange || updatedAtRange || completionDateRange) && (
                     <button
                         onClick={() => {
                             onCreatedAtRangeChange?.(null);
                             onUpdatedAtRangeChange?.(null);
+                            onCompletionDateRangeChange?.(null);
                         }}
                         className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 cursor-pointer h-10"
                         title="Reiniciar filtros de fecha"

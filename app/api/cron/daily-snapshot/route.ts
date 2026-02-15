@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createDailySnapshot } from "@/lib/inventoryService";
+import { createOrderSnapshot } from "@/lib/orderService";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,25 +28,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ejecutar snapshot
-    console.log("Ejecutando snapshot diario...");
-    const snapshot = await createDailySnapshot();
+    // 1. Ejecutar snapshot de inventario
+    console.log("Ejecutando snapshot diario de inventario...");
+    const inventorySnapshot = await createDailySnapshot();
 
-    console.log("Snapshot creado exitosamente:", {
-      date: snapshot.snapshotDate,
-      warehouseItems: snapshot.warehouseInventory.length,
-      crews: snapshot.crewInventories.length,
+    console.log("Snapshot de inventario creado exitosamente:", {
+      date: inventorySnapshot.snapshotDate,
+      warehouseItems: inventorySnapshot.warehouseInventory.length,
+      crews: inventorySnapshot.crewInventories.length,
+    });
+
+    // 2. Ejecutar snapshot de órdenes
+    console.log("Ejecutando snapshot diario de órdenes...");
+    const orderSnapshot = await createOrderSnapshot();
+
+    console.log("Snapshot de órdenes creado exitosamente:", {
+      date: orderSnapshot.snapshotDate,
+      crews: orderSnapshot.crewSnapshots.length,
+      totalOrders: orderSnapshot.totalOrders,
     });
 
     return NextResponse.json({
       success: true,
-      message: "Snapshot diario creado correctamente",
-      snapshot: {
-        id: snapshot._id,
-        date: snapshot.snapshotDate,
-        totalItems: snapshot.totalItems,
-        totalWarehouseStock: snapshot.totalWarehouseStock,
-        crewsTracked: snapshot.crewInventories.length,
+      message: "Snapshots diarios creados correctamente",
+      inventorySnapshot: {
+        id: inventorySnapshot._id,
+        date: inventorySnapshot.snapshotDate,
+        totalItems: inventorySnapshot.totalItems,
+        totalWarehouseStock: inventorySnapshot.totalWarehouseStock,
+        crewsTracked: inventorySnapshot.crewInventories.length,
+      },
+      orderSnapshot: {
+        id: orderSnapshot._id,
+        date: orderSnapshot.snapshotDate,
+        totalOrders: orderSnapshot.totalOrders,
+        totalCompleted: orderSnapshot.totalCompleted,
+        totalPending: orderSnapshot.totalPending,
+        crewsTracked: orderSnapshot.crewSnapshots.length,
       },
     });
   } catch (error: any) {

@@ -2,6 +2,7 @@ import OrderModel, { IOrder } from "@/models/Order";
 import InstallerModel from "@/models/Installer"; // Registers Installer schema
 import CrewModel from "@/models/Crew"; // Registers Crew schema
 import InventoryModel, { IInventory } from "@/models/Inventory";
+import OrderSnapshotModel from "@/models/OrderSnapshot";
 import { connectDB } from "@/lib/db";
 import { createOrderHistory } from "@/lib/orderHistoryService";
 import { SessionUser } from "@/lib/authHelpers";
@@ -495,4 +496,106 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
     console.error('❌ Error sending webhook to n8n:', error);
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
   }
+}
+
+// Crear snapshot diario de órdenes por cuadrilla
+export async function createOrderSnapshot() {
+  await connectDB();
+
+  // Aggregate orders grouped by assignedTo and status
+  const pipeline = [
+    {
+      $match: {
+        assignedTo: { $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          crew: "$assignedTo",
+          status: "$status",
+        },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $group: {
+        _id: "$_id.crew",
+        statuses: {
+          $push: {
+            status: "$_id.status",
+            count: "$count",
+          },
+        },
+        total: { $sum: "$count" },
+      },
+    },
+  ];
+
+  const aggregated = await OrderModel.aggregate(pipeline);
+
+  // Get all active crews with leader info
+  const crews = await CrewModel.find({ isActive: true })
+    .populate('leader', 'name surname')
+    .lean();
+
+  const crewMap = new Map(
+    crews.map((c: any) => [c._id.toString(), c])
+  );
+
+  // Build crew snapshots
+  const validStatuses = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'visita', 'hard'];
+  let totalOrders = 0;
+  let totalCompleted = 0;
+  let totalPending = 0;
+
+  const crewSnapshots = aggregated
+    .filter((entry: any) => crewMap.has(entry._id.toString()))
+    .map((entry: any) => {
+      const crew = crewMap.get(entry._id.toString());
+      const orders: Record<string, number> = {};
+
+      // Initialize all statuses to 0
+      for (const s of validStatuses) {
+        orders[s] = 0;
+      }
+
+      // Fill in actual counts
+      for (const { status, count } of entry.statuses) {
+        if (validStatuses.includes(status)) {
+          orders[status] = count;
+        }
+      }
+      orders.total = entry.total;
+
+      totalOrders += entry.total;
+      totalCompleted += orders.completed;
+      totalPending += orders.pending;
+
+      const leaderName = crew?.leader
+        ? `${crew.leader.name} ${crew.leader.surname}`
+        : 'Sin líder';
+
+      return {
+        crew: entry._id,
+        crewNumber: crew?.number || 0,
+        leaderName,
+        orders,
+      };
+    });
+
+  // Sort by crew number
+  crewSnapshots.sort((a: any, b: any) => a.crewNumber - b.crewNumber);
+
+  const snapshot = await OrderSnapshotModel.create({
+    snapshotDate: new Date(),
+    crewSnapshots,
+    totalOrders,
+    totalCompleted,
+    totalPending,
+  });
+
+  console.log(`[OrderSnapshot] Creado exitosamente: ${crewSnapshots.length} cuadrillas, ${totalOrders} órdenes totales`);
+
+  return snapshot;
 }

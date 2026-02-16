@@ -27,6 +27,7 @@ const REPORT_OPTIONS: { value: ReportType; label: string; icon: string }[] = [
     { value: "crew_inventory", label: "Movimientos inventario Cuadrilla", icon: "fa-clipboard-list" },
     { value: "crew_stock", label: "Inventario en Cuadrillas", icon: "fa-boxes-packing" },
     { value: "crew_visits", label: "Visitas por Cuadrilla", icon: "fa-clipboard-check" },
+    { value: "crew_orders", label: "Órdenes en Cuadrillas", icon: "fa-file-circle-check" },
 ];
 
 export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersProps) {
@@ -46,7 +47,8 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
             'inventory_report',
             'netuno_orders',
             'crew_inventory',
-            'crew_stock'
+            'crew_stock',
+            'crew_orders'
         ].includes(selectedType);
 
         if (needsRange && !dateRange) {

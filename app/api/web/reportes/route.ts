@@ -12,6 +12,7 @@ import {
   getCrewInventoryReport,
   getCrewVisitsReport,
   getCrewStockReport,
+  getCrewOrdersReport,
 } from "@/lib/reportService";
 
 /**
@@ -185,8 +186,18 @@ export async function GET(request: NextRequest) {
         metadata = {
           reportType,
           generatedAt: new Date(),
-          filters: { crewId: crewId || "all" },
-          totalRecords: data.length,
+          filters: { startDate: startDate || "N/A", endDate: endDate || "N/A", crewId: crewId || "all" },
+          totalRecords: (data.crews || []).length,
+        };
+        break;
+
+      case "crew_orders":
+        data = await getCrewOrdersReport(startDate && endDate ? { start: startDate, end: endDate } : undefined, crewId || undefined);
+        metadata = {
+          reportType,
+          generatedAt: new Date(),
+          filters: { startDate: startDate || "N/A", endDate: endDate || "N/A", crewId: crewId || "all" },
+          totalRecords: (data.crews || []).length,
         };
         break;
 

@@ -7,6 +7,8 @@ import { connectDB } from "@/lib/db";
 import { createOrderHistory } from "@/lib/orderHistoryService";
 import { SessionUser } from "@/lib/authHelpers";
 import { notifyNewOrderAssigned, notifyOrderReassigned, notifyOrderStatusChanged } from '@/lib/pushNotificationService';
+import { formatDateToVenezuela } from "@/lib/dateUtils";
+
 // Ensure Installer and Crew models are registered for populate
 void InstallerModel;
 void CrewModel;
@@ -254,7 +256,7 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
   if (isHardOrVisita && hasNewLogEntry) {
     const currentCount = oldOrder.visitCount || 0;
     data.visitCount = currentCount + 1;
-    console.log(`[Visit Counter] Incrementing visit count for order ${id}. New count: ${data.visitCount}`);
+    // Visited counter log removed
   }
   // --------------------------------
 
@@ -293,9 +295,7 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
   // Determine if we should exclude the current user from notifications
   const excludeInstallerId = sessionUser?.role === 'installer' ? sessionUser.userId : undefined;
 
-  if (excludeInstallerId) {
-    console.log(`🔍 [orderService] Will exclude installer ${excludeInstallerId} from notifications (role: ${sessionUser?.role})`);
-  }
+  // Notification exclusion log removed
 
   // Priority: If both changed, send status change notification (more relevant)
   // Otherwise send whichever one changed
@@ -333,7 +333,8 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
     }
   } else if (!currentCrewId && statusChanged) {
     // Status changed but no crew assigned - skip notification
-    console.log(`Order ${id} has no crew assigned, skipping status change notification`);
+    // Log commented out
+    // console.log(`Order ${id} has no crew assigned, skipping status change notification`);
   }
 
   return updatedOrder;
@@ -375,24 +376,7 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
     throw new Error("Order not found");
   }
 
-  console.log(`🚀 Manually triggering n8n webhook for order ${id}...`);
-
-  // Helper function to format timestamp to DD/MM/YYYY HH:MM GMT-4
-  const formatTimestamp = (date: Date | string) => {
-    const d = new Date(date);
-
-    // Convert to GMT-4 (Venezuela time)
-    const offset = -4 * 60; // GMT-4 in minutes
-    const localTime = new Date(d.getTime() + offset * 60 * 1000);
-
-    const day = String(localTime.getUTCDate()).padStart(2, '0');
-    const month = String(localTime.getUTCMonth() + 1).padStart(2, '0');
-    const year = localTime.getUTCFullYear();
-    const hours = String(localTime.getUTCHours()).padStart(2, '0');
-    const minutes = String(localTime.getUTCMinutes()).padStart(2, '0');
-
-    return `${day}/${month}/${year} ${hours}:${minutes}`;
-  };
+  // console.log(`🚀 Manually triggering n8n webhook for order ${id}...`);
 
   // Build detailed payload with requested aliases and backward compatibility
   const payload: any = {
@@ -402,7 +386,7 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
     enlace_imagen: certificateUrlOverride || order.certificateUrl || '',
 
     // 2. Standard Logic (Backward Compatibility for existing n8n nodes)
-    timestamp: formatTimestamp(order.updatedAt || new Date()),
+    timestamp: formatDateToVenezuela(order.updatedAt || new Date()),
     ticket_id: order.ticket_id || order.subscriberNumber,
     certificateUrl: certificateUrlOverride || order.certificateUrl || '',
     type: order.type || 'instalacion',
@@ -481,7 +465,7 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
     });
 
     if (response.ok) {
-      console.log(`✅ Webhook sent to n8n for order ${order.ticket_id || id}. Status: ${response.status}`);
+      // console.log(`✅ Webhook sent to n8n for order ${order.ticket_id || id}. Status: ${response.status}`);
 
       // Marcar como enviado a Netuno
       await OrderModel.findByIdAndUpdate(id, { $set: { sentToNetuno: true } });
@@ -499,10 +483,11 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
 }
 
 // Crear snapshot diario de órdenes por cuadrilla
+// Crear snapshot diario de órdenes por cuadrilla
 export async function createOrderSnapshot() {
   await connectDB();
 
-  // Aggregate orders grouped by assignedTo and status
+  // Aggregate orders grouped by assignedTo, status AND type
   const pipeline = [
     {
       $match: {
@@ -514,6 +499,7 @@ export async function createOrderSnapshot() {
         _id: {
           crew: "$assignedTo",
           status: "$status",
+          type: "$type",
         },
         count: { $sum: 1 },
       },
@@ -524,6 +510,7 @@ export async function createOrderSnapshot() {
         statuses: {
           $push: {
             status: "$_id.status",
+            type: "$_id.type",
             count: "$count",
           },
         },
@@ -545,6 +532,8 @@ export async function createOrderSnapshot() {
 
   // Build crew snapshots
   const validStatuses = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'visita', 'hard'];
+  const validTypes = ['instalacion', 'averia', 'recuperacion', 'otro'];
+
   let totalOrders = 0;
   let totalCompleted = 0;
   let totalPending = 0;
@@ -553,19 +542,36 @@ export async function createOrderSnapshot() {
     .filter((entry: any) => crewMap.has(entry._id.toString()))
     .map((entry: any) => {
       const crew = crewMap.get(entry._id.toString());
+
+      // Init legacy orders structure
       const orders: Record<string, number> = {};
+      for (const s of validStatuses) orders[s] = 0;
+      orders.total = 0;
 
-      // Initialize all statuses to 0
-      for (const s of validStatuses) {
-        orders[s] = 0;
+      // Init byType structure
+      const byType: Record<string, any> = {};
+      for (const t of validTypes) {
+        byType[t] = { total: 0 };
+        for (const s of validStatuses) byType[t][s] = 0;
       }
 
-      // Fill in actual counts
-      for (const { status, count } of entry.statuses) {
+      // Fill data
+      for (const { status, type, count } of entry.statuses) {
+        // Global totals (legacy)
         if (validStatuses.includes(status)) {
-          orders[status] = count;
+          orders[status] = (orders[status] || 0) + count;
         }
+
+        // Type breakdown
+        const t = (type || 'otro').toLowerCase();
+        const targetType = validTypes.includes(t) ? t : 'otro';
+
+        if (validStatuses.includes(status)) {
+          byType[targetType][status] = (byType[targetType][status] || 0) + count;
+        }
+        byType[targetType].total = (byType[targetType].total || 0) + count;
       }
+
       orders.total = entry.total;
 
       totalOrders += entry.total;
@@ -581,6 +587,7 @@ export async function createOrderSnapshot() {
         crewNumber: crew?.number || 0,
         leaderName,
         orders,
+        byType
       };
     });
 
@@ -595,7 +602,7 @@ export async function createOrderSnapshot() {
     totalPending,
   });
 
-  console.log(`[OrderSnapshot] Creado exitosamente: ${crewSnapshots.length} cuadrillas, ${totalOrders} órdenes totales`);
+  // console.log(`[OrderSnapshot] Creado exitosamente: ${crewSnapshots.length} cuadrillas, ${totalOrders} órdenes totales`);
 
   return snapshot;
 }

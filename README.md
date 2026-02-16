@@ -635,8 +635,8 @@ servitelvgi-web/
 ## 📈 Roadmap Futuro
 
 ### Corto Plazo
-- [ ] Implementar notificaciones push (Firebase Cloud Messaging)
-- [ ] Aplicación móvil completa para instaladores
+- [x] Implementar notificaciones push (Firebase Cloud Messaging)
+- [x] Aplicación móvil completa para instaladores
 - [ ] Panel de métricas avanzadas con gráficos (Chart.js/Recharts)
 - [ ] Sistema de chat interno entre oficina y campo
 
@@ -690,6 +690,12 @@ Para soporte técnico o consultas sobre el sistema, contactar al equipo de desar
 
 ---
 
-**Última actualización:** Diciembre 2024  
+**Última actualización:** Febrero 2026  
 **Versión:** 0.0.1  
 **Estado:** En producción activa
+
+## Task List 15/02/2026
+- [x] Actualizar logo
+- [x] Añadir reporte de timestamps para saber qué cantidades de inventario habían en cada cuadrilla cada día
+- [x] añadir reporte de timestamps para saber qué cantidades de ordenes con sus estatuses habían en cada cuadrilla cada día
+- [X] hacer depuración de código con IA para encontrar posibles bugs

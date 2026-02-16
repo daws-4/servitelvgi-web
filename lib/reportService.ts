@@ -8,6 +8,7 @@ import InventoryModel from "@/models/Inventory";
 import InventoryHistoryModel from "@/models/InventoryHistory";
 import InventorySnapshotModel from "@/models/InventorySnapshot";
 import InventoryBatchModel from "@/models/InventoryBatch";
+import OrderSnapshotModel from "@/models/OrderSnapshot";
 import mongoose from "mongoose";
 import { SessionUser } from "@/lib/authHelpers";
 import { startOfMonth, endOfMonth, format, parseISO } from "date-fns";
@@ -181,9 +182,6 @@ export async function getMonthlyReport(
   // Set end of day for the last day of month
   endDate.setHours(23, 59, 59, 999);
 
-  console.log(`[DEBUG] getMonthlyReport Params: Range=${dateRange.start} to ${dateRange.end}, Type=${type}`);
-  console.log(`[DEBUG] Date Range: ${startDate.toISOString()} -> ${endDate.toISOString()}`);
-
   // DIAGNOSTICO 1: Buscar CUALQUIER orden en este rango de fechas (sin importar status ni type)
   const broadQuery = {
     $or: [
@@ -192,14 +190,11 @@ export async function getMonthlyReport(
     ]
   };
   const broadCount = await OrderModel.countDocuments(broadQuery);
-  console.log(`[DEBUG LEVEL 1] Total orders in date range (any status/type): ${broadCount}`);
 
   if (broadCount > 0) {
     // Ver qué tipos y status existen en este rango
     const typesFound = await OrderModel.distinct('type', broadQuery);
     const statusesFound = await OrderModel.distinct('status', broadQuery);
-    console.log(`[DEBUG LEVEL 1] Types found in range:`, typesFound);
-    console.log(`[DEBUG LEVEL 1] Statuses found in range:`, statusesFound);
   }
 
   const baseFilter: any = {
@@ -216,20 +211,15 @@ export async function getMonthlyReport(
   };
 
   const statusCount = await OrderModel.countDocuments(baseFilter);
-  console.log(`[DEBUG LEVEL 2] Orders matching Date + Status requirement: ${statusCount}`);
 
   if (type !== "all") {
     baseFilter.type = type;
   }
 
-  console.log(`[DEBUG LEVEL 3] Final Query with Type filter (${type}):`, JSON.stringify(baseFilter, null, 2));
-
   // Buscar todas las órdenes del mes y poblar cuadrilla
   const orders = await OrderModel.find(baseFilter)
     .populate("assignedTo", "number")
     .lean();
-
-  console.log(`[DEBUG FINAL] Orders returned: ${orders.length}`);
 
   // Agrupar por cuadrilla
   const crewMap = new Map<string, CrewDailyData>();
@@ -703,35 +693,30 @@ export async function getCrewVisitsReport(
 }
 
 /**
- * 8. Reporte de Stock Actual de Cuadrillas
- * Muestra el inventario actual con detalles (bobinas, seriales)
- */
-/**
- * 8. Reporte de Stock Actual de Cuadrillas con Comparativa Histórica
- * Muestra el inventario actual con detalles y compara con un snapshot histórico
- */
-/**
- * 8. Reporte de Stock Actual de Cuadrillas con Comparativa Histórica (Calculada)
- * Muestra el inventario actual y calcula estados históricos usando el historial de movimientos (Reverse Calculation)
+ * 8. Reporte de Stock de Cuadrillas usando InventorySnapshot
+ * - Inicial: Suma de todas las asignaciones del mes (snapshots tipo assignment)
+ * - Final: Inventario live (mes actual) o último snapshot daily (mes pasado)
+ * - Diferencia: Inicial - Final (clamped a 0 si negativo)
+ * - dailySnapshots: Datos diarios para exportación detallada
  */
 export async function getCrewStockReport(
   dateRange?: { start: string; end: string },
   crewId?: string
-): Promise<any[]> {
+): Promise<any> {
   await connectDB();
 
-  console.log(`[DEBUG REPORT] getCrewStockReport called. Range: ${dateRange?.start} - ${dateRange?.end}, Crew: ${crewId}`);
-
   const startDate = dateRange ? parseISO(dateRange.start) : startOfMonth(new Date());
-  const endDate = dateRange ? parseISO(dateRange.end) : new Date(); // End date for the report range
+  const endDate = dateRange ? parseISO(dateRange.end) : new Date();
 
   // Normalize dates
   startDate.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(endDate);
-  endOfDay.setHours(23, 59, 59, 999);
+  const endOfDayDate = new Date(endDate);
+  endOfDayDate.setHours(23, 59, 59, 999);
 
-  // Current Time for "Now"
   const now = new Date();
+  const isCurrentMonth =
+    now.getFullYear() === endDate.getFullYear() &&
+    now.getMonth() === endDate.getMonth();
 
   // Fetch Crews
   const crewFilter: any = { isActive: true };
@@ -740,218 +725,186 @@ export async function getCrewStockReport(
   const crews = await CrewModel.find(crewFilter)
     .populate("assignedInventory.item", "code description type unit")
     .select("number name assignedInventory")
+    .sort({ number: 1 })
     .lean();
 
+  const crewIds = crews.map((c: any) => c._id);
 
-  // Fetch History for the relevant period: From Start Date to Now
-  // We need ALL history from Start Date until Now to reverse calculate back to StartState.
-  // Actually, to get StartState, we need reverse from Now to StartDate.
-  // To get EndState, we need reverse from Now to EndDate.
-  // So we fetch history where date >= StartDate (optimized).
-  // Ideally, we fetch history for the crews involved.
-
-  const historyFilter: any = {
-    createdAt: { $gte: startDate }, // Optimization: Only need records back to start date
-    crew: { $in: crews.map(c => c._id) }
-  };
-
-  const history = await InventoryHistoryModel.find(historyFilter)
-    .sort({ createdAt: -1 }) // Newest first
+  // ─── 1. Obtener "Inicial": Suma de asignaciones del mes desde InventoryHistory ───
+  // InventoryHistory con type='assignment' registra cada asignación a cuadrillas.
+  // quantityChange es negativo (se resta de bodega), lo negamos para obtener la cantidad asignada.
+  const assignmentHistory = await InventoryHistoryModel.find({
+    type: 'assignment',
+    crew: { $in: crewIds },
+    createdAt: { $gte: startDate, $lte: endOfDayDate },
+  })
+    .populate('item', 'code description')
     .lean();
 
-  // Helper to determine Crew Delta for a movement
-  // Returns the change to the CREW'S stock
-  const getCrewDelta = (record: any) => {
-    switch (record.type) {
-      case 'assignment':
-        // Warehouse -X -> Crew +X. Record is -X. Crew Delta is +X.
-        // Formula: -1 * quantityChange
-        return -1 * record.quantityChange;
-      case 'return':
-        // Warehouse +X -> Crew -X. Record is +X. Crew Delta is -X.
-        // Formula: -1 * record.quantityChange
-        return -1 * record.quantityChange;
-      case 'usage_order':
-        // Usage is consumption. Record is -X. Crew Delta is -X.
-        return record.quantityChange;
-      case 'adjustment':
-        // Assuming adjustment on Crew context is logged as is.
-        // Be careful if adjustment is "Add to Warehouse" (positive) vs "Remove from Crew".
-        // Checks needed but for now assuming direct impact sign.
-        return record.quantityChange;
-      default:
-        return 0;
+  // Construir mapa: crewId -> code -> { total assigned qty, code, description }
+  const assignmentMap = new Map<string, Map<string, { qty: number; code: string; description: string }>>();
+
+  for (const record of assignmentHistory) {
+    if (!record.crew || !record.item) continue;
+    const cId = record.crew.toString();
+    const itemData = record.item as any; // populated
+
+    if (!itemData?.code) continue;
+
+    if (!assignmentMap.has(cId)) {
+      assignmentMap.set(cId, new Map());
     }
-  };
+    const itemMap = assignmentMap.get(cId)!;
 
+    // quantityChange is negative for assignments (deducted from warehouse)
+    // We negate it to get the positive quantity assigned to the crew
+    const assignedQty = Math.abs(record.quantityChange);
+
+    const existing = itemMap.get(itemData.code);
+    if (existing) {
+      existing.qty += assignedQty;
+    } else {
+      itemMap.set(itemData.code, {
+        qty: assignedQty,
+        code: itemData.code,
+        description: itemData.description,
+      });
+    }
+  }
+
+  // ─── 2. Obtener "Final" ───
+  // Si es mes actual → inventario live de la cuadrilla
+  // Si es mes pasado → último snapshot daily del mes
+  let lastDailySnapshot: any = null;
+  if (!isCurrentMonth) {
+    lastDailySnapshot = await InventorySnapshotModel.findOne({
+      snapshotType: { $ne: 'assignment' },
+      snapshotDate: { $lte: endOfDayDate, $gte: startDate },
+    })
+      .sort({ snapshotDate: -1 })
+      .lean();
+  }
+
+  // ─── 3. Obtener snapshots diarios del rango para exportación detallada ───
+  const dailySnapshots = await InventorySnapshotModel.find({
+    snapshotType: { $ne: 'assignment' },
+    snapshotDate: { $gte: startDate, $lte: endOfDayDate },
+  })
+    .sort({ snapshotDate: 1 })
+    .lean();
+
+  // ─── 4. Construir datos del reporte por cuadrilla ───
   const reportData = [];
 
   for (const crew of crews) {
-    const inventoryMap = new Map<string, any>();
     const crewIdStr = (crew as any)._id.toString();
+    const inventoryMap = new Map<string, any>();
 
-    // 1. Initialize with Current Live Inventory
-    // This is our Ground Truth at "Now"
-    const currentInventory = crew.assignedInventory || [];
-
-    // Map current items
-    currentInventory.forEach((inv: any) => {
-      if (!inv.item) return;
-      inventoryMap.set(inv.item.code, {
-        code: inv.item.code,
-        description: inv.item.description,
-        unit: inv.item.unit,
-        currentQty: inv.quantity,
-        itemId: inv.item._id,
-        // Temps for calculation
-        calcStart: inv.quantity,
-        calcEnd: inv.quantity
-      });
-    });
-
-    // 2. Process History to Reverse Calculate
-    // We filter history for this crew
-    const crewHistory = history.filter((h: any) => h.crew?.toString() === crewIdStr);
-
-    // Identify items in history that might not be in current inventory (e.g. fully consumed)
-    // We need to fetch details for them if they are missing from map
-    const missingItemIds = new Set<string>();
-    crewHistory.forEach((h: any) => {
-      // We need item code History has item ID.
-      // We might need to populate item in history query or do a lookup.
-      // For efficiency, let's assume we can get code later or map it.
-      // Wait, Map uses Code. History has ID.
-      // We need a way to map ID -> Code.
-      // Let's populate history item in the query above? Or just collect IDs and fetch.
-      missingItemIds.add(h.item.toString());
-    });
-
-    // Remove existing
-    currentInventory.forEach((inv: any) => {
-      if (inv.item) missingItemIds.delete(inv.item._id.toString());
-    });
-
-    // Fetch missing items details
-    let missingItemsMap = new Map<string, any>();
-    if (missingItemIds.size > 0) {
-      const items = await InventoryModel.find({ _id: { $in: Array.from(missingItemIds) } }).lean();
-      items.forEach((i: any) => missingItemsMap.set(i._id.toString(), i));
-    }
-
-    // Add missing items to main map with 0 current quantity
-    missingItemsMap.forEach((item: any) => {
-      if (!inventoryMap.has(item.code)) {
-        inventoryMap.set(item.code, {
-          code: item.code,
-          description: item.description,
-          unit: item.unit,
-          currentQty: 0,
-          itemId: item._id,
-          calcStart: 0,
-          calcEnd: 0
+    // --- Final: inventario actual o último snapshot ---
+    if (isCurrentMonth) {
+      // Usar inventario live
+      const currentInventory = crew.assignedInventory || [];
+      currentInventory.forEach((inv: any) => {
+        if (!inv.item) return;
+        inventoryMap.set(inv.item.code, {
+          code: inv.item.code,
+          description: inv.item.description,
+          unit: inv.item.unit,
+          endQty: inv.quantity,
+          itemId: inv.item._id,
         });
-      }
-    });
-
-    // 3. Apply Reverse Calculation
-    // Iterate history descending (Newest -> Oldest)
-
-    // We want:
-    // Q_End (at EndDate).
-    // Q_Start (at StartDate).
-
-    // Logic:
-    // Start with Q = Q_Current (at Now)
-    // Iterate backwards.
-    // If record.date > EndDate: This movement happened AFTER EndDate.
-    //    To get state AT EndDate, we reverse the movement.
-    //    Q_running -= Delta. (e.g. If Delta was +10 (Assigned), before that it was Q-10).
-    // If record.date > StartDate: This movement happened AFTER StartDate.
-    //    To get state AT StartDate, we reverse the movement.
-
-    for (const record of crewHistory) {
-      const recDate = new Date(record.createdAt);
-      // Get Item Code
-      let itemCode = "";
-      // Try to find in inventoryMap by ID (Need to iterate or have ID map. Let's build ID map)
-      // Optimization: Build ID->Code map
-
-      const itemIdStr = record.item.toString();
-      // Find entry
-      let entry: any = null;
-      // Fix: Using Array.from to avoid MapIterator iteration error in strict TS
-      for (const v of Array.from(inventoryMap.values())) {
-        if (v.itemId.toString() === itemIdStr) {
-          entry = v;
-          break;
+      });
+    } else if (lastDailySnapshot) {
+      // Usar último snapshot daily del mes
+      const crewSnap = lastDailySnapshot.crewInventories.find(
+        (cs: any) => cs.crew.toString() === crewIdStr
+      );
+      if (crewSnap) {
+        for (const item of crewSnap.items) {
+          inventoryMap.set(item.code, {
+            code: item.code,
+            description: item.description,
+            unit: "",
+            endQty: item.quantity,
+            itemId: item.item,
+          });
         }
       }
+    }
 
-      if (!entry) continue; // Should not happen given we added missing
+    // --- Inicial: asignaciones del mes ---
+    const crewAssignments = assignmentMap.get(crewIdStr);
 
-      const delta = getCrewDelta(record);
-
-      // Reverse logic: Before = After - Delta
-
-      // Check if this record affects End State (happened after End Date)
-      if (recDate > endOfDay) {
-        entry.calcEnd -= delta;
-      }
-
-      // Check if this record affects Start State (happened after Start Date)
-      if (recDate >= startDate) {
-        // Usually "Start Inventory" is beginning of day. Movements on Day 1 happen AFTER start.
-        // So yes, reverse them to get to 00:00.
-        entry.calcStart -= delta;
+    // Merge assignment items into inventory map
+    if (crewAssignments) {
+      for (const [code, assignData] of Array.from(crewAssignments.entries())) {
+        if (inventoryMap.has(code)) {
+          inventoryMap.get(code).startQty = assignData.qty;
+        } else {
+          inventoryMap.set(code, {
+            code: assignData.code,
+            description: assignData.description,
+            unit: "",
+            endQty: 0,
+            startQty: assignData.qty,
+            itemId: null,
+          });
+        }
       }
     }
 
-
-    // 4. Finalize Data & Fetch Details (Only for Current Items typically?)
-    // Report usually shows details for Current Inventory. Historical details are hard.
-
+    // --- Calcular Diferencia y obtener detalles ---
     const finalizedItems = [];
 
-    // Fix: Using Array.from
     for (const entry of Array.from(inventoryMap.values())) {
-      // Skip valid 0s (never had it, or 0 all along)
-      if (entry.currentQty === 0 && entry.calcStart === 0 && entry.calcEnd === 0) continue;
+      const startQty = entry.startQty ?? 0;
+      const endQty = entry.endQty ?? 0;
+      const diff = startQty - endQty;
+
+      // Skip items with all zeros
+      if (startQty === 0 && endQty === 0) continue;
+
+      // Clamp negatives to 0
+      const displayStart = Math.max(0, startQty);
+      const displayEnd = Math.max(0, endQty);
+      const displayDiff = Math.max(0, displayStart) - Math.max(0, displayEnd);
 
       let details: any[] = [];
       let hasDetails = false;
 
-      // Fetch details only if Current Qty > 0 (Live items)
-      if (entry.currentQty > 0) {
-        // Re-using logic for bobbins/instances
+      // Fetch details only for live items (current month with qty > 0)
+      if (isCurrentMonth && endQty > 0 && entry.itemId) {
         // Fetch Bobbins
         const bobbins = await InventoryBatchModel.find({
           item: entry.itemId,
-          location: 'crew',
+          location: "crew",
           crew: crewIdStr,
-          status: 'active',
-          currentQuantity: { $gt: 0 }
-        }).select('batchCode currentQuantity').lean();
+          status: "active",
+          currentQuantity: { $gt: 0 },
+        })
+          .select("batchCode currentQuantity")
+          .lean();
 
         if (bobbins.length > 0) {
           details = bobbins.map((b: any) => ({
-            type: 'bobbin',
+            type: "bobbin",
             label: b.batchCode,
-            value: b.currentQuantity
+            value: b.currentQuantity,
           }));
           hasDetails = true;
         } else {
-          // Fetch Equipments
-          // Fix: Explicitly typing as 'any' to avoid property check errors on lean doc
-          const invItem: any = await InventoryModel.findById(entry.itemId).select('instances type').lean();
-          if (invItem && invItem.type === 'equipment' && invItem.instances) {
-            const crewInstances = invItem.instances.filter((inst: any) =>
-              inst.assignedTo?.crewId?.toString() === crewIdStr
+          const invItem: any = await InventoryModel.findById(entry.itemId)
+            .select("instances type")
+            .lean();
+          if (invItem && invItem.type === "equipment" && invItem.instances) {
+            const crewInstances = invItem.instances.filter(
+              (inst: any) => inst.assignedTo?.crewId?.toString() === crewIdStr
             );
             if (crewInstances.length > 0) {
               details = crewInstances.map((inst: any) => ({
-                type: 'instance',
-                label: 'Serial',
-                value: inst.serialNumber || 'S/N'
+                type: "instance",
+                label: "Serial",
+                value: inst.uniqueId || 'S/N',
               }));
               hasDetails = true;
             }
@@ -963,23 +916,191 @@ export async function getCrewStockReport(
         code: entry.code,
         description: entry.description,
         unit: entry.unit,
-        startQty: Math.max(0, entry.calcStart), // Safety clamp
-        endQty: Math.max(0, entry.calcEnd),
-        diff: entry.calcEnd - entry.calcStart,
+        startQty: displayStart,
+        endQty: displayEnd,
+        diff: displayDiff,
         details,
         hasDetails,
-        itemId: entry.itemId
+        itemId: entry.itemId,
       });
     }
 
     reportData.push({
       crewId: crew._id,
       crewName: `Cuadrilla ${crew.number}`,
-      inventory: finalizedItems
+      inventory: finalizedItems,
     });
   }
 
-  return reportData;
+  // ─── 5. Preparar datos diarios para exportación ───
+  const dailyData: any[] = [];
+  for (const snap of dailySnapshots) {
+    const snapDate = format(new Date(snap.snapshotDate), "dd/MM/yyyy");
+    for (const crewSnap of snap.crewInventories) {
+      const cId = crewSnap.crew.toString();
+      if (crewId && cId !== crewId) continue;
+
+      for (const item of crewSnap.items) {
+        dailyData.push({
+          date: snapDate,
+          crewNumber: crewSnap.crewNumber,
+          crewName: `Cuadrilla ${crewSnap.crewNumber}`,
+          code: item.code,
+          description: item.description,
+          quantity: item.quantity,
+        });
+      }
+    }
+  }
+
+  return {
+    crews: reportData,
+    dailySnapshots: dailyData,
+  };
+}
+
+/**
+ * Reporte: Órdenes en Cuadrillas (crew_orders)
+ * Usa OrderSnapshot para mostrar el estado diario de órdenes por cuadrilla
+ */
+export async function getCrewOrdersReport(
+  dateRange?: { start: string; end: string },
+  crewId?: string
+): Promise<any> {
+  await connectDB();
+
+  const startDate = dateRange ? parseISO(dateRange.start) : startOfMonth(new Date());
+  const endDate = dateRange ? parseISO(dateRange.end) : new Date();
+
+  startDate.setHours(0, 0, 0, 0);
+  const endOfDayDate = new Date(endDate);
+  endOfDayDate.setHours(23, 59, 59, 999);
+
+  // Obtener todos los OrderSnapshots del rango
+  const snapshots = await OrderSnapshotModel.find({
+    snapshotDate: { $gte: startDate, $lte: endOfDayDate },
+  })
+    .sort({ snapshotDate: 1 })
+    .lean();
+
+  // ─── 1. Construir resumen acumulado por cuadrilla ───
+  const crewSummaryMap = new Map<string, {
+    crewNumber: number;
+    crewName: string;
+    leaderName: string;
+    // Totals
+    pending: number;
+    assigned: number;
+    in_progress: number;
+    completed: number;
+    cancelled: number;
+    visita: number;
+    hard: number;
+    total: number;
+    // Type Breakdown
+    instalacion: { total: number; completed: number };
+    averia: { total: number; completed: number };
+    recuperacion: { total: number; completed: number };
+    daysCount: number;
+  }>();
+
+  // ─── 2. Construir datos diarios para exportación ───
+  const dailyData: any[] = [];
+
+  for (const snap of snapshots) {
+    const snapDate = format(new Date(snap.snapshotDate), "dd/MM/yyyy");
+
+    for (const crewSnap of (snap as any).crewSnapshots || []) {
+      const cId = crewSnap.crew?.toString() || "";
+      if (crewId && cId !== crewId) continue;
+
+      const crewKey = cId || `crew_${crewSnap.crewNumber}`;
+      const orders = crewSnap.orders || {};
+      const byType = crewSnap.byType || {};
+
+      // Acumular en resumen (último snapshot gana para totales; sumamos días)
+      if (!crewSummaryMap.has(crewKey)) {
+        crewSummaryMap.set(crewKey, {
+          crewNumber: crewSnap.crewNumber,
+          crewName: `Cuadrilla ${crewSnap.crewNumber}`,
+          leaderName: crewSnap.leaderName || "",
+          pending: 0,
+          assigned: 0,
+          in_progress: 0,
+          completed: 0,
+          cancelled: 0,
+          visita: 0,
+          hard: 0,
+          total: 0,
+          instalacion: { total: 0, completed: 0 },
+          averia: { total: 0, completed: 0 },
+          recuperacion: { total: 0, completed: 0 },
+          daysCount: 0,
+        });
+      }
+
+      const summary = crewSummaryMap.get(crewKey)!;
+      // Usar los datos del último snapshot como estado final
+      summary.pending = orders.pending || 0;
+      summary.assigned = orders.assigned || 0;
+      summary.in_progress = orders.in_progress || 0;
+      summary.completed = orders.completed || 0;
+      summary.cancelled = orders.cancelled || 0;
+      summary.visita = orders.visita || 0;
+      summary.hard = orders.hard || 0;
+      summary.total = orders.total || 0;
+
+      // Update types
+      // Note: "total" here refers to "total orders of this type in this state"
+      // If we want "total completed of this type", we check byType.instalacion.completed
+      if (byType.instalacion) {
+        summary.instalacion.total = byType.instalacion.total || 0;
+        summary.instalacion.completed = byType.instalacion.completed || 0;
+      }
+      if (byType.averia) {
+        summary.averia.total = byType.averia.total || 0;
+        summary.averia.completed = byType.averia.completed || 0;
+      }
+      if (byType.recuperacion) {
+        summary.recuperacion.total = byType.recuperacion.total || 0;
+        summary.recuperacion.completed = byType.recuperacion.completed || 0;
+      }
+
+      summary.daysCount++;
+
+      // Datos diarios
+      dailyData.push({
+        date: snapDate,
+        crewNumber: crewSnap.crewNumber,
+        crewName: `Cuadrilla ${crewSnap.crewNumber}`,
+        leaderName: crewSnap.leaderName || "",
+        pending: orders.pending || 0,
+        assigned: orders.assigned || 0,
+        in_progress: orders.in_progress || 0,
+        completed: orders.completed || 0,
+        cancelled: orders.cancelled || 0,
+        visita: orders.visita || 0,
+        hard: orders.hard || 0,
+        total: orders.total || 0,
+        // Type data for daily pivot
+        instalacion_total: byType.instalacion?.total || 0,
+        instalacion_completed: byType.instalacion?.completed || 0,
+        averia_total: byType.averia?.total || 0,
+        averia_completed: byType.averia?.completed || 0,
+        recuperacion_total: byType.recuperacion?.total || 0,
+        recuperacion_completed: byType.recuperacion?.completed || 0,
+      });
+    }
+  }
+
+  // Ordenar crews por número
+  const crews = Array.from(crewSummaryMap.values())
+    .sort((a, b) => a.crewNumber - b.crewNumber)
+    .map((c) => ({
+      ...c, // Spread to include the nested type objects
+    }));
+
+  return { crews, dailySnapshots: dailyData };
 }
 
 /**

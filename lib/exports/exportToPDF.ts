@@ -119,8 +119,8 @@ export function exportReportToPDF(
 
     case "crew_stock":
       columns = ["Cuadrilla", "Código", "Descripción", "Inicial", "Final", "Dif."];
-      data.forEach((crew: any) => {
-        crew.inventory.forEach((item: any) => {
+      (data.crews || []).forEach((crew: any) => {
+        (crew.inventory || []).forEach((item: any) => {
           rows.push([
             crew.crewName,
             item.code,
@@ -131,6 +131,24 @@ export function exportReportToPDF(
           ]);
         });
       });
+      break;
+
+    case "crew_orders":
+      columns = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asig.", "Proc.", "Comp.", "Canc.", "Vis.", "Pend."];
+      rows = (data.crews || []).map((crew: any) => [
+        crew.crewName,
+        crew.leaderName?.substring(0, 20) || "",
+        crew.total,
+        crew.instalacion?.total || 0,
+        crew.averia?.total || 0,
+        crew.recuperacion?.total || 0,
+        crew.assigned,
+        crew.in_progress,
+        crew.completed,
+        crew.cancelled,
+        crew.visita,
+        crew.pending,
+      ]);
       break;
 
     case "crew_visits":
@@ -217,6 +235,7 @@ function getReportTypeName(type: ReportType): string {
     crew_stock: "Inventario en Cuadrillas (Stock)", // Added
     crew_inventory: "Inventario Cuadrillas",
     crew_visits: "Visitas por Cuadrilla",
+    crew_orders: "Órdenes en Cuadrillas",
   };
   return names[type] || type;
 }

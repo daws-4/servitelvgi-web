@@ -255,9 +255,9 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                     { key: "actions", label: "DETALLES", align: "center" },
                 ];
 
-                // Flatten the nested structure
+                // Flatten the nested structure (data.crews instead of data)
                 const stockRows: any[] = [];
-                (data || []).forEach((crew: any, cIdx: number) => {
+                ((data?.crews) || []).forEach((crew: any, cIdx: number) => {
                     (crew.inventory || []).forEach((inv: any, iIdx: number) => {
                         stockRows.push({
                             key: `${cIdx}-${iIdx}`,
@@ -275,6 +275,31 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                     });
                 });
                 processedRows = stockRows;
+                break;
+
+            case "crew_orders":
+                cols = [
+                    { key: "crewName", label: "CUADRILLA" },
+                    { key: "leaderName", label: "LÍDER" },
+                    { key: "total", label: "TOTAL", align: "end" },
+                    { key: "instalacion", label: "INST.", align: "end" },
+                    { key: "averia", label: "AVER.", align: "end" },
+                    { key: "recuperacion", label: "REC.", align: "end" },
+                    { key: "assigned", label: "ASIGNADAS", align: "end" },
+                    { key: "in_progress", label: "EN PROCESO", align: "end" },
+                    { key: "completed", label: "COMPLETADAS", align: "end" },
+                    { key: "cancelled", label: "CANCELADAS", align: "end" },
+                    { key: "visita", label: "VISITAS", align: "end" },
+                    { key: "pending", label: "PENDIENTES", align: "end" },
+                ];
+
+                processedRows = ((data?.crews) || []).map((crew: any, idx: number) => ({
+                    key: `crew-${idx}`,
+                    ...crew,
+                    instalacion: crew.instalacion?.total || 0,
+                    averia: crew.averia?.total || 0,
+                    recuperacion: crew.recuperacion?.total || 0,
+                }));
                 break;
         }
 
@@ -552,9 +577,9 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                                         <TableColumn>IDENTIFICADOR</TableColumn>
                                         <TableColumn align="end">VALOR</TableColumn>
                                     </TableHeader>
-                                    <TableBody items={selectedItemDetails?.details || []}>
+                                    <TableBody items={(selectedItemDetails?.details || []).map((d: any, i: number) => ({ ...d, _idx: i }))}>
                                         {(detail: any) => (
-                                            <TableRow key={`${detail.label}-${detail.value}`}>
+                                            <TableRow key={`${detail._idx}-${detail.label}-${detail.value}`}>
                                                 <TableCell>
                                                     <Chip size="sm" variant="flat" color={detail.type === 'bobbin' ? "warning" : "secondary"}>
                                                         {detail.type === 'bobbin' ? "Bobina" : "Serial"}

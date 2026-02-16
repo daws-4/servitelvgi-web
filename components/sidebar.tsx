@@ -4,7 +4,7 @@ import React from "react";
 import axios from "axios";
 import { useRouter, usePathname } from "next/navigation";
 import { motion } from "framer-motion";
-import { Logo } from "@/components/Logo"
+import { Logo } from "@/components/Logo_letters"
 import {
     DashboardIcon,
     OrdersIcon,
@@ -86,10 +86,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ children, isOpen = false, onCl
                     }`}
             >
                 {/* Logo Area */}
-                <div className="h-24 flex items-center justify-center border-b border-secondary/30 bg-secondary/20">
+                <div className="h-28 flex items-center justify-center border-b border-secondary/30 bg-secondary/20">
                     <div className="flex items-center gap-2 font-bold text-xl tracking-wider">
-                        <Logo size={72} />
-                        <span>ENLARED</span>
+                        <Logo size={102} width={200} />
                     </div>
                 </div>
 

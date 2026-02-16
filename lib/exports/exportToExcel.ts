@@ -151,10 +151,11 @@ export function exportReportToExcel(
       }));
       break;
 
-    case "crew_stock":
-      sheetName = "Stock Cuadrillas";
-      data.forEach((crew: any) => {
-        crew.inventory.forEach((item: any) => {
+    case "crew_stock": {
+      sheetName = "Resumen Stock";
+      // Hoja 1: Resumen
+      (data.crews || []).forEach((crew: any) => {
+        (crew.inventory || []).forEach((item: any) => {
           worksheetData.push({
             "Cuadrilla": crew.crewName,
             "Código": item.code,
@@ -165,12 +166,36 @@ export function exportReportToExcel(
           });
         });
       });
-      break;
 
+      // Hoja 2: Detalle Diario (se añade después del switch)
+      // Se almacenan los datos diarios para crear una segunda hoja
+      break;
+    }
+
+    case "crew_orders": {
+      sheetName = "Resumen Órdenes";
+      (data.crews || []).forEach((crew: any) => {
+        worksheetData.push({
+          "Cuadrilla": crew.crewName,
+          "Líder": crew.leaderName,
+          "Total": crew.total,
+          "Inst.": crew.instalacion?.total || 0,
+          "Aver.": crew.averia?.total || 0,
+          "Rec.": crew.recuperacion?.total || 0,
+          "Asignadas": crew.assigned,
+          "En Proceso": crew.in_progress,
+          "Completadas": crew.completed,
+          "Canceladas": crew.cancelled,
+          "Visitas": crew.visita,
+          "Pendientes": crew.pending,
+        });
+      });
+      break;
+    }
 
     case "crew_visits":
       sheetName = "Visitas por Cuadrilla";
-      worksheetData = data.map((crew: any) => ({
+      worksheetData = (Array.isArray(data) ? data : []).map((crew: any) => ({
         "Cuadrilla": crew.crewName,
         "Total Visitas": crew.totalVisits,
         "Instalaciones": crew.instalaciones,
@@ -179,33 +204,6 @@ export function exportReportToExcel(
         "Otros": crew.otros,
       }));
       break;
-
-    case "crew_stock":
-      sheetName = "Stock Cuadrillas";
-      worksheetData = [];
-      (data || []).forEach((crew: any) => {
-        (crew.inventory || []).forEach((inv: any) => {
-          // Flatten details
-          let detailsStr = "-";
-          if (inv.details && inv.details.length > 0) {
-            detailsStr = inv.details.map((d: any) =>
-              d.type === 'bobbin' ? `${d.label} (${d.value}m)` : `${d.label}: ${d.value}`
-            ).join(", ");
-          }
-
-          worksheetData.push({
-            "Cuadrilla": crew.crewName,
-            "Código": inv.code,
-            "Descripción": inv.description,
-            "Cantidad": inv.quantity,
-            "Tipo": inv.type || "-",
-            "Detalles": detailsStr
-          });
-        });
-      });
-      break;
-
-    case "crew_visits":
 
     case "netuno_orders":
       sheetName = "Órdenes Netuno";
@@ -235,6 +233,192 @@ export function exportReportToExcel(
   // Añadir hoja de datos
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
+  // Hoja 2: Detalle diario con avance por fecha (pivot)
+  if (reportType === "crew_stock") {
+    // 1. Obtener todas las fechas únicas, ordenadas cronológicamente
+    const allDates: string[] = [];
+    const dateSet = new Set<string>();
+    for (const snap of (data.dailySnapshots || [])) {
+      if (!dateSet.has(snap.date)) {
+        dateSet.add(snap.date);
+        allDates.push(snap.date);
+      }
+    }
+    // Ordenar fechas cronológicamente
+    allDates.sort((a, b) => {
+      const [dA, mA, yA] = a.split("/").map(Number);
+      const [dB, mB, yB] = b.split("/").map(Number);
+      return new Date(yA, mA - 1, dA).getTime() - new Date(yB, mB - 1, dB).getTime();
+    });
+
+    // 2. Indexar snapshots diarios: crewName+code -> { date -> quantity }
+    const dailyIndex = new Map<string, Map<string, number>>();
+    for (const snap of (data.dailySnapshots || [])) {
+      const key = `${snap.crewName}||${snap.code}`;
+      if (!dailyIndex.has(key)) {
+        dailyIndex.set(key, new Map());
+      }
+      dailyIndex.get(key)!.set(snap.date, snap.quantity);
+    }
+
+    // 3. Construir filas pivot desde los datos del resumen (crews)
+    const pivotRows: any[] = [];
+
+    for (const crew of (data.crews || [])) {
+      for (const item of (crew.inventory || [])) {
+        const row: any = {
+          "Cuadrilla": crew.crewName,
+          "Código": item.code,
+          "Descripción": item.description,
+          "Inicial": item.startQty,
+        };
+
+        // Columnas por cada fecha
+        const key = `${crew.crewName}||${item.code}`;
+        const snapsByDate = dailyIndex.get(key);
+
+        for (const date of allDates) {
+          const dayQty = snapsByDate?.get(date) ?? "";
+          row[date] = dayQty;
+          // Diferencia del día = Inicial - cantidad del día
+          row[`Dif ${date}`] = dayQty !== "" ? item.startQty - (dayQty as number) : "";
+        }
+
+        row["Final"] = item.endQty;
+        row["Diferencia"] = item.diff;
+
+        pivotRows.push(row);
+      }
+    }
+
+    if (pivotRows.length > 0) {
+      const pivotSheet = XLSX.utils.json_to_sheet(pivotRows);
+      // Ancho de columnas: fijas + dinámicas
+      const pivotColWidths: { wch: number }[] = [
+        { wch: 18 },  // Cuadrilla
+        { wch: 16 },  // Código
+        { wch: 35 },  // Descripción
+        { wch: 10 },  // Inicial
+      ];
+      for (const _date of allDates) {
+        pivotColWidths.push({ wch: 12 }); // fecha
+        pivotColWidths.push({ wch: 12 }); // dif fecha
+      }
+      pivotColWidths.push({ wch: 10 }); // Final
+      pivotColWidths.push({ wch: 12 }); // Diferencia
+      pivotSheet["!cols"] = pivotColWidths;
+      XLSX.utils.book_append_sheet(workbook, pivotSheet, "Detalle Diario");
+    }
+  }
+
+  // Hoja 2: Detalle diario para crew_orders (pivot por fecha)
+  if (reportType === "crew_orders") {
+    // Obtener fechas únicas ordenadas
+    const allDates: string[] = [];
+    const dateSet = new Set<string>();
+    for (const snap of (data.dailySnapshots || [])) {
+      if (!dateSet.has(snap.date)) {
+        dateSet.add(snap.date);
+        allDates.push(snap.date);
+      }
+    }
+    allDates.sort((a, b) => {
+      const [dA, mA, yA] = a.split("/").map(Number);
+      const [dB, mB, yB] = b.split("/").map(Number);
+      return new Date(yA, mA - 1, dA).getTime() - new Date(yB, mB - 1, dB).getTime();
+    });
+
+    // Indexar: crewName -> { date -> snapshot data }
+    const dailyIndex = new Map<string, Map<string, any>>();
+    for (const snap of (data.dailySnapshots || [])) {
+      if (!dailyIndex.has(snap.crewName)) {
+        dailyIndex.set(snap.crewName, new Map());
+      }
+      dailyIndex.get(snap.crewName)!.set(snap.date, snap);
+    }
+
+    // Construir filas pivot
+    const pivotRows: any[] = [];
+    const statusKeys = [
+      "total",
+      "instalacion_total", "instalacion_completed",
+      "averia_total", "averia_completed",
+      "recuperacion_total", "recuperacion_completed",
+      "assigned", "in_progress", "completed", "cancelled", "visita", "pending"
+    ];
+    const statusLabels: Record<string, string> = {
+      total: "Global Total",
+      instalacion_total: "Inst. Total",
+      instalacion_completed: "Inst. Comp.",
+      averia_total: "Aver. Total",
+      averia_completed: "Aver. Comp.",
+      recuperacion_total: "Rec. Total",
+      recuperacion_completed: "Rec. Comp.",
+      assigned: "Asignadas",
+      in_progress: "En Proceso",
+      completed: "Completadas",
+      cancelled: "Canceladas",
+      visita: "Visitas",
+      pending: "Pendientes",
+    };
+
+    for (const crew of (data.crews || [])) {
+      // Una fila por cada status
+      for (const sKey of statusKeys) {
+        const row: any = {
+          "Cuadrilla": crew.crewName,
+          "Líder": crew.leaderName || "",
+          "Estado": statusLabels[sKey] || sKey,
+        };
+
+        const crewDayMap = dailyIndex.get(crew.crewName);
+        for (const date of allDates) {
+          const daySnap = crewDayMap?.get(date);
+          row[date] = daySnap ? (daySnap[sKey] ?? 0) : "";
+        }
+
+        // Último valor (resumen)
+        // For type fields, extraction is tricky because they are nested in 'crew' object in summary
+        // but flat in the daily snapshot.
+        // The summary object has { instalacion: { total, completed } }
+        // We need to map sKey to summary path.
+
+        let lastVal = 0;
+        if (sKey.includes("_")) {
+          const [type, metric] = sKey.split("_"); // e.g. "instalacion", "total"
+          lastVal = (crew[type] as any)?.[metric] || 0;
+        } else {
+          lastVal = (crew as any)[sKey] ?? 0;
+        }
+
+        row["Último"] = lastVal;
+
+        pivotRows.push(row);
+      }
+
+      // Fila separadora entre cuadrillas
+      const sepRow: any = { "Cuadrilla": "", "Líder": "", "Estado": "" };
+      for (const date of allDates) sepRow[date] = "";
+      sepRow["Último"] = "";
+      pivotRows.push(sepRow);
+    }
+
+    if (pivotRows.length > 0) {
+      const pivotSheet = XLSX.utils.json_to_sheet(pivotRows);
+      const pivotColWidths: { wch: number }[] = [
+        { wch: 18 },  // Cuadrilla
+        { wch: 18 },  // Líder
+        { wch: 14 },  // Estado
+      ];
+      for (const _date of allDates) {
+        pivotColWidths.push({ wch: 12 });
+      }
+      pivotColWidths.push({ wch: 10 }); // Último
+      pivotSheet["!cols"] = pivotColWidths;
+      XLSX.utils.book_append_sheet(workbook, pivotSheet, "Detalle Diario");
+    }
+  }
+
   // Crear hoja de metadatos
   const generatedDate = metadata.generatedAt instanceof Date
     ? metadata.generatedAt
@@ -263,6 +447,7 @@ export function exportReportToExcel(
     crew_inventory: "inventario_cuadrillas",
     crew_stock: "stock_actual_cuadrillas",
     crew_visits: "visitas_cuadrillas",
+    crew_orders: "ordenes_cuadrillas",
   };
 
   // Generar nombre de archivo con fecha en GMT-4

@@ -32,6 +32,7 @@ export default function ExportActions({ reportType, data, metadata }: ExportActi
     const hasData = () => {
         if (!data) return false;
         if (Array.isArray(data)) return data.length > 0;
+        if (data.crews) return data.crews.length > 0; // crew_stock report
         if (data.cuadrillas) return data.cuadrillas.length > 0; // Daily/Monthly reports
         if (data.finalizadas) return (data.finalizadas.length + data.asignadas.length) > 0;
         if (data.pendientes) return data.pendientes.length > 0;

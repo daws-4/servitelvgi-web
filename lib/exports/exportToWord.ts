@@ -144,8 +144,8 @@ export async function exportReportToWord(
 
     case "crew_stock":
       tableHeaders = ["Cuadrilla", "Código", "Descripción", "Inicial", "Final", "Diferencia"];
-      data.forEach((crew: any) => {
-        crew.inventory.forEach((item: any) => {
+      (data.crews || []).forEach((crew: any) => {
+        (crew.inventory || []).forEach((item: any) => {
           tableRows.push([
             crew.crewName,
             item.code,
@@ -156,6 +156,24 @@ export async function exportReportToWord(
           ]);
         });
       });
+      break;
+
+    case "crew_orders":
+      tableHeaders = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asignadas", "En Proceso", "Completadas", "Canceladas", "Visitas", "Pendientes"];
+      tableRows = (data.crews || []).map((crew: any) => [
+        crew.crewName,
+        crew.leaderName || "",
+        String(crew.total),
+        String(crew.instalacion?.total || 0),
+        String(crew.averia?.total || 0),
+        String(crew.recuperacion?.total || 0),
+        String(crew.assigned),
+        String(crew.in_progress),
+        String(crew.completed),
+        String(crew.cancelled),
+        String(crew.visita),
+        String(crew.pending),
+      ]);
       break;
 
     case "netuno_orders":
@@ -251,6 +269,7 @@ function getReportTypeName(type: ReportType): string {
     crew_stock: "Inventario en Cuadrillas (Stock)", // Added
     crew_inventory: "Inventario Cuadrillas",
     crew_visits: "Visitas por Cuadrilla",
+    crew_orders: "Órdenes en Cuadrillas",
   };
   return names[type] || type;
 }

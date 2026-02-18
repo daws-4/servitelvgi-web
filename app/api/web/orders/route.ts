@@ -45,6 +45,8 @@ export async function GET(request: Request) {
     const startDate = url.searchParams.get("startDate");
     const endDate = url.searchParams.get("endDate");
 
+    const dateField = url.searchParams.get("dateField") || "updatedAt";
+
     if (assignedTo) filters.assignedTo = assignedTo;
     if (status) filters.status = status;
     if (type) filters.type = type;
@@ -62,15 +64,15 @@ export async function GET(request: Request) {
     } else {
       // Date filtering logic - PRIORITIZE explicit range over updatedAfter
       if (startDate || endDate) {
-        filters.updatedAt = {};
+        filters[dateField] = {};
         if (startDate) {
-          filters.updatedAt.$gte = new Date(startDate);
+          filters[dateField].$gte = new Date(startDate);
         }
         if (endDate) {
           // Set to end of day
           const end = new Date(endDate);
           end.setHours(23, 59, 59, 999);
-          filters.updatedAt.$lte = end;
+          filters[dateField].$lte = end;
         }
       } else if (updatedAfter) {
         filters.updatedAt = { $gte: new Date(updatedAfter) };

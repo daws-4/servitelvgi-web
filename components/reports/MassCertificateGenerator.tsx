@@ -58,7 +58,8 @@ export const MassCertificateGenerator = () => {
                 params: {
                     status: 'completed',
                     startDate,
-                    endDate
+                    endDate,
+                    dateField: 'completionDate'
                 }
             });
 
@@ -103,8 +104,8 @@ export const MassCertificateGenerator = () => {
                 }
 
                 // If same technician, sort by date (most recent first)
-                const dateA = new Date(a.updatedAt || a.createdAt).getTime();
-                const dateB = new Date(b.updatedAt || b.createdAt).getTime();
+                const dateA = new Date(a.completionDate || a.updatedAt || a.createdAt).getTime();
+                const dateB = new Date(b.completionDate || b.updatedAt || b.createdAt).getTime();
                 return dateB - dateA; // Descending order (most recent first)
             });
 

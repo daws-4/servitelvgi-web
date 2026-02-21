@@ -388,6 +388,8 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
     // 2. Standard Logic (Backward Compatibility for existing n8n nodes)
     timestamp: formatDateToVenezuela(order.updatedAt || new Date()),
     ticket_id: order.ticket_id || order.subscriberNumber,
+    subscriberNumber: order.subscriberNumber || '',
+    abonado: order.subscriberNumber || '',
     certificateUrl: certificateUrlOverride || order.certificateUrl || '',
     type: order.type || 'instalacion',
     status: order.status || 'pending',

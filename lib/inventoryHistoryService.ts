@@ -43,46 +43,54 @@ export async function getInventoryHistories(filters: {
   const limit = filters.limit || 0; // 0 means no limit (all records)
   const skip = (page - 1) * limit;
 
-  // Get total count for pagination metadata
-  const total = await InventoryHistoryModel.countDocuments(query);
-
+  // Run count and find in parallel to save a round-trip
   let queryBuilder = InventoryHistoryModel.find(query)
     .populate("item", "code description")
     .populate("crew", "name")
     .populate("order", "subscriberNumber ticket_id")
     .sort({ createdAt: -1 });
 
-  // Apply limit and skip only if limit is set
   if (limit > 0) {
     queryBuilder = queryBuilder.skip(skip).limit(limit);
   }
 
-  const results = await queryBuilder.lean();
+  const [total, results] = await Promise.all([
+    InventoryHistoryModel.countDocuments(query),
+    queryBuilder.lean(),
+  ]);
 
-  // Manually populate performedBy based on performedByModel
-  const populatedResults = await Promise.all(
-    results.map(async (doc: any) => {
-      if (doc.performedBy && doc.performedByModel) {
-        try {
-          if (doc.performedByModel === 'User') {
-            const user = await UserModel.findById(doc.performedBy)
-              .select('name surname username')
-              .lean();
-            doc.performedBy = user;
-          } else if (doc.performedByModel === 'Installer') {
-            const installer = await InstallerModel.findById(doc.performedBy)
-              .select('name surname')
-              .lean();
-            doc.performedBy = installer;
-          }
-        } catch (error) {
-          console.error('Error populating performedBy:', error);
-          // Keep the ID if population fails
-        }
-      }
-      return doc;
-    })
-  );
+  // --- Batch populate performedBy (replaces N+1 individual queries) ---
+  const userIds: any[] = [];
+  const installerIds: any[] = [];
+
+  for (const doc of results as any[]) {
+    if (!doc.performedBy || !doc.performedByModel) continue;
+    if (doc.performedByModel === 'User') userIds.push(doc.performedBy);
+    else if (doc.performedByModel === 'Installer') installerIds.push(doc.performedBy);
+  }
+
+  const [users, installers] = await Promise.all([
+    userIds.length > 0
+      ? UserModel.find({ _id: { $in: userIds } }).select('name surname username').lean()
+      : Promise.resolve([]),
+    installerIds.length > 0
+      ? InstallerModel.find({ _id: { $in: installerIds } }).select('name surname').lean()
+      : Promise.resolve([]),
+  ]);
+
+  const userMap = new Map((users as any[]).map((u) => [u._id.toString(), u]));
+  const installerMap = new Map((installers as any[]).map((i) => [i._id.toString(), i]));
+
+  const populatedResults = (results as any[]).map((doc: any) => {
+    if (!doc.performedBy || !doc.performedByModel) return doc;
+    const id = doc.performedBy.toString();
+    if (doc.performedByModel === 'User') {
+      doc.performedBy = userMap.get(id) ?? doc.performedBy;
+    } else if (doc.performedByModel === 'Installer') {
+      doc.performedBy = installerMap.get(id) ?? doc.performedBy;
+    }
+    return doc;
+  });
 
   return {
     data: populatedResults,

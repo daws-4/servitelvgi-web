@@ -46,7 +46,7 @@ export default function OrderEditPage() {
                 setError(null);
 
                 // Fetch order data
-                const response = await axios.get(`/api/web/orders?id=${orderId}`);
+                const response = await axios.get(`/api/web/orders?id=${orderId}&withDetails=true`);
 
                 if (response.data) {
                     const order = response.data;

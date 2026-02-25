@@ -74,7 +74,10 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
 }
 
 // Función reutilizable para LISTAR ordenes
-export async function getOrders(filters = {}, projection: any = null) {
+// withDetails=true populates equipment instanceDetails (serial numbers).
+// Avoid enabling it on high-frequency polling calls — it fires one extra
+// InventoryModel query per material-with-instances, per order.
+export async function getOrders(filters = {}, projection: any = null, withDetails = false) {
   await connectDB();
   const orders = await OrderModel.find(filters, projection)
     .populate({
@@ -89,28 +92,29 @@ export async function getOrders(filters = {}, projection: any = null) {
     .sort({ createdAt: -1 })
     .lean();
 
-  // Manually populate instance details (serial numbers) for equipment in List View
-  // This is needed for reports that rely on the list endpoint
-  for (const order of orders) {
-    if (order.materialsUsed && order.materialsUsed.length > 0) {
-      for (const material of order.materialsUsed) {
-        if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
-          try {
-            const inventory = await InventoryModel.findById((material.item as any)._id)
-              .select('instances')
-              .lean() as unknown as IInventory | null;
+  // Populate instance details only when explicitly requested (e.g. reports)
+  if (withDetails) {
+    for (const order of orders) {
+      if (order.materialsUsed && order.materialsUsed.length > 0) {
+        for (const material of order.materialsUsed) {
+          if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
+            try {
+              const inventory = await InventoryModel.findById((material.item as any)._id)
+                .select('instances')
+                .lean() as unknown as IInventory | null;
 
-            if (inventory && inventory.instances) {
-              (material as any).instanceDetails = material.instanceIds.map((id: string) => {
-                const inst = inventory.instances?.find((i: any) => i.uniqueId === id);
-                return {
-                  uniqueId: id,
-                  serialNumber: inst?.serialNumber || 'N/A'
-                };
-              });
+              if (inventory && inventory.instances) {
+                (material as any).instanceDetails = material.instanceIds.map((id: string) => {
+                  const inst = inventory.instances?.find((i: any) => i.uniqueId === id);
+                  return {
+                    uniqueId: id,
+                    serialNumber: inst?.serialNumber || 'N/A'
+                  };
+                });
+              }
+            } catch (err) {
+              // calculated field, ignore error
             }
-          } catch (err) {
-            // calculated field, ignore error
           }
         }
       }
@@ -121,7 +125,8 @@ export async function getOrders(filters = {}, projection: any = null) {
 }
 
 // Obtener una orden por id
-export async function getOrderById(id: string): Promise<IOrder | null> {
+// withDetails=true populates equipment instanceDetails (serial numbers)
+export async function getOrderById(id: string, withDetails = false): Promise<IOrder | null> {
   await connectDB();
   const order = await OrderModel.findById(id)
     .populate({
@@ -137,19 +142,16 @@ export async function getOrderById(id: string): Promise<IOrder | null> {
 
   if (!order) return null;
 
-  // Manually populate instance details (serial numbers) for equipment
-  if (order.materialsUsed && order.materialsUsed.length > 0) {
+  // Populate instance details only when explicitly requested (e.g. order detail view / reports)
+  if (withDetails && order.materialsUsed && order.materialsUsed.length > 0) {
     for (const material of order.materialsUsed) {
-      // Check if material has instanceIds and item is populated (has _id)
       if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
         try {
-          // Find inventory item to look up instances
           const inventory = await InventoryModel.findById((material.item as any)._id)
             .select('instances')
             .lean() as unknown as IInventory | null;
 
           if (inventory && inventory.instances) {
-            // Map instanceIds to their details (serialNumber, etc.)
             (material as any).instanceDetails = material.instanceIds.map((id: string) => {
               const inst = inventory.instances?.find((i: any) => i.uniqueId === id);
               return {

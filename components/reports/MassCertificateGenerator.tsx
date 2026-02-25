@@ -53,13 +53,14 @@ export const MassCertificateGenerator = () => {
             setProgress(0);
             setStatusText("Buscando órdenes completadas...");
 
-            // 1. Fetch Orders
+            // 1. Fetch Orders (withDetails=true so instanceDetails/serial numbers appear in certificates)
             const response = await axios.get('/api/web/orders', {
                 params: {
                     status: 'completed',
                     startDate,
                     endDate,
-                    dateField: 'completionDate'
+                    dateField: 'completionDate',
+                    withDetails: 'true'
                 }
             });
 

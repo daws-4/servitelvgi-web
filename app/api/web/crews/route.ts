@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import {
   createCrew,
   getCrews,
@@ -8,6 +9,14 @@ import {
 } from "@/lib/crewService";
 // Import to ensure Inventory schema is registered for populate operations
 import "@/models/Inventory";
+
+// Cache the full crew list for 60 s — crews change rarely.
+// Individual crew GETs (with ?id=) bypass this cache.
+const getCachedCrews = unstable_cache(
+  () => getCrews(),
+  ["web-crews-list"],
+  { revalidate: 7200 } // 2 hours — crews rarely change
+);
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +33,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
     if (id) {
+      // Single-crew fetch: bypass cache (dynamic data with inventory)
       const item = await getCrewById(id);
       if (!item)
         return NextResponse.json(
@@ -32,8 +42,15 @@ export async function GET(request: Request) {
         );
       return NextResponse.json(item, { status: 200, headers: CORS_HEADERS });
     }
-    const items = await getCrews();
-    return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
+    // List fetch: use cached version
+    const items = await getCachedCrews();
+    return NextResponse.json(items, {
+      status: 200,
+      headers: {
+        ...CORS_HEADERS,
+        "Cache-Control": "private, max-age=7200, stale-while-revalidate=600",
+      },
+    });
   } catch (err) {
     console.error('Error in GET /api/web/crews:', err);
     return NextResponse.json(

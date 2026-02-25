@@ -23,9 +23,11 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
+    // Pass withDetails only when explicitly requested (e.g. for reports)
+    const withDetails = url.searchParams.get("withDetails") === "true";
 
     if (id) {
-      const item = await getOrderById(id);
+      const item = await getOrderById(id, withDetails);
       if (!item)
         return NextResponse.json(
           { error: "Not found" },
@@ -97,7 +99,7 @@ export async function GET(request: Request) {
       priority: 1
     } : null;
 
-    const items = await getOrders(filters, projection);
+    const items = await getOrders(filters, projection, withDetails);
     return NextResponse.json(items, {
       status: 200,
       headers: {

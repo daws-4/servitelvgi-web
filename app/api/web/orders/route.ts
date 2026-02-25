@@ -98,7 +98,15 @@ export async function GET(request: Request) {
     } : null;
 
     const items = await getOrders(filters, projection);
-    return NextResponse.json(items, { status: 200, headers: CORS_HEADERS });
+    return NextResponse.json(items, {
+      status: 200,
+      headers: {
+        ...CORS_HEADERS,
+        // Cache for 30 s per user — avoids redundant serverless invocations
+        // for the same query within the same browser session.
+        "Cache-Control": "private, max-age=30, stale-while-revalidate=15",
+      },
+    });
   } catch (err) {
     console.error("Error fetching orders:", err);
     return NextResponse.json(

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { WelcomeBanner } from "@/components/dashboard/WelcomeBanner";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { PerformanceChart } from "@/components/dashboard/PerformanceChart";
@@ -19,97 +19,72 @@ import axios from "axios";
 import Link from "next/link";
 import { NotFoundHandler } from "@/components/dashboard/NotFoundHandler";
 
-// Icons for StatCards (using FontAwesome classes or SVGs if available, here using SVGs)
-// Note: The original HTML used FontAwesome. I'm using my SVG components where possible or placeholders if I missed some.
-// I'll reuse the icons I created.
+interface DashboardStats {
+  averiasCompletadas: number;
+  instalacionesCompletadas: number;
+  visitasCompletadas: number;
+  averiasSinCompletar: number;
+  instalacionesSinCompletar: number;
+  generatedAt?: string;
+}
+
+const EMPTY_STATS: DashboardStats = {
+  averiasCompletadas: 0,
+  instalacionesCompletadas: 0,
+  visitasCompletadas: 0,
+  averiasSinCompletar: 0,
+  instalacionesSinCompletar: 0,
+};
 
 export default function DashboardPage() {
   const [orders, setOrders] = useState<OrderData[]>([]);
+  const [stats, setStats] = useState<DashboardStats>(EMPTY_STATS);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
-  // StatCard data states
-  const [averiasCompletadas, setAveriasCompletadas] = useState<number>(0);
-  const [instalacionesCompletadas, setInstalacionesCompletadas] = useState<number>(0);
-  const [visitasCompletadas, setVisitasCompletadas] = useState<number>(0);
-  const [averiasSinCompletar, setAveriasSinCompletar] = useState<number>(0);
-  const [instalacionesSinCompletar, setInstalacionesSinCompletar] = useState<number>(0);
-
-  // Fetch statCard data
-  const fetchStatCardData = async () => {
-    try {
-      // Fetch all orders
-      const ordersResponse = await axios.get('/api/web/orders');
-      const allOrders = ordersResponse.data;
-
-      // Filter to only include orders from today
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 0, 0, 0);
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-
-      const todaysOrders = allOrders.filter((order: any) => {
-        const orderDate = new Date(order.updatedAt || order.createdAt);
-        return orderDate >= startOfDay && orderDate <= endOfDay;
-      });
-
-      // Calcular órdenes de averías completadas
-      const averiasCompletadasCount = todaysOrders.filter((order: any) =>
-        order.type === "averia" && order.status === "completed"
-      ).length;
-      setAveriasCompletadas(averiasCompletadasCount);
-
-      // Calcular órdenes de instalaciones completadas
-      const instalacionesCompletadasCount = todaysOrders.filter((order: any) =>
-        order.type === "instalacion" && order.status === "completed"
-      ).length;
-      setInstalacionesCompletadas(instalacionesCompletadasCount);
-
-      // Calcular órdenes de visitas completadas
-      // Note: 'visita' is a status, not a type. Counting all completed orders with status 'visita'
-      const visitasCompletadasCount = todaysOrders.filter((order: any) =>
-        order.status === "visita"
-      ).length;
-      setVisitasCompletadas(visitasCompletadasCount);
-
-      // Calcular órdenes de averías sin completar (pending, in-progress, etc.)
-      const averiasSinCompletarCount = todaysOrders.filter((order: any) =>
-        order.type === "averia" && order.status !== "completed" && order.status !== "visita"
-      ).length;
-      setAveriasSinCompletar(averiasSinCompletarCount);
-
-      // Calcular órdenes de instalaciones sin completar
-      const instalacionesSinCompletarCount = todaysOrders.filter((order: any) =>
-        order.type === "instalacion" && order.status !== "completed" && order.status !== "visita"
-      ).length;
-      setInstalacionesSinCompletar(instalacionesSinCompletarCount);
-
-    } catch (err) {
-      console.error("Error fetching statCard data:", err);
-    }
-  };
-
-  // Fetch orders from API (for table)
-  const fetchOrders = async () => {
-    try {
+  /**
+   * fetchDashboard — single function that fires BOTH requests in parallel.
+   *
+   * Optimizations vs. previous version:
+   *  1. Stats come from /api/web/dashboard-stats (MongoDB $group aggregation),
+   *     so no documents are transferred for counting — just 5 integers.
+   *  2. The table fetches only the 5 most recent orders by using `limit=5` so
+   *     the server applies the limit before returning the payload.
+   *  3. Both requests run in parallel (Promise.all) so total latency = max(a,b)
+   *     instead of a+b.
+   *  4. No polling — manual refresh button instead.
+   */
+  const fetchDashboard = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
       setLoading(true);
-      setError(null);
-      const response = await axios.get('/api/web/orders');
-      // Get only the 5 most recent orders
-      const recentOrders = response.data.slice(0, 5);
-      setOrders(recentOrders);
+    }
+    setError(null);
+
+    try {
+      const [statsRes, ordersRes] = await Promise.all([
+        axios.get<DashboardStats>("/api/web/dashboard-stats"),
+        axios.get<OrderData[]>("/api/web/orders?limit=5"),
+      ]);
+
+      setStats(statsRes.data);
+      setOrders(ordersRes.data.slice(0, 5));
     } catch (err) {
-      console.error("Error fetching orders:", err);
-      setError("Error al cargar las órdenes");
+      console.error("Error fetching dashboard data:", err);
+      setError("Error al cargar los datos del dashboard");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchOrders();
-    fetchStatCardData();
   }, []);
+
+  // Load once on mount — no polling
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
   const handleSelectOrder = (orderId: string) => {
     const newSelected = new Set(selectedOrders);
@@ -132,7 +107,6 @@ export default function DashboardPage() {
   const handleViewOrder = (orderId: string) => {
     console.log("View order:", orderId);
     // TODO: Navigate to order details
-    // Example: router.push(`/dashboard/orders/${orderId}`)
   };
 
   return (
@@ -152,7 +126,7 @@ export default function DashboardPage() {
 
             <StatCard
               title="Averías Completadas"
-              value={averiasCompletadas.toString()}
+              value={stats.averiasCompletadas.toString()}
               icon={<WrenchIcon size={24} />}
               iconBgColor="bg-green-100"
               iconColor="text-green-600"
@@ -160,7 +134,7 @@ export default function DashboardPage() {
 
             <StatCard
               title="Instalaciones Completadas"
-              value={instalacionesCompletadas.toString()}
+              value={stats.instalacionesCompletadas.toString()}
               icon={<CheckCircleIcon size={24} />}
               iconBgColor="bg-blue-100"
               iconColor="text-blue-600"
@@ -168,7 +142,7 @@ export default function DashboardPage() {
 
             <StatCard
               title="Visitas Completadas"
-              value={visitasCompletadas.toString()}
+              value={stats.visitasCompletadas.toString()}
               icon={<EyeIcon size={24} />}
               iconBgColor="bg-purple-100"
               iconColor="text-purple-600"
@@ -176,7 +150,7 @@ export default function DashboardPage() {
 
             <StatCard
               title="Averías Sin Completar"
-              value={averiasSinCompletar.toString()}
+              value={stats.averiasSinCompletar.toString()}
               icon={<ClockIcon size={24} />}
               iconBgColor="bg-yellow-100"
               iconColor="text-yellow-600"
@@ -184,7 +158,7 @@ export default function DashboardPage() {
 
             <StatCard
               title="Instalaciones Sin Completar"
-              value={instalacionesSinCompletar.toString()}
+              value={stats.instalacionesSinCompletar.toString()}
               icon={<AlertTriangleIcon size={24} />}
               iconBgColor="bg-orange-100"
               iconColor="text-orange-600"
@@ -201,12 +175,40 @@ export default function DashboardPage() {
           <div className="mt-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-dark">Órdenes Recientes</h2>
-              <Link
-                href="/dashboard/orders"
-                className="text-sm text-primary hover:text-secondary transition-colors font-medium"
-              >
-                Ver todas →
-              </Link>
+
+              <div className="flex items-center gap-3">
+                {/* Manual refresh button — replaces polling */}
+                <button
+                  onClick={() => fetchDashboard(true)}
+                  disabled={refreshing || loading}
+                  title="Actualizar datos"
+                  className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={refreshing ? "animate-spin" : ""}
+                  >
+                    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                  </svg>
+                  {refreshing ? "Actualizando..." : "Actualizar"}
+                </button>
+
+                <Link
+                  href="/dashboard/orders"
+                  className="text-sm text-primary hover:text-secondary transition-colors font-medium"
+                >
+                  Ver todas →
+                </Link>
+              </div>
             </div>
 
             {/* Loading State */}
@@ -222,6 +224,12 @@ export default function DashboardPage() {
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
                 <i className="fa-solid fa-triangle-exclamation text-red-500 text-xl mb-2"></i>
                 <p className="text-sm text-red-700">{error}</p>
+                <button
+                  onClick={() => fetchDashboard(true)}
+                  className="mt-2 text-sm text-red-600 underline hover:text-red-800"
+                >
+                  Reintentar
+                </button>
               </div>
             )}
 
@@ -241,7 +249,7 @@ export default function DashboardPage() {
                 onSelectOrder={handleSelectOrder}
                 onSelectAll={handleSelectAll}
                 onViewOrder={handleViewOrder}
-                onRefresh={fetchOrders}
+                onRefresh={() => fetchDashboard(true)}
               />
             )}
           </div>

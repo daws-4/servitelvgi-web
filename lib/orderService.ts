@@ -119,29 +119,57 @@ export async function getOrders(filters: any = {}, projection: any = null, withD
 
   // Populate instance details only when explicitly requested (e.g. reports)
   if (withDetails) {
+    const uniqueItemIds = new Set<string>();
+
+    // 1. Recolectar todos los IDs de inventario únicos de las órdenes
     for (const order of orders) {
       if (order.materialsUsed && order.materialsUsed.length > 0) {
         for (const material of order.materialsUsed) {
           if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
-            try {
-              const inventory = await InventoryModel.findById((material.item as any)._id)
-                .select('instances')
-                .lean() as unknown as IInventory | null;
+            uniqueItemIds.add((material.item as any)._id.toString());
+          }
+        }
+      }
+    }
 
-              if (inventory && inventory.instances) {
-                (material as any).instanceDetails = material.instanceIds.map((id: string) => {
-                  const inst = inventory.instances?.find((i: any) => i.uniqueId === id);
-                  return {
-                    uniqueId: id,
-                    serialNumber: inst?.serialNumber || 'N/A'
-                  };
-                });
+    // 2. Hacer UNA SOLA consulta a la base de datos
+    if (uniqueItemIds.size > 0) {
+      try {
+        const inventories = await InventoryModel.find({
+          _id: { $in: Array.from(uniqueItemIds) }
+        }).select('instances').lean() as unknown as IInventory[];
+
+        // 3. Crear un diccionario (Map) para búsqueda en O(1)
+        const inventoryMap = new Map<string, any[]>();
+        for (const inv of inventories) {
+          if (inv.instances) {
+            inventoryMap.set(String(inv._id), inv.instances);
+          }
+        }
+
+        // 4. Asignar los detalles de las instancias a las órdenes
+        for (const order of orders) {
+          if (order.materialsUsed && order.materialsUsed.length > 0) {
+            for (const material of order.materialsUsed) {
+              if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
+                const itemIdStr = (material.item as any)._id.toString();
+                const instances = inventoryMap.get(itemIdStr);
+
+                if (instances) {
+                  (material as any).instanceDetails = material.instanceIds.map((id: string) => {
+                    const inst = instances.find((i: any) => i.uniqueId === id);
+                    return {
+                      uniqueId: id,
+                      serialNumber: inst?.serialNumber || 'N/A'
+                    };
+                  });
+                }
               }
-            } catch (err) {
-              // calculated field, ignore error
             }
           }
         }
+      } catch (err) {
+        console.error("Error batch populating instance details:", err);
       }
     }
   }
@@ -181,25 +209,46 @@ export async function getOrderById(id: string, withDetails = false): Promise<IOr
 
   // Populate instance details only when explicitly requested (e.g. order detail view / reports)
   if (withDetails && order.materialsUsed && order.materialsUsed.length > 0) {
+    const uniqueItemIds = new Set<string>();
+
     for (const material of order.materialsUsed) {
       if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
-        try {
-          const inventory = await InventoryModel.findById((material.item as any)._id)
-            .select('instances')
-            .lean() as unknown as IInventory | null;
+        uniqueItemIds.add((material.item as any)._id.toString());
+      }
+    }
 
-          if (inventory && inventory.instances) {
-            (material as any).instanceDetails = material.instanceIds.map((id: string) => {
-              const inst = inventory.instances?.find((i: any) => i.uniqueId === id);
-              return {
-                uniqueId: id,
-                serialNumber: inst?.serialNumber || 'N/A'
-              };
-            });
+    if (uniqueItemIds.size > 0) {
+      try {
+        const inventories = await InventoryModel.find({
+          _id: { $in: Array.from(uniqueItemIds) }
+        }).select('instances').lean() as unknown as IInventory[];
+
+        const inventoryMap = new Map<string, any[]>();
+        for (const inv of inventories) {
+          if (inv.instances) {
+            inventoryMap.set(String(inv._id), inv.instances);
           }
-        } catch (err) {
-          console.error(`Error populating instance details for material ${(material.item as any).code}:`, err);
         }
+
+        for (const material of order.materialsUsed) {
+          if (material.instanceIds && material.instanceIds.length > 0 && material.item && (material.item as any)._id) {
+            const itemIdStr = (material.item as any)._id.toString();
+            const instances = inventoryMap.get(itemIdStr);
+
+            if (instances) {
+              (material as any).instanceDetails = material.instanceIds.map((id: string) => {
+                const inst = instances.find((i: any) => i.uniqueId === id);
+                return {
+                  uniqueId: id,
+                  serialNumber: inst?.serialNumber || 'N/A'
+                };
+              });
+            }
+          }
+        }
+
+      } catch (err) {
+        console.error(`Error batch populating instance details:`, err);
       }
     }
   }

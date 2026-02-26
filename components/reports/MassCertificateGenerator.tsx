@@ -54,17 +54,44 @@ export const MassCertificateGenerator = () => {
             setStatusText("Buscando órdenes completadas...");
 
             // 1. Fetch Orders (withDetails=true so instanceDetails/serial numbers appear in certificates)
-            const response = await axios.get('/api/web/orders', {
-                params: {
-                    status: 'completed',
-                    startDate,
-                    endDate,
-                    dateField: 'completionDate',
-                    withDetails: 'true'
-                }
-            });
+            // Lógica con Paginación para no reventar la memoria y evadir timeouts
+            let allOrders: any[] = [];
+            let currentPage = 1;
+            const limit = 50;
+            let hasMore = true;
 
-            const orders = response.data;
+            while (hasMore) {
+                setStatusText(`Buscando órdenes (descargando página ${currentPage})...`);
+
+                const response = await axios.get('/api/web/orders', {
+                    params: {
+                        status: 'completed',
+                        startDate,
+                        endDate,
+                        dateField: 'completionDate',
+                        withDetails: 'true',
+                        limit,
+                        page: currentPage
+                    }
+                });
+
+                // Como pasamos `limit` y `page`, la respuesta viene en `{ data, pagination }`
+                const responseData = response.data;
+                const ordersPage = responseData.data || (Array.isArray(responseData) ? responseData : []); // Fallback
+
+                if (!ordersPage || ordersPage.length === 0) {
+                    hasMore = false;
+                } else {
+                    allOrders = [...allOrders, ...ordersPage];
+                    if (ordersPage.length < limit || (responseData.pagination && currentPage >= responseData.pagination.pages)) {
+                        hasMore = false;
+                    } else {
+                        currentPage++;
+                    }
+                }
+            }
+
+            const orders = allOrders;
             if (!orders || orders.length === 0) {
                 alert("No se encontraron órdenes completadas en este rango.");
                 setIsGenerating(false);

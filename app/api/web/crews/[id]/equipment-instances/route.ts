@@ -35,28 +35,36 @@ export async function GET(
     const equipmentTypes = (crew.assignedInventory || [])
       .filter((inv: any) => inv.item && inv.item.type === "equipment");
 
-    const instances = [];
+    const instances: any[] = [];
 
-    // For each equipment type, get its instances assigned to this crew
-    for (const eq of equipmentTypes) {
-      const fullItem = await InventoryModel.findById(eq.item._id);
-      
-      if (!fullItem) continue;
+    if (equipmentTypes.length > 0) {
+      // 1. Recolectar IDs únicos
+      const eqIds = equipmentTypes.map((eq: any) => eq.item._id);
 
-      const crewInstances = fullItem.instances.filter(
-        (inst: any) => inst.assignedTo?.crewId?.toString() === crewId && inst.status === 'assigned'
-      );
+      // 2. Consulta en Batch
+      const fullItems = await InventoryModel.find({
+        _id: { $in: eqIds }
+      }).lean() as any[];
 
-      instances.push(...crewInstances.map((inst: any) => ({
-        uniqueId: inst.uniqueId,
-        serialNumber: inst.serialNumber,
-        macAddress: inst.macAddress,
-        status: inst.status,
-        notes: inst.notes,
-        inventoryId: fullItem._id.toString(),
-        itemCode: fullItem.code,
-        itemDescription: fullItem.description,
-      })));
+      // 3. Procesar en memoria reteniendo el formato IDÉNTICO
+      for (const fullItem of fullItems) {
+        if (!fullItem.instances) continue;
+
+        const crewInstances = fullItem.instances.filter(
+          (inst: any) => inst.assignedTo?.crewId?.toString() === crewId && inst.status === 'assigned'
+        );
+
+        instances.push(...crewInstances.map((inst: any) => ({
+          uniqueId: inst.uniqueId,
+          serialNumber: inst.serialNumber,
+          macAddress: inst.macAddress,
+          status: inst.status,
+          notes: inst.notes,
+          inventoryId: fullItem._id.toString(),
+          itemCode: fullItem.code,
+          itemDescription: fullItem.description,
+        })));
+      }
     }
 
     return NextResponse.json({

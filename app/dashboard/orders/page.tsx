@@ -20,7 +20,11 @@ export default function OrdersPage() {
     const [isSentFilter, setIsSentFilter] = useState("all");
     const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
     const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const [orders, setOrders] = useState<OrderData[]>([]);
+    const [totalItems, setTotalItems] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false);
@@ -30,8 +34,33 @@ export default function OrdersPage() {
         try {
             setLoading(true);
             setError(null);
-            const response = await axios.get('/api/web/orders');
-            setOrders(response.data);
+
+            const params = new URLSearchParams();
+            params.append("page", currentPage.toString());
+            params.append("limit", itemsPerPage.toString());
+
+            if (searchValue.trim()) params.append("search", searchValue.trim());
+            if (statusFilter !== "all") params.append("status", statusFilter);
+            if (typeFilter !== "all") params.append("type", typeFilter);
+            if (crewFilter !== "all") params.append("assignedTo", crewFilter);
+            if (isSentFilter !== "all") params.append("isSent", isSentFilter);
+
+            // Note: date ranges can be passed if needed by backend (ex: startDate/endDate)
+            // if (createdAtRange) { params.append("startDate", createdAtRange.start); params.append("endDate", createdAtRange.end); }
+
+            const response = await axios.get(`/api/web/orders?${params.toString()}`);
+
+            // Expected backend format when page/limit is provided
+            if (response.data.data && response.data.pagination) {
+                setOrders(response.data.data);
+                setTotalItems(response.data.pagination.total || 0);
+                setTotalPages(response.data.pagination.pages || 1);
+            } else {
+                // Fallback if backend didn't return paginated structure
+                setOrders(Array.isArray(response.data) ? response.data : []);
+                setTotalItems(response.data.length || 0);
+                setTotalPages(1);
+            }
         } catch (err) {
             console.error("Error fetching orders:", err);
             setError("Error al cargar las órdenes. Por favor, intenta de nuevo.");
@@ -40,178 +69,10 @@ export default function OrdersPage() {
         }
     };
 
+    // Re-fetch when filters or page changes
     useEffect(() => {
         fetchOrders();
-    }, []);
-
-    // Filter and search logic
-    const filteredOrders = useMemo(() => {
-        let filtered = [...orders];
-
-        // Apply search filter
-        if (searchValue.trim()) {
-            const search = searchValue.toLowerCase().trim();
-            filtered = filtered.filter(order =>
-                order.subscriberNumber.toLowerCase().includes(search) ||
-                order.subscriberName.toLowerCase().includes(search) ||
-                order.email?.toLowerCase().includes(search) ||
-                order.ticket_id?.toLowerCase().includes(search)
-            );
-        }
-
-        // Apply status filter
-        if (statusFilter !== "all") {
-            filtered = filtered.filter(order => order.status === statusFilter);
-        }
-
-        // Apply type filter
-        if (typeFilter !== "all") {
-            filtered = filtered.filter(order => order.type === typeFilter);
-        }
-
-        // Apply crew filter
-        if (crewFilter !== "all") {
-            filtered = filtered.filter(order => order.assignedTo?._id === crewFilter);
-        }
-
-        // Apply isSent filter
-        if (isSentFilter !== "all") {
-            const isSent = isSentFilter === "true";
-            filtered = filtered.filter(order => !!order.sentToNetuno === isSent);
-        }
-
-
-        // Apply date range filters with GMT-4 timezone conversion
-        // Helper function to convert date range to GMT-4 with debugging
-        const convertToGMT4Range = (dateRange: { start: string; end: string }, filterType: 'createdAt' | 'updatedAt') => {
-            const [yearStart, monthStart, dayStart] = dateRange.start.split('-').map(Number);
-            const [yearEnd, monthEnd, dayEnd] = dateRange.end.split('-').map(Number);
-
-            // Create dates at midnight local time
-            const start = new Date(yearStart, monthStart - 1, dayStart, 0, 0, 0, 0);
-            const end = new Date(yearEnd, monthEnd - 1, dayEnd, 23, 59, 59, 999);
-
-            // Add 4 hours for GMT-4 timezone (Venezuela)
-            start.setHours(start.getHours() + 4);
-            end.setHours(end.getHours() + 4);
-
-            console.debug(`[GMT-4 Conversion - ${filterType}]`, {
-                input: dateRange,
-                startDate: start.toISOString(),
-                endDate: end.toISOString(),
-                startLocal: start.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
-                endLocal: end.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
-                timestamp: new Date().toISOString()
-            });
-
-            return { start, end };
-        };
-
-        // Apply createdAt date filter
-        if (createdAtRange) {
-            const { start, end } = convertToGMT4Range(createdAtRange, 'createdAt');
-            const beforeCount = filtered.length;
-
-            filtered = filtered.filter(order => {
-                const orderDate = new Date(order.createdAt || Date.now());
-                const matches = orderDate >= start && orderDate <= end;
-
-                if (!matches) {
-                    console.debug('[createdAt Filter - Excluded]', {
-                        orderId: order._id,
-                        orderDate: orderDate.toISOString(),
-                        orderDateLocal: orderDate.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
-                        rangeStart: start.toISOString(),
-                        rangeEnd: end.toISOString()
-                    });
-                }
-
-                return matches;
-            });
-
-            console.debug('[createdAt Filter Results]', {
-                input: createdAtRange,
-                beforeCount,
-                afterCount: filtered.length,
-                filtered: filtered.length - beforeCount
-            });
-        }
-
-        // Apply updatedAt date filter
-        if (updatedAtRange) {
-            const { start, end } = convertToGMT4Range(updatedAtRange, 'updatedAt');
-            const beforeCount = filtered.length;
-
-            filtered = filtered.filter(order => {
-                const orderDate = new Date(order.updatedAt || Date.now());
-                const matches = orderDate >= start && orderDate <= end;
-
-                if (!matches) {
-                    console.debug('[updatedAt Filter - Excluded]', {
-                        orderId: order._id,
-                        orderDate: orderDate.toISOString(),
-                        orderDateLocal: orderDate.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
-                        rangeStart: start.toISOString(),
-                        rangeEnd: end.toISOString()
-                    });
-                }
-
-                return matches;
-            });
-
-            console.debug('[updatedAt Filter Results]', {
-                input: updatedAtRange,
-                beforeCount,
-                afterCount: filtered.length,
-                filtered: filtered.length - beforeCount
-            });
-        }
-
-        // Apply completionDate filter (only completed orders)
-        if (completionDateRange) {
-            const { start, end } = convertToGMT4Range(completionDateRange, 'createdAt');
-            const beforeCount = filtered.length;
-
-            // First filter to only completed orders
-            filtered = filtered.filter(order => order.status === 'completed');
-
-            // Then filter by completionDate
-            filtered = filtered.filter(order => {
-                const orderDate = new Date(order.completionDate || Date.now());
-                const matches = orderDate >= start && orderDate <= end;
-
-                if (!matches) {
-                    console.debug('[completionDate Filter - Excluded]', {
-                        orderId: order._id,
-                        orderDate: orderDate.toISOString(),
-                        orderDateLocal: orderDate.toLocaleString('es-VE', { timeZone: 'America/Caracas' }),
-                    });
-                }
-
-                return matches;
-            });
-
-            console.debug('[completionDate Filter Results]', {
-                input: completionDateRange,
-                beforeCount,
-                afterCount: filtered.length,
-            });
-        }
-
-        return filtered;
-    }, [orders, searchValue, statusFilter, typeFilter, createdAtRange, updatedAtRange, completionDateRange, crewFilter, isSentFilter]);
-
-    // Pagination logic
-    const itemsPerPage = 10;
-    const totalItems = filteredOrders.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-
-    // Get current page items
-    const paginatedOrders = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        return filteredOrders.slice(startIndex, endIndex);
-    }, [filteredOrders, currentPage]);
+    }, [currentPage, searchValue, statusFilter, typeFilter, crewFilter, isSentFilter, createdAtRange, updatedAtRange, completionDateRange]);
 
     const handleSelectOrder = (orderId: string) => {
         const newSelected = new Set(selectedOrders);
@@ -225,7 +86,7 @@ export default function OrdersPage() {
 
     const handleSelectAll = (selected: boolean) => {
         if (selected) {
-            setSelectedOrders(new Set(paginatedOrders.map((order) => order._id)));
+            setSelectedOrders(new Set(orders.map((order) => order._id)));
         } else {
             setSelectedOrders(new Set());
         }
@@ -351,7 +212,7 @@ export default function OrdersPage() {
             )}
 
             {/* Empty State */}
-            {!loading && !error && filteredOrders.length === 0 && (
+            {!loading && !error && orders.length === 0 && (
                 <div className="bg-white rounded-xl shadow-sm border border-neutral/10 p-12 text-center">
                     <i className="fa-solid fa-inbox text-gray-300 text-5xl mb-4"></i>
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">No se encontraron órdenes</h3>
@@ -364,10 +225,10 @@ export default function OrdersPage() {
             )}
 
             {/* Orders Table */}
-            {!loading && !error && filteredOrders.length > 0 && (
+            {!loading && !error && orders.length > 0 && (
                 <>
                     <OrdersTable
-                        orders={paginatedOrders}
+                        orders={orders}
                         selectedOrders={selectedOrders}
                         onSelectOrder={handleSelectOrder}
                         onSelectAll={handleSelectAll}
@@ -376,7 +237,7 @@ export default function OrdersPage() {
                     />
 
                     {/* Pagination */}
-                    {filteredOrders.length > 0 && (
+                    {orders.length > 0 && (
                         <div className="mt-4">
                             <Pagination
                                 currentPage={currentPage}

@@ -1,6 +1,9 @@
 import InventoryHistoryModel from "@/models/InventoryHistory";
 import UserModel from "@/models/User";
 import InstallerModel from "@/models/Installer";
+import "@/models/Inventory";
+import "@/models/Crew";
+import "@/models/Order";
 import { connectDB } from "@/lib/db";
 
 export async function createInventoryHistory(data: any) {

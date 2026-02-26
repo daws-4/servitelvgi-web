@@ -77,9 +77,12 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
 // withDetails=true populates equipment instanceDetails (serial numbers).
 // Avoid enabling it on high-frequency polling calls — it fires one extra
 // InventoryModel query per material-with-instances, per order.
-export async function getOrders(filters = {}, projection: any = null, withDetails = false) {
+export async function getOrders(filters: any = {}, projection: any = null, withDetails = false, limit = 0, page = 1) {
   await connectDB();
-  const orders = await OrderModel.find(filters, projection)
+
+  const skip = (page - 1) * limit;
+
+  let queryBuilder = OrderModel.find(filters, projection)
     .populate({
       path: 'assignedTo',
       select: 'number leader',
@@ -89,8 +92,30 @@ export async function getOrders(filters = {}, projection: any = null, withDetail
       }
     })
     .populate('materialsUsed.item', 'code description unit type')
-    .sort({ createdAt: -1 })
-    .lean();
+    .sort({ createdAt: -1 });
+
+  if (limit > 0) {
+    queryBuilder = queryBuilder.skip(skip).limit(limit);
+  }
+
+  // Si envían parámetros de paginación explícitos (ej. endpoint de la tabla paginada)
+  // Devolvemos el countDocuments también. Si no, solo retornamos el array de órdenes para compatibilidad.
+  const isPaginated = limit > 0 && page > 0;
+
+  let total = 0;
+  let orders: any[] = [];
+
+  if (isPaginated && !projection) { // Solo contar si no es un global search simplificado
+    const [countResult, ordersResult] = await Promise.all([
+      OrderModel.countDocuments(filters),
+      queryBuilder.lean()
+    ]);
+    total = countResult;
+    orders = ordersResult;
+  } else {
+    orders = await queryBuilder.lean();
+    total = orders.length; // Fake total para endpoints sencillos como mobile apps
+  }
 
   // Populate instance details only when explicitly requested (e.g. reports)
   if (withDetails) {
@@ -121,7 +146,19 @@ export async function getOrders(filters = {}, projection: any = null, withDetail
     }
   }
 
-  return orders;
+  // Estructura de retorno dual:
+  // Si pidieron `page`, devuelvo objeto `{ data, pagination }`. 
+  // Si no pidieron `page` (solo filters o omitidos), devuelvo arreglo `orders` para no romper llamadas legacy.
+  // Note: mobile app endpoints or existing simple usages may rely on an array response.
+  return {
+    data: orders,
+    pagination: {
+      total,
+      page,
+      limit,
+      pages: limit > 0 ? Math.ceil(total / limit) : 1
+    }
+  };
 }
 
 // Obtener una orden por id

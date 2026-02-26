@@ -99,8 +99,28 @@ export async function GET(request: Request) {
       priority: 1
     } : null;
 
-    const items = await getOrders(filters, projection, withDetails);
-    return NextResponse.json(items, {
+    const limitParam = url.searchParams.get("limit");
+    const pageParam = url.searchParams.get("page");
+    const limit = limitParam ? parseInt(limitParam) : 0;
+    const page = pageParam ? parseInt(pageParam) : 1;
+
+    // The getOrders function now returns { data, pagination }
+    const result = await getOrders(filters, projection, withDetails, limit, page);
+
+    // For backward compatibility (e.g. Mobile Apps, Dashboard latest 5 widgets without page param)
+    // If they ask for page OR limit AND it's not a simple projection query (e.g search/sync)
+    // we return full pagination object.
+    let responseData: any = result;
+
+    if (!pageParam && limitParam) {
+      // Si pidieron solo limite (ej. dashboard top 5), enviamos solo el arreglo para no romper compatibilidad
+      responseData = result.data;
+    } else if (!pageParam && !limitParam) {
+      // Si no pidieron ni page ni limit (ej apps legacy), enviamos arreglo
+      responseData = result.data;
+    }
+
+    return NextResponse.json(responseData, {
       status: 200,
       headers: {
         ...CORS_HEADERS,

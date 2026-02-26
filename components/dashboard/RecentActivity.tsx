@@ -24,16 +24,20 @@ export const RecentActivity = () => {
         try {
             setLoading(true);
 
-            // Fetch both inventory and order histories
+            // Fetch explicitly limited recent entries to avoid pulling entire database collection
             const [inventoryResponse, orderResponse] = await Promise.all([
-                fetch('/api/web/inventory-histories'),
-                fetch('/api/web/order-histories')
+                fetch('/api/web/inventory-histories?limit=5'),
+                fetch('/api/web/order-histories?limit=5')
             ]);
 
-            const inventoryData = await inventoryResponse.json();
-            const orderData = await orderResponse.json();
+            const inventoryJson = await inventoryResponse.json();
+            const orderJson = await orderResponse.json();
 
-            // Ensure data is an array, handle error responses
+            // Extract data from pagination wrapper if present, otherwise use array
+            const inventoryData = inventoryJson.data || (Array.isArray(inventoryJson) ? inventoryJson : []);
+            const orderData = orderJson.data || (Array.isArray(orderJson) ? orderJson : []);
+
+            // Ensure data is an array
             const inventoryArray = Array.isArray(inventoryData) ? inventoryData : [];
             const orderArray = Array.isArray(orderData) ? orderData : [];
 

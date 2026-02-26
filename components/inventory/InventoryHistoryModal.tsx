@@ -8,7 +8,7 @@ import {
 } from "@heroui/react";
 import DateRangePicker from "@/components/interactiveForms/DateRangePicker";
 import FormButton from "@/components/interactiveForms/Button";
-import { parseDate } from "@internationalized/date";
+import { Pagination } from "@/components/orders/Pagination";
 
 interface HistoryEntry {
     _id: string;
@@ -49,6 +49,10 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
     const [history, setHistory] = useState<HistoryEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const itemsPerPage = 10;
 
     // Calcular el rango de la semana actual (lunes a domingo)
     const getCurrentWeekRange = () => {
@@ -77,6 +81,10 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
         if (isOpen && !dateRange) {
             const weekRange = getCurrentWeekRange();
             setDateRange(weekRange);
+            setCurrentPage(1);
+        } else if (!isOpen) {
+            setCurrentPage(1);
+            setHistory([]);
         }
     }, [isOpen]);
 
@@ -85,32 +93,38 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
         if (isOpen && dateRange) {
             fetchHistory(dateRange.start, dateRange.end);
         }
-    }, [isOpen, dateRange]);
+    }, [isOpen, dateRange, currentPage]);
 
     const fetchHistory = async (startDate?: string, endDate?: string) => {
         setLoading(true);
         try {
             let url = "/api/web/inventory-histories";
 
-            // Si hay rango de fechas, agregar como query params
-            if (startDate && endDate) {
-                const params = new URLSearchParams({
-                    startDate,
-                    endDate,
-                });
+            const params = new URLSearchParams();
+            if (startDate) params.append("startDate", startDate);
+            if (endDate) params.append("endDate", endDate);
+            params.append("page", currentPage.toString());
+            params.append("limit", itemsPerPage.toString());
+
+            if (params.toString()) {
                 url += `?${params.toString()}`;
             }
 
             const response = await fetch(url);
             const data = await response.json();
 
-            console.log("📦 Datos del historial recibidos:", data);
-            console.log("📦 Primera entrada:", data[0]);
-
-            if (Array.isArray(data)) {
+            if (data && data.pagination) {
+                setHistory(data.data || []);
+                setTotalItems(data.pagination.total || 0);
+                setTotalPages(data.pagination.pages || 1);
+            } else if (Array.isArray(data)) {
                 setHistory(data);
+                setTotalItems(data.length);
+                setTotalPages(1);
             } else {
                 setHistory([]);
+                setTotalItems(0);
+                setTotalPages(1);
             }
         } catch (err) {
             console.error("Error fetching history:", err);
@@ -123,6 +137,16 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
     // Manejador de cambio de rango de fechas
     const handleDateChange = (range: { start: string; end: string } | null) => {
         setDateRange(range);
+        setCurrentPage(1);
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        // Scroll to top of modal body when changing pages
+        const modalBody = document.querySelector('.modal-body-scroll');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
     };
 
     const getTypeInfo = (type: string) => {
@@ -322,6 +346,19 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {!loading && history.length > 0 && totalPages > 1 && (
+                        <div className="mt-8">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalItems={totalItems}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={handlePageChange}
+                            />
                         </div>
                     )}
                 </ModalBody>

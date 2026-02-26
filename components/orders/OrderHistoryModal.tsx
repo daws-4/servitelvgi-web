@@ -8,7 +8,7 @@ import {
 } from "@heroui/react";
 import DateRangePicker from "@/components/interactiveForms/DateRangePicker";
 import FormButton from "@/components/interactiveForms/Button";
-import { parseDate } from "@internationalized/date";
+import { Pagination } from "@/components/orders/Pagination";
 
 interface HistoryEntry {
     _id: string;
@@ -48,6 +48,10 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
     const [history, setHistory] = useState<HistoryEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const itemsPerPage = 10;
 
     // Calculate current week range (Monday to Sunday)
     const getCurrentWeekRange = () => {
@@ -76,15 +80,20 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
         if (isOpen && !dateRange) {
             const weekRange = getCurrentWeekRange();
             setDateRange(weekRange);
+            setCurrentPage(1);
+        } else if (!isOpen) {
+            // Reset page on close
+            setCurrentPage(1);
+            setHistory([]);
         }
     }, [isOpen]);
 
-    // Fetch history when date range changes
+    // Fetch history when date range, orderId or page changes
     useEffect(() => {
         if (isOpen && dateRange) {
             fetchHistory(dateRange.start, dateRange.end);
         }
-    }, [isOpen, dateRange, orderId]);
+    }, [isOpen, dateRange, orderId, currentPage]);
 
     const fetchHistory = async (startDate?: string, endDate?: string) => {
         setLoading(true);
@@ -96,6 +105,8 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
             if (startDate) params.append("startDate", startDate);
             if (endDate) params.append("endDate", endDate);
             if (orderId) params.append("orderId", orderId);
+            params.append("page", currentPage.toString());
+            params.append("limit", itemsPerPage.toString());
 
             if (params.toString()) {
                 url += `?${params.toString()}`;
@@ -104,12 +115,18 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
             const response = await fetch(url);
             const data = await response.json();
 
-            console.log("📦 Order history data received:", data);
-
-            if (Array.isArray(data)) {
+            if (data && data.pagination) {
+                setHistory(data.data || []);
+                setTotalItems(data.pagination.total || 0);
+                setTotalPages(data.pagination.pages || 1);
+            } else if (Array.isArray(data)) {
                 setHistory(data);
+                setTotalItems(data.length);
+                setTotalPages(1);
             } else {
                 setHistory([]);
+                setTotalItems(0);
+                setTotalPages(1);
             }
         } catch (err) {
             console.error("Error fetching order history:", err);
@@ -122,6 +139,16 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
     // Handle date range change
     const handleDateChange = (range: { start: string; end: string } | null) => {
         setDateRange(range);
+        setCurrentPage(1);
+    };
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        // Scroll to top of modal body when changing pages
+        const modalBody = document.querySelector('.modal-body-scroll');
+        if (modalBody) {
+            modalBody.scrollTop = 0;
+        }
     };
 
     const getTypeInfo = (type: string) => {
@@ -318,6 +345,19 @@ export const OrderHistoryModal: React.FC<OrderHistoryModalProps> = ({
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {!loading && history.length > 0 && totalPages > 1 && (
+                        <div className="mt-8">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalItems={totalItems}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={handlePageChange}
+                            />
                         </div>
                     )}
                 </ModalBody>

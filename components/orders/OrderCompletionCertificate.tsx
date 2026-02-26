@@ -169,7 +169,7 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                 {/* MATERIALS USED - 44% - CODE AND QUANTITY ONLY */}
                 <div>
                     <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Materiales Utilizados</h3>
-                    {usedMaterials.length > 0 ? (
+                    {(usedMaterials.length > 0 || (data.type === 'recuperacion' && data.equipmentRecovered?.ontId)) ? (
                         <div className="grid grid-cols-2 gap-1.5">
                             {usedMaterials.map((mat: any, idx) => (
                                 <div key={idx} className="flex flex-col px-2 py-1 rounded text-[11px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
@@ -189,6 +189,31 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                                     )}
                                 </div>
                             ))}
+                            {data.type === 'recuperacion' && data.equipmentRecovered?.ontId && (
+                                <div className="flex flex-col px-2 py-1 rounded text-[11px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-mono font-semibold break-words" style={{ color: colors.gray700 }}>
+                                            {data.equipmentRecovered.model ? `ONT ${data.equipmentRecovered.model}` : 'ONT Recuperada'} ({data.equipmentRecovered.ontId})
+                                        </span>
+                                        <span className="font-bold ml-2" style={{ color: colors.gray800 }}>×1</span>
+                                    </div>
+                                    <div className="mt-0.5 flex flex-wrap gap-1 items-center justify-between">
+                                        {data.equipmentRecovered.serialNumber && (
+                                            <span className="text-[12px] font-mono font-semibold" style={{ color: colors.gray700 }}>
+                                                SN:{data.equipmentRecovered.serialNumber}
+                                            </span>
+                                        )}
+                                        {data.equipmentRecovered.condition && (
+                                            <span className="text-[10px] uppercase font-bold px-1 py-0.5 rounded" style={{
+                                                backgroundColor: data.equipmentRecovered.condition === 'good' ? '#dcfce7' : data.equipmentRecovered.condition === 'damaged' ? '#fee2e2' : '#fef9c3',
+                                                color: data.equipmentRecovered.condition === 'good' ? '#166534' : data.equipmentRecovered.condition === 'damaged' ? '#991b1b' : '#854d0e',
+                                            }}>
+                                                {data.equipmentRecovered.condition === 'good' ? 'Bueno' : data.equipmentRecovered.condition === 'damaged' ? 'Dañado' : data.equipmentRecovered.condition === 'defective' ? 'Defectuoso' : data.equipmentRecovered.condition}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <p className="italic text-[11px] py-1" style={{ color: colors.gray500 }}>No se registraron materiales.</p>

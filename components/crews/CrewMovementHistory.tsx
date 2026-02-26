@@ -71,32 +71,36 @@ export const CrewMovementHistory: React.FC<CrewMovementHistoryProps> = ({
                 crewId,
                 startDate: startDate.toISOString().split("T")[0],
                 endDate: endDate.toISOString().split("T")[0],
+                page: pageNum.toString(),
+                limit: itemsPerPage.toString(),
             });
 
             const response = await fetch(`/api/web/inventory-histories?${params.toString()}`);
             const data = await response.json();
 
-            if (Array.isArray(data)) {
-                // Sort by date descending (newest first)
-                const sortedData = data.sort((a, b) => {
-                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                });
+            let fetchedData: HistoryEntry[] = [];
+            let moreAvailable = false;
 
-                // Implement client-side pagination
-                const startIndex = (pageNum - 1) * itemsPerPage;
-                const endIndex = startIndex + itemsPerPage;
-                const paginatedData = sortedData.slice(startIndex, endIndex);
+            if (data && data.pagination) {
+                fetchedData = data.data;
+                moreAvailable = data.pagination.page < data.pagination.pages;
+            } else if (Array.isArray(data)) {
+                // Fallback for older api versions without pagination wrapper
+                fetchedData = data;
+                moreAvailable = fetchedData.length === itemsPerPage;
+            }
 
+            if (fetchedData.length > 0) {
                 if (reset) {
-                    setHistory(paginatedData);
+                    setHistory(fetchedData);
                 } else {
-                    setHistory(prev => [...prev, ...paginatedData]);
+                    setHistory(prev => [...prev, ...fetchedData]);
                 }
-
-                // Check if there are more items
-                setHasMore(endIndex < sortedData.length);
+                setHasMore(moreAvailable);
             } else {
-                setHistory([]);
+                if (reset) {
+                    setHistory([]);
+                }
                 setHasMore(false);
             }
         } catch (error) {

@@ -12,12 +12,14 @@ export async function getOrderHistories(filters: {
   orderId?: string;
   crewId?: string;
   changeType?: string;
+  limit?: number;
+  page?: number;
 } = {}) {
   try {
     await connectDB();
-    
+
     const query: any = {};
-    
+
     // Filter by date range
     if (filters.startDate || filters.endDate) {
       query.createdAt = {};
@@ -31,21 +33,41 @@ export async function getOrderHistories(filters: {
         query.createdAt.$lte = endDate;
       }
     }
-    
+
     // Additional filters
     if (filters.orderId) query.order = filters.orderId;
     if (filters.crewId) query.crew = filters.crewId;
     if (filters.changeType) query.changeType = filters.changeType;
-    
-    const results = await OrderHistoryModel.find(query)
+
+    // Pagination params
+    const page = filters.page || 1;
+    const limit = filters.limit || 0; // 0 means no limit
+    const skip = (page - 1) * limit;
+
+    let queryBuilder = OrderHistoryModel.find(query)
       .populate("order", "subscriberNumber subscriberName")
       .populate("crew", "name")
       .populate("changedBy", "name surname username")
-      .sort({ createdAt: -1 })
-      .lean(); // Use lean() for better performance and to avoid toObject issues
-    
-    // Return results or empty array
-    return results || [];
+      .sort({ createdAt: -1 });
+
+    if (limit > 0) {
+      queryBuilder = queryBuilder.skip(skip).limit(limit);
+    }
+
+    const [total, results] = await Promise.all([
+      OrderHistoryModel.countDocuments(query),
+      queryBuilder.lean()
+    ]);
+
+    return {
+      data: results || [],
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: limit > 0 ? Math.ceil(total / limit) : 1
+      }
+    };
   } catch (error) {
     console.error("Error in getOrderHistories:", error);
     // Return empty array on error to prevent crashes

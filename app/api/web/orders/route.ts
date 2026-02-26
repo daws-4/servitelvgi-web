@@ -43,6 +43,7 @@ export async function GET(request: Request) {
     const type = url.searchParams.get("type");
     const updatedAfter = url.searchParams.get("updatedAfter");
     const search = url.searchParams.get("search");
+    const isSent = url.searchParams.get("isSent");
 
     const startDate = url.searchParams.get("startDate");
     const endDate = url.searchParams.get("endDate");
@@ -52,6 +53,15 @@ export async function GET(request: Request) {
     if (assignedTo) filters.assignedTo = assignedTo;
     if (status) filters.status = status;
     if (type) filters.type = type;
+
+    // Handle Netuno sync flag
+    if (isSent) {
+      if (isSent === "true") {
+        filters.sentToNetuno = true;
+      } else if (isSent === "false") {
+        filters.sentToNetuno = { $ne: true };
+      }
+    }
 
     // Search logic takes precedence over date filter for "Global Search"
     if (search) {

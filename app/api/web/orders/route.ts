@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
     console.log('📦 [API POST] Body:', JSON.stringify(body, null, 2));
 
     const created = await createOrder(body, sessionUser || undefined);
-    revalidateTag("orders");
+
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err: any) {
     console.error("❌ [API POST] Error creating order:", err);
@@ -544,7 +544,6 @@ export async function PUT(request: NextRequest) {
         { status: 404, headers: CORS_HEADERS }
       );
 
-    revalidateTag("orders");
     return NextResponse.json(updated, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     console.error("[DEBUG] Error in PUT:", err);
@@ -579,7 +578,6 @@ export async function DELETE(request: Request) {
         { status: 404, headers: CORS_HEADERS }
       );
 
-    revalidateTag("orders");
     return NextResponse.json(
       { message: "Deleted" },
       { status: 200, headers: CORS_HEADERS }

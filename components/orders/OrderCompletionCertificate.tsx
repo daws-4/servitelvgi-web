@@ -169,7 +169,7 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                 {/* MATERIALS USED - 44% - CODE AND QUANTITY ONLY */}
                 <div>
                     <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Materiales Utilizados</h3>
-                    {(usedMaterials.length > 0 || (data.type === 'recuperacion' && data.equipmentRecovered?.ontId)) ? (
+                    {(usedMaterials.length > 0 || (data.type?.toLowerCase() === 'recuperacion' && data.equipmentRecovered?.ontId)) ? (
                         <div className="grid grid-cols-2 gap-1.5">
                             {usedMaterials.map((mat: any, idx) => (
                                 <div key={idx} className="flex flex-col px-2 py-1 rounded text-[11px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
@@ -189,7 +189,7 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                                     )}
                                 </div>
                             ))}
-                            {data.type === 'recuperacion' && data.equipmentRecovered?.ontId && (
+                            {data.type?.toLowerCase() === 'recuperacion' && data.equipmentRecovered?.ontId && (
                                 <div className="flex flex-col px-2 py-1 rounded text-[11px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
                                     <div className="flex items-center justify-between">
                                         <span className="font-mono font-semibold break-words" style={{ color: colors.gray700 }}>

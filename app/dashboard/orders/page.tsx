@@ -45,8 +45,20 @@ export default function OrdersPage() {
             if (crewFilter !== "all") params.append("assignedTo", crewFilter);
             if (isSentFilter !== "all") params.append("isSent", isSentFilter);
 
-            // Note: date ranges can be passed if needed by backend (ex: startDate/endDate)
-            // if (createdAtRange) { params.append("startDate", createdAtRange.start); params.append("endDate", createdAtRange.end); }
+            // Handle date ranges (only one at a time for the API logic right now, prioritizing completion, then updated, then created)
+            if (completionDateRange) {
+                params.append("startDate", completionDateRange.start);
+                params.append("endDate", completionDateRange.end);
+                params.append("dateField", "completionDate");
+            } else if (updatedAtRange) {
+                params.append("startDate", updatedAtRange.start);
+                params.append("endDate", updatedAtRange.end);
+                params.append("dateField", "updatedAt");
+            } else if (createdAtRange) {
+                params.append("startDate", createdAtRange.start);
+                params.append("endDate", createdAtRange.end);
+                params.append("dateField", "createdAt");
+            }
 
             const response = await axios.get(`/api/web/orders?${params.toString()}`);
 

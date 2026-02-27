@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag, unstable_cache } from "next/cache";
 import {
   createOrder,
   getOrders,
@@ -93,29 +94,49 @@ export async function GET(request: Request) {
 
     // Optimization: if updatedAfter is used (typically mobile sync), limit fields
     // If searching, we also want optimized fields but make sure we return what's needed
-    const projection = (updatedAfter || search) ? {
-      _id: 1,
-      subscriberNumber: 1,
-      subscriberName: 1,
-      status: 1,
-      type: 1,
-      address: 1,
-      city: 1,
-      createdAt: 1,
-      updatedAt: 1,
-      assignedTo: 1,
-      ticket_id: 1,
-      coordinates: 1,
-      priority: 1
-    } : null;
+    let projection: any = null;
+    if (updatedAfter || search) {
+      projection = {
+        _id: 1,
+        subscriberNumber: 1,
+        subscriberName: 1,
+        status: 1,
+        type: 1,
+        address: 1,
+        city: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        assignedTo: 1,
+        ticket_id: 1,
+        coordinates: 1,
+        priority: 1
+      };
+    } else {
+      // Default projection for web table to prevent fetching huge logs
+      // unless specifically requested with Details
+      if (!withDetails) {
+        projection = {
+          installerLog: 0, // Exclude heavy installer logs
+          "materialsUsed.instanceDetails": 0 // Exclude complex instance details arrays
+        };
+      }
+    }
 
     const limitParam = url.searchParams.get("limit");
     const pageParam = url.searchParams.get("page");
     const limit = limitParam ? parseInt(limitParam) : 0;
     const page = pageParam ? parseInt(pageParam) : 1;
 
+    // Wrap the primary DB query logic in unstable_cache
+    const cacheKey = `orders-list-${JSON.stringify(filters)}-${JSON.stringify(projection)}-${withDetails}-${limit}-${page}`;
+    const getCachedOrders = unstable_cache(
+      async () => getOrders(filters, projection, withDetails, limit, page, !!pageParam),
+      [cacheKey],
+      { tags: ['orders'] }
+    );
+
     // The getOrders function now returns { data, pagination }
-    const result = await getOrders(filters, projection, withDetails, limit, page);
+    const result = await getCachedOrders();
 
     // For backward compatibility (e.g. Mobile Apps, Dashboard latest 5 widgets without page param)
     // If they ask for page OR limit AND it's not a simple projection query (e.g search/sync)
@@ -134,8 +155,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         ...CORS_HEADERS,
-        // Cache for 30 s per user — avoids redundant serverless invocations
-        // for the same query within the same browser session.
+        // Using Next.js unstable_cache, we can rely on standard cache headers.
         "Cache-Control": "private, max-age=30, stale-while-revalidate=15",
       },
     });
@@ -164,6 +184,7 @@ export async function POST(request: NextRequest) {
     console.log('📦 [API POST] Body:', JSON.stringify(body, null, 2));
 
     const created = await createOrder(body, sessionUser || undefined);
+    revalidateTag("orders");
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err: any) {
     console.error("❌ [API POST] Error creating order:", err);
@@ -522,6 +543,8 @@ export async function PUT(request: NextRequest) {
         { error: "Not found" },
         { status: 404, headers: CORS_HEADERS }
       );
+
+    revalidateTag("orders");
     return NextResponse.json(updated, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     console.error("[DEBUG] Error in PUT:", err);
@@ -555,6 +578,8 @@ export async function DELETE(request: Request) {
         { error: "Not found" },
         { status: 404, headers: CORS_HEADERS }
       );
+
+    revalidateTag("orders");
     return NextResponse.json(
       { message: "Deleted" },
       { status: 200, headers: CORS_HEADERS }

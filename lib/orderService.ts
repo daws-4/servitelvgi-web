@@ -77,7 +77,7 @@ export async function createOrder(data: any, sessionUser?: SessionUser) {
 // withDetails=true populates equipment instanceDetails (serial numbers).
 // Avoid enabling it on high-frequency polling calls — it fires one extra
 // InventoryModel query per material-with-instances, per order.
-export async function getOrders(filters: any = {}, projection: any = null, withDetails = false, limit = 0, page = 1) {
+export async function getOrders(filters: any = {}, projection: any = null, withDetails = false, limit = 0, page = 1, needTotal = false) {
   await connectDB();
 
   const skip = (page - 1) * limit;
@@ -105,7 +105,9 @@ export async function getOrders(filters: any = {}, projection: any = null, withD
   let total = 0;
   let orders: any[] = [];
 
-  if (isPaginated && !projection) { // Solo contar si no es un global search simplificado
+  // Contamos el total si explícitamente solicitaron `needTotal` (ej. viene el parámetro `page` en la API)
+  // o por compatibilidad si no hay proyección.
+  if (needTotal || (isPaginated && !projection)) {
     const [countResult, ordersResult] = await Promise.all([
       OrderModel.countDocuments(filters),
       queryBuilder.lean()

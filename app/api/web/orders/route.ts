@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import {
   createOrder,
   getOrders,
@@ -184,6 +184,7 @@ export async function POST(request: NextRequest) {
     console.log('📦 [API POST] Body:', JSON.stringify(body, null, 2));
 
     const created = await createOrder(body, sessionUser || undefined);
+    revalidatePath("/api/web/orders");
 
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err: any) {
@@ -544,6 +545,7 @@ export async function PUT(request: NextRequest) {
         { status: 404, headers: CORS_HEADERS }
       );
 
+    revalidatePath("/api/web/orders");
     return NextResponse.json(updated, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     console.error("[DEBUG] Error in PUT:", err);
@@ -578,6 +580,7 @@ export async function DELETE(request: Request) {
         { status: 404, headers: CORS_HEADERS }
       );
 
+    revalidatePath("/api/web/orders");
     return NextResponse.json(
       { message: "Deleted" },
       { status: 200, headers: CORS_HEADERS }

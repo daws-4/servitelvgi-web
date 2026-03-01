@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import OrderModel from "@/models/Order";
 
+export const dynamic = 'force-dynamic';
+
 const CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -56,10 +58,13 @@ export async function GET() {
 
         // Single aggregation pipeline — MongoDB does all the work
         const pipeline = [
-            // Step 1: Only touch today's documents
+            // Step 1: Match orders updated today OR orders that are not completed/cancelled
             {
                 $match: {
-                    updatedAt: { $gte: startOfDay, $lte: endOfDay },
+                    $or: [
+                        { updatedAt: { $gte: startOfDay, $lte: endOfDay } },
+                        { status: { $in: ["pending", "assigned", "in_progress", "hard"] } }
+                    ],
                 },
             },
             // Step 2: Group on the server side and count each bucket we need
@@ -69,7 +74,14 @@ export async function GET() {
                     averiasCompletadas: {
                         $sum: {
                             $cond: [
-                                { $and: [{ $eq: ["$type", "averia"] }, { $eq: ["$status", "completed"] }] },
+                                {
+                                    $and: [
+                                        { $eq: ["$type", "averia"] },
+                                        { $eq: ["$status", "completed"] },
+                                        { $gte: ["$updatedAt", startOfDay] },
+                                        { $lte: ["$updatedAt", endOfDay] }
+                                    ]
+                                },
                                 1,
                                 0,
                             ],
@@ -78,7 +90,14 @@ export async function GET() {
                     instalacionesCompletadas: {
                         $sum: {
                             $cond: [
-                                { $and: [{ $eq: ["$type", "instalacion"] }, { $eq: ["$status", "completed"] }] },
+                                {
+                                    $and: [
+                                        { $eq: ["$type", "instalacion"] },
+                                        { $eq: ["$status", "completed"] },
+                                        { $gte: ["$updatedAt", startOfDay] },
+                                        { $lte: ["$updatedAt", endOfDay] }
+                                    ]
+                                },
                                 1,
                                 0,
                             ],
@@ -86,7 +105,17 @@ export async function GET() {
                     },
                     visitasCompletadas: {
                         $sum: {
-                            $cond: [{ $eq: ["$status", "visita"] }, 1, 0],
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $eq: ["$status", "visita"] },
+                                        { $gte: ["$updatedAt", startOfDay] },
+                                        { $lte: ["$updatedAt", endOfDay] }
+                                    ]
+                                },
+                                1,
+                                0,
+                            ],
                         },
                     },
                     averiasSinCompletar: {
@@ -95,8 +124,7 @@ export async function GET() {
                                 {
                                     $and: [
                                         { $eq: ["$type", "averia"] },
-                                        { $ne: ["$status", "completed"] },
-                                        { $ne: ["$status", "visita"] },
+                                        { $in: ["$status", ["pending", "assigned", "in_progress", "hard"]] },
                                     ],
                                 },
                                 1,
@@ -110,8 +138,7 @@ export async function GET() {
                                 {
                                     $and: [
                                         { $eq: ["$type", "instalacion"] },
-                                        { $ne: ["$status", "completed"] },
-                                        { $ne: ["$status", "visita"] },
+                                        { $in: ["$status", ["pending", "assigned", "in_progress", "hard"]] },
                                     ],
                                 },
                                 1,
@@ -151,8 +178,7 @@ export async function GET() {
                 status: 200,
                 headers: {
                     ...CORS_HEADERS,
-                    // Cache for 60 seconds — stats don't need to be real-time to the second
-                    "Cache-Control": "private, max-age=60, stale-while-revalidate=30",
+                    "Cache-Control": "no-store, max-age=0",
                 },
             }
         );

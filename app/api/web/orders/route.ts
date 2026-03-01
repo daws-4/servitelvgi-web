@@ -109,7 +109,8 @@ export async function GET(request: Request) {
         assignedTo: 1,
         ticket_id: 1,
         coordinates: 1,
-        priority: 1
+        priority: 1,
+        sentToNetuno: 1
       };
     } else {
       // Default projection for web table to prevent fetching huge logs

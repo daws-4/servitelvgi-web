@@ -8,6 +8,7 @@ interface PaginationProps {
     totalItems: number;
     itemsPerPage: number;
     onPageChange?: (page: number) => void;
+    itemLabel?: string;
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
@@ -16,6 +17,7 @@ export const Pagination: React.FC<PaginationProps> = ({
     totalItems,
     itemsPerPage,
     onPageChange,
+    itemLabel = "registros",
 }) => {
     const startItem = (currentPage - 1) * itemsPerPage + 1;
     const endItem = Math.min(currentPage * itemsPerPage, totalItems);
@@ -58,7 +60,7 @@ export const Pagination: React.FC<PaginationProps> = ({
     return (
         <div className="p-4 border-t border-gray-100 flex items-center justify-between">
             <span className="text-xs text-gray-500">
-                Mostrando {startItem}-{endItem} de {totalItems} órdenes
+                Mostrando {startItem}-{endItem} de {totalItems} {itemLabel}
             </span>
             <div className="flex gap-1">
                 <button
@@ -83,8 +85,8 @@ export const Pagination: React.FC<PaginationProps> = ({
                             key={page}
                             onClick={() => handlePageChange(page)}
                             className={`px-3 py-1 text-xs rounded font-medium ${currentPage === page
-                                    ? "bg-primary text-white"
-                                    : "border hover:bg-gray-50 text-gray-600"
+                                ? "bg-primary text-white"
+                                : "border hover:bg-gray-50 text-gray-600"
                                 }`}
                         >
                             {page}

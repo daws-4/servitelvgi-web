@@ -9,6 +9,7 @@ import html2canvas from 'html2canvas';
 import axios from 'axios';
 import { OrderEditData } from '@/components/orders/OrderEditForm';
 import { OrderCompletionCertificate } from '@/components/orders/OrderCompletionCertificate';
+import { CertificateErrorBoundary } from '@/components/orders/CertificateErrorBoundary';
 import { transformOrderToEditData } from '@/lib/orderUtils';
 
 export const MassCertificateGenerator = () => {
@@ -160,6 +161,7 @@ export const MassCertificateGenerator = () => {
             let currentY = margin;
             let itemsOnPage = 0;
             let lastTechnician = ''; // Track current technician
+            let skippedOrders = 0; // Track failed orders
 
             // Helper function to get technician name
             const getTechName = (order: any) => {
@@ -196,37 +198,41 @@ export const MassCertificateGenerator = () => {
 
                 if (!printContainerRef.current) continue;
 
-                // Capture
-                const canvas = await html2canvas(printContainerRef.current, {
-                    scale: 1.5, // Reduced from 2 for compression (good enough for A4)
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#ffffff'
-                });
+                try {
+                    // Capture
+                    const canvas = await html2canvas(printContainerRef.current, {
+                        scale: 1.5,
+                        useCORS: true,
+                        logging: false,
+                        backgroundColor: '#ffffff'
+                    });
 
-                // Use JPEG instead of PNG for massive compression
-                // Quality 0.75 is usually indistinguishable for documents but 5x smaller
-                const imgData = canvas.toDataURL('image/jpeg', 0.75);
+                    const imgData = canvas.toDataURL('image/jpeg', 0.75);
 
-                // Add to PDF - check if page is full
-                if (itemsOnPage === ordersPerPage) {
-                    pdf.addPage();
-                    currentY = margin;
-                    itemsOnPage = 0;
+                    // Add to PDF - check if page is full
+                    if (itemsOnPage === ordersPerPage) {
+                        pdf.addPage();
+                        currentY = margin;
+                        itemsOnPage = 0;
+                    }
+
+                    pdf.addImage(imgData, 'JPEG', margin, currentY, imgWidth, imgHeight);
+                    currentY += imgHeight + 2;
+                    itemsOnPage++;
+                } catch (orderError) {
+                    console.error(`[MassCertificateGenerator] Error en orden ${order.ticket_id ?? order._id}:`, orderError);
+                    skippedOrders++;
+                    // Continue generating the rest
                 }
-
-                pdf.addImage(imgData, 'JPEG', margin, currentY, imgWidth, imgHeight);
-
-                // Draw a light border around the certificate if desired, or just spacing
-                // pdf.rect(margin, currentY, imgWidth, imgHeight);
-
-                currentY += imgHeight + 2; // +2mm spacing
-                itemsOnPage++;
             }
 
             setStatusText("Guardando PDF...");
             pdf.save(`certificados_completados_${startDate}_${endDate}.pdf`);
-            setStatusText("¡Completado!");
+            const skippedMsg = skippedOrders > 0 ? ` (${skippedOrders} omitidas por error)` : '';
+            setStatusText(`¡Completado!${skippedMsg}`);
+            if (skippedOrders > 0) {
+                alert(`PDF generado. Se omitieron ${skippedOrders} orden(es) por errores de datos. Revisa la consola para más detalles.`);
+            }
 
         } catch (error) {
             console.error("Error generating mass PDF:", error);
@@ -308,7 +314,9 @@ export const MassCertificateGenerator = () => {
             {/* Hidden Container for Rendering */}
             <div className="absolute top-0 left-[-9999px] w-[800px]" ref={printContainerRef}>
                 {currentOrder && (
-                    <OrderCompletionCertificate data={currentOrder} />
+                    <CertificateErrorBoundary orderId={currentOrder.ticket_id ?? currentOrder.subscriberNumber}>
+                        <OrderCompletionCertificate data={currentOrder} />
+                    </CertificateErrorBoundary>
                 )}
             </div>
         </div>

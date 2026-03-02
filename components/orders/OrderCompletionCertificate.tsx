@@ -59,16 +59,10 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                             Hora Asignada: <span className="font-bold">{new Date(data.createdAt).toLocaleDateString()} {new Date(data.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                         </p>
                     )}
-                    {/* Last Update Date */}
-                    {data.updatedAt && (
-                        <p className="font-medium mt-0.5" style={{ color: colors.gray600 }}>
-                            Última Edición: <span className="font-bold">{new Date(data.updatedAt).toLocaleDateString()} {new Date(data.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
-                        </p>
-                    )}
-                    {/* Completion Date */}
+                    {/* Completion Date replacing Last Update Date */}
                     {data.completionDate && (
-                        <p className="font-medium mt-0.5" style={{ color: colors.green600 }}>
-                            Completada: <span className="font-bold">{new Date(data.completionDate).toLocaleDateString()} {new Date(data.completionDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <p className="font-medium mt-0.5" style={{ color: colors.gray600 }}>
+                            Fecha de Finalización: <span className="font-bold">{new Date(data.completionDate).toLocaleDateString()} {new Date(data.completionDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                         </p>
                     )}
                     {/* Technician Name in Header */}
@@ -174,7 +168,9 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                             {usedMaterials.map((mat: any, idx) => (
                                 <div key={idx} className="flex flex-col px-2 py-1 rounded text-[11px]" style={{ backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
                                     <div className="flex items-center justify-between">
-                                        <span className="font-mono font-semibold break-words" style={{ color: colors.gray700 }}>{mat.item.code}</span>
+                                        <span className="font-mono font-semibold break-words" style={{ color: mat.item ? colors.gray700 : colors.gray400 }}>
+                                            {mat.item?.code ?? '(Material eliminado)'}
+                                        </span>
                                         <span className="font-bold ml-2" style={{ color: colors.gray800 }}>×{mat.quantity}</span>
                                     </div>
                                     {/* Mostrar seriales si existen (para equipos) */}

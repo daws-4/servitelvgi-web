@@ -29,6 +29,8 @@ export const transformOrderToEditData = (order: any): OrderEditData => {
         installerLog: order.installerLog || [],
         equipmentRecovered: order.equipmentRecovered,
         updatedAt: order.updatedAt,
+        createdAt: order.createdAt,
+        completionDate: order.completionDate,
         visitCount: order.visitCount || 0,
         powerNap: order.powerNap || '',
         powerRoseta: order.powerRoseta || '',

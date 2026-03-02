@@ -78,13 +78,30 @@ export async function GET(request: Request) {
       // Date filtering logic - PRIORITIZE explicit range over updatedAfter
       if (startDate || endDate) {
         filters[dateField] = {};
+
+        // Manejo de zonas horarias:
+        // Las fechas vienen como "YYYY-MM-DD". En JavaScript, new Date("YYYY-MM-DD") crea la fecha a las 00:00:00 UTC.
+        // Si el cliente está en UTC-4 (Venezuela), su "00:00:00 local" es en realidad "04:00:00 UTC".
+        // Para que `gte` y `lte` cubran correctamente el día local en la base de datos (que guarda en UTC),
+        // debemos compensar el offset esperado.
+        // Asumiremos UTC-4 (Venezuela) fijo para esta lógica de negocio.
+        const TZ_OFFSET_HOURS = 4;
+
         if (startDate) {
-          filters[dateField].$gte = new Date(startDate);
+          // startDate viene como "YYYY-MM-DD"
+          // Ejemplo: "2025-02-20" -> 2025-02-20T00:00:00.000Z
+          const start = new Date(startDate);
+          // Le sumamos 4 horas para que sea 2025-02-20T04:00:00.000Z (que es la medianoche local en VE)
+          start.setUTCHours(TZ_OFFSET_HOURS, 0, 0, 0);
+          filters[dateField].$gte = start;
         }
         if (endDate) {
-          // Set to end of day
+          // endDate viene como "YYYY-MM-DD"
           const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
+          // Le sumamos 4 horas para llegar a la medianoche local del día final.
+          // Y luego sumamos 23h 59m 59s para llegar al fin de ese día local.
+          // En UTC eso sería 04:00:00 + 23:59:59 = 27:59:59 (el día siguiente a las 03:59:59 UTC)
+          end.setUTCHours(TZ_OFFSET_HOURS + 23, 59, 59, 999);
           filters[dateField].$lte = end;
         }
       } else if (updatedAfter) {

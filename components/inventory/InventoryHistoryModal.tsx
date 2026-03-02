@@ -17,7 +17,7 @@ interface HistoryEntry {
         code: string;
         description: string;
     };
-    type: "entry" | "assignment" | "return" | "usage_order" | "adjustment";
+    type: "entry" | "assignment" | "return" | "usage_order" | "adjustment" | "item_created" | "item_deleted";
     quantityChange: number;
     reason?: string;
     crew?: {
@@ -54,44 +54,21 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
     const [totalItems, setTotalItems] = useState(0);
     const itemsPerPage = 10;
 
-    // Calcular el rango de la semana actual (lunes a domingo)
-    const getCurrentWeekRange = () => {
-        const now = new Date();
-        const dayOfWeek = now.getDay(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
-        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Ajuste para que lunes sea el primer día
-
-        // Primer día de la semana (lunes)
-        const monday = new Date(now);
-        monday.setDate(now.getDate() + diff);
-        monday.setHours(0, 0, 0, 0);
-
-        // Último día de la semana (domingo)
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        sunday.setHours(23, 59, 59, 999);
-
-        return {
-            start: monday.toISOString().split('T')[0], // "2025-12-16"
-            end: sunday.toISOString().split('T')[0],   // "2025-12-22"
-        };
-    };
 
     // Establecer rango de semana actual al abrir el modal
     useEffect(() => {
-        if (isOpen && !dateRange) {
-            const weekRange = getCurrentWeekRange();
-            setDateRange(weekRange);
-            setCurrentPage(1);
-        } else if (!isOpen) {
+        if (!isOpen) {
             setCurrentPage(1);
             setHistory([]);
+            setTotalItems(0);
+            setTotalPages(1);
         }
     }, [isOpen]);
 
-    // Fetchear historial cuando cambie el rango de fechas
+    // Fetchear historial cuando cambie el rango de fechas o la página
     useEffect(() => {
-        if (isOpen && dateRange) {
-            fetchHistory(dateRange.start, dateRange.end);
+        if (isOpen) {
+            fetchHistory(dateRange?.start, dateRange?.end);
         }
     }, [isOpen, dateRange, currentPage]);
 
@@ -140,6 +117,11 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
         setCurrentPage(1);
     };
 
+    const handleClearDates = () => {
+        setDateRange(null);
+        setCurrentPage(1);
+    };
+
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
         // Scroll to top of modal body when changing pages
@@ -185,6 +167,20 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
                     label: "Ajuste",
                     color: "text-gray-600",
                     bgColor: "bg-gray-100",
+                };
+            case "item_created":
+                return {
+                    icon: "fa-solid fa-plus",
+                    label: "Creación",
+                    color: "text-emerald-600",
+                    bgColor: "bg-emerald-100",
+                };
+            case "item_deleted":
+                return {
+                    icon: "fa-solid fa-trash",
+                    label: "Eliminación",
+                    color: "text-red-600",
+                    bgColor: "bg-red-100",
                 };
             default:
                 return {
@@ -245,7 +241,7 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
 
                 <ModalBody className="flex-1 overflow-y-auto py-6">
                     {/* Filters */}
-                    <div className="mb-6 flex gap-4">
+                    <div className="mb-6 flex flex-wrap items-end gap-3">
                         <div className="flex-1">
                             <DateRangePicker
                                 label="Rango de Fechas"
@@ -256,7 +252,27 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
                                 }}
                             />
                         </div>
+                        {dateRange && (
+                            <button
+                                onClick={handleClearDates}
+                                className="px-3 py-2 text-xs text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+                            >
+                                <i className="fa-solid fa-filter-circle-xmark mr-1"></i>
+                                Ver todos
+                            </button>
+                        )}
                     </div>
+
+                    {/* Total count summary */}
+                    {!loading && totalItems > 0 && (
+                        <div className="mb-4 text-xs text-neutral bg-gray-50 rounded-lg px-3 py-2">
+                            <i className="fa-solid fa-list-check mr-1"></i>
+                            Total: <span className="font-semibold text-dark">{totalItems} movimientos</span>
+                            {dateRange && (
+                                <span className="ml-1">en el período seleccionado</span>
+                            )}
+                        </div>
+                    )}
 
                     {/* Timeline */}
                     {loading ? (
@@ -350,7 +366,7 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
                     )}
 
                     {/* Pagination */}
-                    {!loading && history.length > 0 && totalPages > 1 && (
+                    {!loading && history.length > 0 && (
                         <div className="mt-8">
                             <Pagination
                                 currentPage={currentPage}
@@ -358,6 +374,7 @@ export const InventoryHistoryModal: React.FC<InventoryHistoryModalProps> = ({
                                 totalItems={totalItems}
                                 itemsPerPage={itemsPerPage}
                                 onPageChange={handlePageChange}
+                                itemLabel="movimientos"
                             />
                         </div>
                     )}

@@ -112,6 +112,7 @@ export const MaterialsManager: React.FC<MaterialsManagerProps> = ({
             if (materials.length > 0) {
                 inventory = inventory.map((inv: any) => {
                     const materialUsage = materials.find(m => {
+                        if (!m.item) return false; // item fue eliminado del inventario
                         const mId = typeof m.item === 'string' ? m.item : m.item._id;
                         return mId === inv.item._id;
                     });

@@ -11,7 +11,7 @@ const InventoryHistorySchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["entry", "assignment", "return", "usage_order", "adjustment"],
+      enum: ["entry", "assignment", "return", "usage_order", "adjustment", "item_created", "item_deleted"],
       required: true,
     },
     quantityChange: {

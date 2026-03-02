@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
+import { unstable_cache } from "next/cache";
 import { connectDB } from "@/lib/db";
 import OrderModel from "@/models/Order";
-
-export const dynamic = 'force-dynamic';
 
 const CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -32,8 +31,14 @@ export async function OPTIONS() {
  *   generatedAt: string (ISO date)
  * }
  */
-export async function GET() {
-    try {
+/**
+ * Cached aggregation — revalidates every 60 s or when an order mutates
+ * (POST/PUT/DELETE on /api/web/orders call revalidateTag('orders')).
+ * If MongoDB is temporarily unavailable, Next.js serves the stale result
+ * instead of returning a 500.
+ */
+const getCachedDashboardStats = unstable_cache(
+    async () => {
         await connectDB();
 
         const today = new Date();
@@ -41,24 +46,16 @@ export async function GET() {
             today.getFullYear(),
             today.getMonth(),
             today.getDate(),
-            0,
-            0,
-            0,
-            0
+            0, 0, 0, 0
         );
         const endOfDay = new Date(
             today.getFullYear(),
             today.getMonth(),
             today.getDate(),
-            23,
-            59,
-            59,
-            999
+            23, 59, 59, 999
         );
 
-        // Single aggregation pipeline — MongoDB does all the work
         const pipeline = [
-            // Step 1: Match orders updated today OR orders that are not completed/cancelled
             {
                 $match: {
                     $or: [
@@ -67,7 +64,6 @@ export async function GET() {
                     ],
                 },
             },
-            // Step 2: Group on the server side and count each bucket we need
             {
                 $group: {
                     _id: null,
@@ -82,8 +78,7 @@ export async function GET() {
                                         { $lte: ["$updatedAt", endOfDay] }
                                     ]
                                 },
-                                1,
-                                0,
+                                1, 0,
                             ],
                         },
                     },
@@ -98,8 +93,7 @@ export async function GET() {
                                         { $lte: ["$updatedAt", endOfDay] }
                                     ]
                                 },
-                                1,
-                                0,
+                                1, 0,
                             ],
                         },
                     },
@@ -113,8 +107,7 @@ export async function GET() {
                                         { $lte: ["$updatedAt", endOfDay] }
                                     ]
                                 },
-                                1,
-                                0,
+                                1, 0,
                             ],
                         },
                     },
@@ -127,8 +120,7 @@ export async function GET() {
                                         { $in: ["$status", ["pending", "assigned", "in_progress", "hard"]] },
                                     ],
                                 },
-                                1,
-                                0,
+                                1, 0,
                             ],
                         },
                     },
@@ -141,14 +133,12 @@ export async function GET() {
                                         { $in: ["$status", ["pending", "assigned", "in_progress", "hard"]] },
                                     ],
                                 },
-                                1,
-                                0,
+                                1, 0,
                             ],
                         },
                     },
                 },
             },
-            // Step 3: Clean up the _id field from $group
             {
                 $project: {
                     _id: 0,
@@ -163,14 +153,21 @@ export async function GET() {
 
         const results = await OrderModel.aggregate(pipeline);
 
-        // If no orders today, aggregate returns an empty array
-        const stats = results[0] ?? {
+        return results[0] ?? {
             averiasCompletadas: 0,
             instalacionesCompletadas: 0,
             visitasCompletadas: 0,
             averiasSinCompletar: 0,
             instalacionesSinCompletar: 0,
         };
+    },
+    ['dashboard-stats'],
+    { tags: ['orders'], revalidate: 60 }
+);
+
+export async function GET() {
+    try {
+        const stats = await getCachedDashboardStats();
 
         return NextResponse.json(
             { ...stats, generatedAt: new Date().toISOString() },
@@ -178,7 +175,7 @@ export async function GET() {
                 status: 200,
                 headers: {
                     ...CORS_HEADERS,
-                    "Cache-Control": "no-store, max-age=0",
+                    "Cache-Control": "private, max-age=60, stale-while-revalidate=30",
                 },
             }
         );

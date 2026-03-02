@@ -6,6 +6,7 @@ import {
   getInventoryItems,
 } from "@/lib/inventoryService";
 import InventoryModel from "@/models/Inventory";
+import InventoryHistoryModel from "@/models/InventoryHistory";
 import { connectDB } from "@/lib/db";
 
 // GET: Listar ítems de inventario con filtros opcionales
@@ -98,6 +99,14 @@ export async function POST(request: NextRequest) {
     }
 
     const newItem = await InventoryModel.create(itemData);
+
+    // Registrar historial de creación
+    await InventoryHistoryModel.create({
+      item: newItem._id,
+      type: "item_created",
+      quantityChange: newItem.currentStock || 0,
+      reason: "Creación inicial del ítem en catálogo",
+    });
 
     return NextResponse.json({
       success: true,
@@ -202,6 +211,14 @@ export async function DELETE(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Registrar historial de eliminación
+    await InventoryHistoryModel.create({
+      item: deletedItem._id,
+      type: "item_deleted",
+      quantityChange: -(deletedItem.currentStock || 0),
+      reason: force ? "Eliminación forzada del ítem" : "Eliminación del ítem",
+    });
 
     return NextResponse.json({
       success: true,

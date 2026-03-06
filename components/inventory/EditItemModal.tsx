@@ -42,6 +42,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
         type: "material",
         unit: "unidades",
         minimumStock: 5,
+        currentStock: 0,
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -53,6 +54,7 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                 type: item.type,
                 unit: item.unit,
                 minimumStock: item.minimumStock,
+                currentStock: item.currentStock,
             });
         }
     }, [item]);
@@ -174,11 +176,24 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                             isRequired
                         />
 
-                        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
-                            <i className="fa-solid fa-info-circle mr-2"></i>
-                            El stock actual ({item.currentStock}) no se puede modificar aquí. Usa "Ingreso
-                            Manual" o "Asignar a Cuadrilla" para ajustar cantidades.
-                        </div>
+                        {item.type !== "equipment" && item.type !== "tool" && item.unit !== "metros" ? (
+                            <FormInput
+                                label="Stock Actual (Manual)"
+                                type="number"
+                                value={formData.currentStock.toString()}
+                                onValueChange={(value) =>
+                                    setFormData({ ...formData, currentStock: Number(value) })
+                                }
+                                description="Modifique el stock solo si es estrictamente necesario."
+                                isRequired
+                            />
+                        ) : (
+                            <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
+                                <i className="fa-solid fa-info-circle mr-2"></i>
+                                El stock actual ({item.currentStock}) no se puede modificar aquí para este tipo de ítem. Usa "Ingreso
+                                Manual" o "Asignar a Cuadrilla" para ajustar cantidades.
+                            </div>
+                        )}
                     </ModalBody>
 
                     <ModalFooter className="bg-gray-50 border-t border-neutral/10">

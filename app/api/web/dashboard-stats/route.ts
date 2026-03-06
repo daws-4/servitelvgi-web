@@ -60,7 +60,7 @@ const getCachedDashboardStats = unstable_cache(
                 $match: {
                     $or: [
                         { updatedAt: { $gte: startOfDay, $lte: endOfDay } },
-                        { status: { $in: ["pending", "assigned", "in_progress", "hard"] } }
+                        { status: { $nin: ["completed", "cancelled", "canceled", "visita"] } }
                     ],
                 },
             },
@@ -117,7 +117,7 @@ const getCachedDashboardStats = unstable_cache(
                                 {
                                     $and: [
                                         { $eq: ["$type", "averia"] },
-                                        { $in: ["$status", ["pending", "assigned", "in_progress", "hard"]] },
+                                        { $not: [{ $in: ["$status", ["completed", "cancelled", "canceled", "visita"]] }] },
                                     ],
                                 },
                                 1, 0,
@@ -130,7 +130,7 @@ const getCachedDashboardStats = unstable_cache(
                                 {
                                     $and: [
                                         { $eq: ["$type", "instalacion"] },
-                                        { $in: ["$status", ["pending", "assigned", "in_progress", "hard"]] },
+                                        { $not: [{ $in: ["$status", ["completed", "cancelled", "canceled", "visita"]] }] },
                                     ],
                                 },
                                 1, 0,

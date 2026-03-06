@@ -127,7 +127,7 @@ export async function PUT(request: NextRequest) {
     await connectDB();
     const body = await request.json();
 
-    const { id, description, unit, minimumStock, type } = body;
+    const { id, description, unit, minimumStock, type, currentStock } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -136,14 +136,39 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const itemToUpdate = await InventoryModel.findById(id);
+    if (!itemToUpdate) {
+      return NextResponse.json(
+        { success: false, error: "Ítem no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    let updateData: any = {
+      ...(description && { description }),
+      ...(unit && { unit }),
+      ...(minimumStock !== undefined && { minimumStock }),
+      ...(type && { type }),
+    };
+
+    if (currentStock !== undefined && typeof currentStock === "number" && type !== "equipment" && type !== "tool" && unit !== "metros") {
+      updateData.currentStock = currentStock;
+
+      // Registrar historial de ajuste manual si hay diferencia
+      if (currentStock !== itemToUpdate.currentStock) {
+        const difference = currentStock - (itemToUpdate.currentStock || 0);
+        await InventoryHistoryModel.create({
+          item: id,
+          type: "adjustment",
+          quantityChange: difference,
+          reason: "Ajuste manual desde la edición del inventario",
+        });
+      }
+    }
+
     const updatedItem = await InventoryModel.findByIdAndUpdate(
       id,
-      {
-        ...(description && { description }),
-        ...(unit && { unit }),
-        ...(minimumStock !== undefined && { minimumStock }),
-        ...(type && { type }),
-      },
+      updateData,
       { new: true }
     );
 

@@ -69,11 +69,19 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
     useEffect(() => {
         if (selectedEquipmentId) {
             fetchAvailableInstances(selectedEquipmentId);
+
+            // Recover previously selected instances for this equipment
+            const existingItem = items.find(i => i.inventoryId === selectedEquipmentId);
+            if (existingItem && existingItem.instanceIds) {
+                setSelectedInstanceIds(new Set(existingItem.instanceIds));
+            } else {
+                setSelectedInstanceIds(new Set());
+            }
         } else {
             setAvailableInstances([]);
             setSelectedInstanceIds(new Set());
         }
-    }, [selectedEquipmentId]);
+    }, [selectedEquipmentId]); // Ignoring items dependency to intentionally trigger only on equipment select
 
     const fetchCrews = async () => {
         setLoadingCrews(true);
@@ -313,25 +321,33 @@ export const AssignMaterialsModal: React.FC<AssignMaterialsModalProps> = ({
         const selectedEquipment = inventoryItems.find(i => i._id === selectedEquipmentId);
         if (!selectedEquipment) return;
 
-        // Check if already in list
-        if (items.some(item => item.inventoryId === selectedEquipmentId)) {
-            setError("Este equipo ya está en la lista");
-            return;
-        }
-
         const instanceCount = selectedInstanceIds.size;
-        const instancesList = Array.from(selectedInstanceIds).join(', ');
+        const newInstanceIds = Array.from(selectedInstanceIds);
 
-        setItems([
-            ...items,
-            {
-                inventoryId: selectedEquipment._id,
-                code: selectedEquipment.code,
+        const existingIndex = items.findIndex(item => item.inventoryId === selectedEquipmentId);
+
+        if (existingIndex >= 0) {
+            // Update existing equipment in the list
+            const updatedItems = [...items];
+            updatedItems[existingIndex] = {
+                ...updatedItems[existingIndex],
                 description: `${selectedEquipment.description} (${instanceCount} instancia${instanceCount > 1 ? 's' : ''})`,
                 quantity: instanceCount,
-                instanceIds: Array.from(selectedInstanceIds),
-            },
-        ]);
+                instanceIds: newInstanceIds,
+            };
+            setItems(updatedItems);
+        } else {
+            setItems([
+                ...items,
+                {
+                    inventoryId: selectedEquipment._id,
+                    code: selectedEquipment.code,
+                    description: `${selectedEquipment.description} (${instanceCount} instancia${instanceCount > 1 ? 's' : ''})`,
+                    quantity: instanceCount,
+                    instanceIds: newInstanceIds,
+                },
+            ]);
+        }
 
         setSelectedEquipmentId("");
         setSelectedInstanceIds(new Set());

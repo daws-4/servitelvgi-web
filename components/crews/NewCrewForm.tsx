@@ -34,7 +34,7 @@ export const NewCrewForm: React.FC<NewCrewFormProps> = ({ onSuccess, onCancel })
         const loadInstallers = async () => {
             setIsLoadingInstallers(true);
             try {
-                const res = await fetch('/api/web/installers');
+                const res = await fetch(`/api/web/installers?_t=${Date.now()}`, { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     setInstallers(data);

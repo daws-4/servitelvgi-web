@@ -29,10 +29,11 @@ export default function InstallersPage() {
         setLoading(true);
         setError(null);
 
-        // Fetch installers and crews in parallel
+        // Fetch installers and crews in parallel, bypassing cache
+        const timestamp = Date.now();
         const [installersResponse, crewsResponse] = await Promise.all([
-          fetch('/api/web/installers'),
-          fetch('/api/web/crews')
+          fetch(`/api/web/installers?_t=${timestamp}`, { cache: 'no-store' }),
+          fetch(`/api/web/crews?_t=${timestamp}`, { cache: 'no-store' })
         ]);
 
         if (!installersResponse.ok) {
@@ -169,9 +170,9 @@ export default function InstallersPage() {
     // Close the modal
     setIsNewInstallerModalOpen(false);
 
-    // Refresh the installers list
+    // Refresh the installers list, bypassing cache
     try {
-      const response = await fetch('/api/web/installers');
+      const response = await fetch(`/api/web/installers?_t=${Date.now()}`, { cache: 'no-store' });
       if (response.ok) {
         const data = await response.json();
         setInstallers(data);

@@ -43,7 +43,8 @@ export default function CrewsPage() {
   const fetchCrews = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/web/crews");
+      // Add timestamp to bypass Next.js Client Router Cache
+      const response = await axios.get(`/api/web/crews?_t=${Date.now()}`);
       setCrews(response.data);
       setFilteredCrews(response.data);
     } catch (error) {

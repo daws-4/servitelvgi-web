@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { unstable_cache, revalidateTag, revalidatePath } from "next/cache";
+import { revalidateTag, revalidatePath } from "next/cache";
 import {
   createCrew,
   getCrews,
@@ -10,13 +10,7 @@ import {
 // Import to ensure Inventory schema is registered for populate operations
 import "@/models/Inventory";
 
-// Cache the full crew list for 60 s — crews change rarely.
-// Individual crew GETs (with ?id=) bypass this cache.
-const getCachedCrews = unstable_cache(
-  () => getCrews(),
-  ["web-crews-list"],
-  { revalidate: 7200 } // 2 hours — crews rarely change
-);
+export const dynamic = "force-dynamic";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -42,14 +36,11 @@ export async function GET(request: Request) {
         );
       return NextResponse.json(item, { status: 200, headers: CORS_HEADERS });
     }
-    // List fetch: use cached version
-    const items = await getCachedCrews();
+    // List fetch: use direct query
+    const items = await getCrews();
     return NextResponse.json(items, {
       status: 200,
-      headers: {
-        ...CORS_HEADERS,
-        "Cache-Control": "private, max-age=7200, stale-while-revalidate=600",
-      },
+      headers: CORS_HEADERS,
     });
   } catch (err) {
     console.error('Error in GET /api/web/crews:', err);

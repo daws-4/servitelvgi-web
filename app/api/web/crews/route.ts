@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { unstable_cache } from "next/cache";
+import { unstable_cache, revalidateTag, revalidatePath } from "next/cache";
 import {
   createCrew,
   getCrews,
@@ -64,6 +64,12 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const created = await createCrew(body);
+    
+    // Invalidate cache
+    revalidateTag("web-crews-list", "max");
+    revalidatePath("/dashboard/crews");
+    revalidatePath("/dashboard/installers");
+    
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err) {
     console.error('Error in POST /api/web/crews:', err);
@@ -92,6 +98,12 @@ export async function PUT(request: Request) {
         { error: "Not found" },
         { status: 404, headers: CORS_HEADERS }
       );
+      
+    // Invalidate cache
+    revalidateTag("web-crews-list", "max");
+    revalidatePath("/dashboard/crews");
+    revalidatePath("/dashboard/installers");
+    
     return NextResponse.json(updated, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     console.error('Error in PUT /api/web/crews:', err);
@@ -125,6 +137,12 @@ export async function DELETE(request: Request) {
         { error: "Not found" },
         { status: 404, headers: CORS_HEADERS }
       );
+      
+    // Invalidate cache
+    revalidateTag("web-crews-list", "max");
+    revalidatePath("/dashboard/crews");
+    revalidatePath("/dashboard/installers");
+    
     return NextResponse.json(
       { message: "Deleted" },
       { status: 200, headers: CORS_HEADERS }

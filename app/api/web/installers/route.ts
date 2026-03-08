@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import {
   createInstaller,
   getInstallers,
@@ -78,6 +79,12 @@ export async function POST(request: Request) {
     }
     
     const created = await createInstaller(body);
+    
+    // Invalidate caches related to installers and crews
+    revalidatePath("/dashboard/installers");
+    revalidatePath("/dashboard/crews");
+    revalidateTag("web-crews-list", "max");
+    
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err: any) {
     console.error('Error in POST /api/web/installers:', err);
@@ -115,6 +122,12 @@ export async function PUT(request: Request) {
         { error: "Not found" },
         { status: 404, headers: CORS_HEADERS }
       );
+      
+    // Invalidate caches related to installers and crews
+    revalidatePath("/dashboard/installers");
+    revalidatePath("/dashboard/crews");
+    revalidateTag("web-crews-list", "max");
+    
     return NextResponse.json(updated, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     return NextResponse.json(
@@ -148,6 +161,11 @@ export async function DELETE(request: Request) {
         { error: "Not found" },
         { status: 404, headers: CORS_HEADERS }
       );
+    
+    // Invalidate caches related to installers and crews
+    revalidatePath("/dashboard/installers");
+    revalidatePath("/dashboard/crews");
+    revalidateTag("web-crews-list", "max");
     
     return NextResponse.json(
       { message: "Installer deleted successfully" },

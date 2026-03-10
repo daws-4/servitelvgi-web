@@ -133,13 +133,25 @@ export default function InstallersPage() {
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const count = selectedIds.length;
     if (confirm(`¿Estás seguro de eliminar ${count} instalador(es)? Esta acción no se puede deshacer.`)) {
-      // TODO: Implement delete functionality
-      console.log('Deleting installers:', selectedIds);
-      setInstallers(installers.filter(i => !selectedIds.includes(i.id)));
-      setSelectedIds([]);
+      try {
+        setLoading(true);
+        // Delete all selected installers in parallel
+        await Promise.all(
+          selectedIds.map(id => fetch(`/api/web/installers?id=${id}`, { method: 'DELETE' }))
+        );
+        
+        // Refresh the list
+        await handleNewInstallerSuccess();
+        setSelectedIds([]);
+      } catch (err) {
+        console.error('Error deleting installers:', err);
+        setError('Error al eliminar los instaladores');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -154,11 +166,24 @@ export default function InstallersPage() {
     alert(`Ver detalles de: ${installer.name}`);
   };
 
-  const handleDeleteSingle = (installer: Installer) => {
+  const handleDeleteSingle = async (installer: Installer) => {
     if (confirm(`¿Estás seguro de eliminar a ${installer.name}? Esta acción no se puede deshacer.`)) {
-      // TODO: Implement delete API call
-      console.log('Deleting installer:', installer.id);
-      setInstallers(installers.filter(i => i.id !== installer.id));
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/web/installers?id=${installer.id}`, { method: 'DELETE' });
+        
+        if (!response.ok) {
+          throw new Error('Error al eliminar el instalador');
+        }
+        
+        // Refresh the list
+        await handleNewInstallerSuccess();
+      } catch (err) {
+        console.error('Error deleting installer:', err);
+        setError('Error al eliminar el instalador');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 

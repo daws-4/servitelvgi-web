@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getUserFromRequest, getInstallerFromBearerToken } from "@/lib/authHelpers";
 import { getOrderHistories } from "@/lib/orderHistoryService";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {

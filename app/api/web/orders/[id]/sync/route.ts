@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncOrderToNetuno } from "@/lib/orderService";
 import { getUserFromRequest } from "@/lib/authHelpers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function POST(
     request: NextRequest,
@@ -36,6 +36,7 @@ export async function POST(
         const result = await syncOrderToNetuno(id, certificateUrl);
 
         if (result.success) {
+            revalidateTag("orders", "max");
             revalidatePath("/api/web/orders");
             return NextResponse.json(result);
         } else {

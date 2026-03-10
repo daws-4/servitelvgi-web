@@ -7,6 +7,8 @@ import {
   deleteInventory,
 } from "@/lib/inventoryService";
 
+export const dynamic = "force-dynamic";
+
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",

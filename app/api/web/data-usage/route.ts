@@ -3,6 +3,8 @@ import { connectDB } from "@/lib/db";
 import DataUsageModel from "@/models/DataUsage";
 import { getUserFromRequest, getInstallerFromBearerToken } from "@/lib/authHelpers";
 
+export const dynamic = "force-dynamic";
+
 const CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",

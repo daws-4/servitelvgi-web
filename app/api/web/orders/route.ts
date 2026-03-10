@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath, unstable_cache } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import {
   createOrder,
   getOrders,
@@ -9,6 +9,8 @@ import {
 } from "@/lib/orderService";
 import { processOrderUsage, restoreInventoryFromOrder } from "@/lib/inventoryService";
 import { getUserFromRequest, getInstallerFromBearerToken } from "@/lib/authHelpers";
+
+export const dynamic = "force-dynamic";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -202,7 +204,8 @@ export async function POST(request: NextRequest) {
     console.log('📦 [API POST] Body:', JSON.stringify(body, null, 2));
 
     const created = await createOrder(body, sessionUser || undefined);
-    revalidatePath("/api/web/orders");
+    revalidateTag("orders", "max");
+    revalidatePath("/api/web/orders"); // Keep for path-based partials if any
 
     return NextResponse.json(created, { status: 201, headers: CORS_HEADERS });
   } catch (err: any) {
@@ -563,6 +566,7 @@ export async function PUT(request: NextRequest) {
         { status: 404, headers: CORS_HEADERS }
       );
 
+    revalidateTag("orders", "max");
     revalidatePath("/api/web/orders");
     return NextResponse.json(updated, { status: 200, headers: CORS_HEADERS });
   } catch (err) {
@@ -598,6 +602,7 @@ export async function DELETE(request: Request) {
         { status: 404, headers: CORS_HEADERS }
       );
 
+    revalidateTag("orders", "max");
     revalidatePath("/api/web/orders");
     return NextResponse.json(
       { message: "Deleted" },

@@ -91,7 +91,7 @@ export async function getDailyReport(
     $or: [
       {
         completionDate: { $gte: startOfDay, $lte: endOfDay },
-        status: "completed",
+        status: { $in: ["completed", "completed_special"] },
       },
       {
         assignmentDate: { $gte: startOfDay, $lte: endOfDay },
@@ -135,7 +135,7 @@ export async function getDailyReport(
     const crewData = crewMap.get(crewId)!;
     const orderSummary = transformToOrderSummary(order);
 
-    if (order.status === "completed") {
+    if (["completed", "completed_special"].includes(order.status)) {
       crewData.completadas.push(orderSummary);
       crewData.totales.completadas++;
     } else {
@@ -201,7 +201,7 @@ export async function getMonthlyReport(
     $or: [
       {
         completionDate: { $gte: startDate, $lte: endDate },
-        status: "completed",
+        status: { $in: ["completed", "completed_special"] },
       },
       {
         assignmentDate: { $gte: startDate, $lte: endDate },
@@ -247,7 +247,7 @@ export async function getMonthlyReport(
     const crewData = crewMap.get(crewId)!;
     const orderSummary = transformToOrderSummary(order);
 
-    if (order.status === "completed") {
+    if (["completed", "completed_special"].includes(order.status)) {
       crewData.completadas.push(orderSummary);
       crewData.totales.completadas++;
     } else {
@@ -437,7 +437,7 @@ export async function getNetunoOrdersReport(
   endDate.setHours(23, 59, 59, 999); // Ensure end of day
 
   const filter: any = {
-    status: "completed",
+    status: { $in: ["completed", "completed_special"] },
     sentToNetuno: { $ne: true },
     completionDate: { $gte: startDate, $lte: endDate },
   };
@@ -507,7 +507,7 @@ export async function getCrewPerformanceReport(
     const validOrders = await OrderModel.find({
       assignedTo: crew._id,
       assignmentDate: { $gte: start, $lte: end },
-      status: 'completed',
+      status: { $in: ['completed', 'completed_special'] },
       $expr: { $ne: ["$createdAt", "$updatedAt"] }
     }).select('ticket_id subscriberName assignedTo createdAt updatedAt assignmentDate completionDate').lean();
 

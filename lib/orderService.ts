@@ -266,7 +266,7 @@ async function trackChanges(orderId: string, oldOrder: any, newData: any, sessio
   if (newData.status && oldOrder.status !== newData.status) {
     historyEntries.push({
       order: orderId,
-      changeType: newData.status === "completed" ? "completed" : newData.status === "cancelled" ? "cancelled" : "status_change",
+      changeType: (newData.status === "completed" || newData.status === "completed_special") ? "completed" : newData.status === "cancelled" ? "cancelled" : "status_change",
       previousValue: oldOrder.status,
       newValue: newData.status,
       description: `Estado cambiado de "${oldOrder.status}" a "${newData.status}"`,
@@ -328,7 +328,7 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
     data.assignmentDate = new Date();
   }
 
-  if (data.status === 'completed' && !data.completionDate) {
+  if ((data.status === 'completed' || data.status === 'completed_special') && !data.completionDate) {
     data.completionDate = new Date();
   }
 
@@ -623,7 +623,7 @@ export async function createOrderSnapshot() {
   );
 
   // Build crew snapshots
-  const validStatuses = ['pending', 'assigned', 'in_progress', 'completed', 'cancelled', 'visita', 'hard'];
+  const validStatuses = ['pending', 'assigned', 'in_progress', 'completed', 'completed_special', 'cancelled', 'visita', 'hard'];
   const validTypes = ['instalacion', 'averia', 'recuperacion', 'otro'];
 
   let totalOrders = 0;

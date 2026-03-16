@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "hard" | "visita";
+export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "cancelled" | "hard" | "visita";
 export type OrderType = "instalacion" | "averia" | "recuperacion" | "otro";
 
 interface Crew {
@@ -45,7 +45,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
     const normalizedType: OrderType = validTypes.includes(initialType) ? initialType : "otro";
 
     // Validate and normalize initialStatus to ensure it's a valid OrderStatus
-    const validStatuses: OrderStatus[] = ["pending", "assigned", "in_progress", "completed", "cancelled", "hard", "visita"];
+    const validStatuses: OrderStatus[] = ["pending", "assigned", "in_progress", "completed", "completed_special", "cancelled", "hard", "visita"];
     const normalizedStatus = validStatuses.includes(initialStatus) ? initialStatus : "pending";
 
     const [status, setStatus] = useState<OrderStatus>(normalizedStatus);
@@ -144,6 +144,12 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                     badgeClass: "bg-green-100 text-green-800 border-green-200",
                     description: "Trabajo finalizado y reportado."
                 };
+            case 'completed_special':
+                return {
+                    colorClass: "text-teal-500",
+                    badgeClass: "bg-teal-100 text-teal-800 border-teal-200",
+                    description: "Completada con condiciones especiales."
+                };
             case 'cancelled':
                 return {
                     colorClass: "text-red-500",
@@ -196,6 +202,7 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                             <option value="assigned">Asignada</option>
                             <option value="in_progress">En Progreso</option>
                             <option value="completed">Completada</option>
+                            <option value="completed_special">Completada Especial</option>
                             <option value="cancelled">Cancelada</option>
                             <option value="hard">Hard</option>
                             <option value="visita">Visita</option>

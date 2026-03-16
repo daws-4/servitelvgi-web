@@ -21,6 +21,8 @@ const REPORT_OPTIONS: { value: ReportType; label: string; icon: string }[] = [
     { value: "monthly_installations", label: "Mensual - Instalaciones", icon: "fa-calendar-check" },
     { value: "monthly_repairs", label: "Mensual - Averías", icon: "fa-calendar-xmark" },
     { value: "monthly_recoveries", label: "Mensual - Recuperaciones", icon: "fa-recycle" },
+    { value: "inventory_balance", label: "Balance General Inventario", icon: "fa-scale-balanced" },
+    { value: "crew_inventory_balance", label: "Balance Inventario Cuadrillas", icon: "fa-scale-unbalanced" },
     { value: "inventory_report", label: "Movimiento de Inventario", icon: "fa-boxes-stacked" },
     { value: "netuno_orders", label: "Órdenes Netuno Pendientes", icon: "fa-file-export" },
     { value: "crew_performance", label: "Rendimiento Cuadrillas", icon: "fa-chart-line" },
@@ -45,6 +47,8 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
             'crew_visits',
             'crew_performance',
             'inventory_report',
+            'inventory_balance',
+            'crew_inventory_balance',
             'netuno_orders',
             'crew_inventory',
             'crew_stock',
@@ -126,7 +130,7 @@ export default function ReportFilters({ onGenerate, isLoading }: ReportFiltersPr
 
         if (isDaily) return true; // Daily no requiere validación de fechas
         if (isDaily) return true; // Daily no requiere validación de fechas
-        if (selectedType === "crew_inventory" || selectedType === "crew_stock") return !!dateRange;
+        if (selectedType === "crew_inventory" || selectedType === "crew_stock" || selectedType === "inventory_balance" || selectedType === "crew_inventory_balance") return !!dateRange;
 
         return !!dateRange; // Otros requieren dateRange
     };

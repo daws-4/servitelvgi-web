@@ -13,7 +13,9 @@ export type ReportType =
   | 'crew_inventory'
   | 'crew_visits'
   | 'crew_stock'
-  | 'crew_orders';
+  | 'crew_orders'
+  | 'inventory_balance'
+  | 'crew_inventory_balance';
 
 export interface ReportFilters {
   reportType: ReportType;

@@ -277,6 +277,48 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                 processedRows = stockRows;
                 break;
 
+            case "inventory_balance":
+                cols = [
+                    { key: "code", label: "CÓDIGO" },
+                    { key: "description", label: "DESCRIPCIÓN" },
+                    { key: "entradas", label: "ENTRADAS (+)", align: "end" },
+                    { key: "salidasCuadrillas", label: "A CUAD. (-)", align: "end" },
+                    { key: "devoluciones", label: "DEVS. (+)", align: "end" },
+                    { key: "gastoEnOrdenes", label: "GASTO (-)", align: "end" },
+                    { key: "ajustes", label: "AJUSTES", align: "end" },
+                    { key: "stockActualBodega", label: "STOCK ACTUAL", align: "end" },
+                ];
+
+                processedRows = (data || []).map((item: any, idx: number) => ({
+                    key: `inv-bal-${idx}`,
+                    ...item
+                }));
+                break;
+
+            case "crew_inventory_balance":
+                cols = [
+                    { key: "crewName", label: "CUADRILLA" },
+                    { key: "code", label: "CÓDIGO" },
+                    { key: "description", label: "DESCRIPCIÓN" },
+                    { key: "recibidoBodega", label: "RECIBIDO (+)", align: "end" },
+                    { key: "devueltoBodega", label: "DEVUELTO (-)", align: "end" },
+                    { key: "gastadoOrdenes", label: "GASTADO (-)", align: "end" },
+                    { key: "enManoActualmente", label: "EN MANO (LIVE)", align: "end" },
+                ];
+
+                const crewBalRows: any[] = [];
+                (data || []).forEach((crew: any, cIdx: number) => {
+                    (crew.items || []).forEach((itm: any, iIdx: number) => {
+                        crewBalRows.push({
+                            key: `crew-bal-${cIdx}-${iIdx}`,
+                            crewName: crew.crewName,
+                            ...itm
+                        });
+                    });
+                });
+                processedRows = crewBalRows;
+                break;
+
             case "crew_orders":
                 cols = [
                     { key: "crewName", label: "CUADRILLA" },
@@ -288,6 +330,7 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                     { key: "assigned", label: "ASIGNADAS", align: "end" },
                     { key: "in_progress", label: "EN PROCESO", align: "end" },
                     { key: "completed", label: "COMPLETADAS", align: "end" },
+                    { key: "completed_special", label: "COMP. ESPECIAL", align: "end" },
                     { key: "cancelled", label: "CANCELADAS", align: "end" },
                     { key: "visita", label: "VISITAS", align: "end" },
                     { key: "pending", label: "PENDIENTES", align: "end" },
@@ -315,10 +358,10 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                     <Chip
                         size="sm"
                         variant="flat"
-                        color={value === "completed" ? "success" : value === "assigned" ? "warning" : "default"}
+                        color={value === "completed" ? "success" : value === "completed_special" ? "primary" : value === "assigned" ? "warning" : "default"}
                         className="capitalize"
                     >
-                        {value === "completed" ? "Finalizada" : value === "in_progress" ? "En Proceso" : value === "assigned" ? "Asignada" : value}
+                        {value === "completed" ? "Finalizada" : value === "completed_special" ? "Completada Especial" : value === "in_progress" ? "En Proceso" : value === "assigned" ? "Asignada" : value}
                     </Chip>
                 );
             case "type":
@@ -351,13 +394,26 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                     </span>
                 );
             case "diff":
-                const diffVal = Number(value);
-                if (diffVal === 0) return <span className="text-gray-400">0</span>;
+            case "ajustes":
+                const numericVal = Number(value);
+                if (numericVal === 0) return <span className="text-gray-400">0</span>;
                 return (
-                    <span className={`font-medium ${diffVal > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {diffVal > 0 ? `+${diffVal}` : diffVal}
+                    <span className={`font-medium ${numericVal > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {numericVal > 0 ? `+${numericVal}` : numericVal}
                     </span>
                 );
+            case "entradas":
+            case "devoluciones":
+            case "recibidoBodega":
+                return <span className={`font-medium ${value > 0 ? 'text-green-600' : 'text-gray-400'}`}>{value}</span>;
+            case "salidasCuadrillas":
+            case "gastoEnOrdenes":
+            case "devueltoBodega":
+            case "gastadoOrdenes":
+                return <span className={`font-medium ${value > 0 ? 'text-orange-600' : 'text-gray-400'}`}>{value}</span>;
+            case "stockActualBodega":
+            case "enManoActualmente":
+                return <span className="font-bold text-[#0f0f0f]">{value}</span>;
             case "actions":
                 if (item.hasDetails) {
                     // Check type of details to decide button

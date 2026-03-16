@@ -116,6 +116,39 @@ export async function exportReportToWord(
       });
       break;
 
+    case "inventory_balance":
+      tableHeaders = ["Código", "Descripción", "Entradas (+)", "A Cuadrillas (-)", "Devoluciones (+)", "Gasto (-)", "Ajustes", "Stock Actual"];
+      (data || []).forEach((item: any) => {
+        tableRows.push([
+          item.code,
+          item.description || "",
+          String(item.entradas),
+          String(item.salidasCuadrillas),
+          String(item.devoluciones),
+          String(item.gastoEnOrdenes),
+          String(item.ajustes),
+          String(item.stockActualBodega),
+        ]);
+      });
+      break;
+
+    case "crew_inventory_balance":
+      tableHeaders = ["Cuadrilla", "Código", "Descripción", "Recibido (+)", "Devuelto (-)", "Gastado (-)", "En Mano (Live)"];
+      (data || []).forEach((crew: any) => {
+        (crew.items || []).forEach((itm: any) => {
+          tableRows.push([
+            crew.crewName,
+            itm.code,
+            itm.description || "",
+            String(itm.recibidoBodega),
+            String(itm.devueltoBodega),
+            String(itm.gastadoOrdenes),
+            String(itm.enManoActualmente),
+          ]);
+        });
+      });
+      break;
+
     case "crew_performance":
       tableHeaders = ["Cuadrilla", "Total Órdenes", "Instalaciones", "Averías", "Tiempo Promedio"];
       tableRows = data.map((crew: any) => [
@@ -270,6 +303,8 @@ function getReportTypeName(type: ReportType): string {
     crew_inventory: "Inventario Cuadrillas",
     crew_visits: "Visitas por Cuadrilla",
     crew_orders: "Órdenes en Cuadrillas",
+    inventory_balance: "Balance General Inventario",
+    crew_inventory_balance: "Balance Inventario Cuadrillas",
   };
   return names[type] || type;
 }

@@ -8,7 +8,7 @@ export interface IOrder {
   subscriberNumber?: string;
   ticket_id?: string;
   type: "instalacion" | "averia" | "recuperacion" | "otro";
-  status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "visita";
+  status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "cancelled" | "visita";
   subscriberName: string;
   address: string;
   phones?: string[];
@@ -26,7 +26,7 @@ export interface IOrder {
   installerLog?: {
     timestamp: Date;
     log: string;
-    status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled" | "visita";
+    status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "cancelled" | "visita";
   }[];
   materialsUsed?: {
     item: mongoose.Schema.Types.ObjectId | any;
@@ -107,11 +107,10 @@ const OrderSchema = new mongoose.Schema(
         "assigned",
         "in_progress",
         "completed",
+        "completed_special",
         "cancelled",
         "hard",
         "visita",
-        // Aquí puedes añadir otros estados si aparecen en otras imágenes,
-        // por ahora "Pendiente" es lo más claro
       ],
       default: "pending",
     },
@@ -172,7 +171,7 @@ const OrderSchema = new mongoose.Schema(
         log: { type: String, required: true },
         status: {
           type: String,
-          enum: ["pending", "assigned", "in_progress", "completed", "cancelled", "visita"],
+          enum: ["pending", "assigned", "in_progress", "completed", "completed_special", "cancelled", "visita"],
           required: true,
         },
       },

@@ -107,6 +107,42 @@ export async function GET(request: NextRequest) {
         };
         break;
 
+      case "inventory_balance":
+        if (!startDate || !endDate) {
+          return NextResponse.json(
+            { error: "Los parámetros 'startDate' y 'endDate' son requeridos" },
+            { status: 400 }
+          );
+        }
+
+        // We will implement getInventoryBalanceReport in lib/reportService.ts shortly
+        data = await require("@/lib/reportService").getInventoryBalanceReport({ start: startDate, end: endDate }, sessionUser);
+        metadata = {
+          reportType,
+          generatedAt: new Date(),
+          filters: { startDate, endDate },
+          totalRecords: data.length,
+        };
+        break;
+
+      case "crew_inventory_balance":
+        if (!startDate || !endDate) {
+          return NextResponse.json(
+            { error: "Los parámetros 'startDate' y 'endDate' son requeridos" },
+            { status: 400 }
+          );
+        }
+
+        // We will implement getCrewInventoryBalanceReport in lib/reportService.ts shortly
+        data = await require("@/lib/reportService").getCrewInventoryBalanceReport({ start: startDate, end: endDate }, sessionUser, crewId || undefined);
+        metadata = {
+          reportType,
+          generatedAt: new Date(),
+          filters: { startDate, endDate, crewId: crewId || "all" },
+          totalRecords: data.length, // data will be an array of items per crew
+        };
+        break;
+
       case "netuno_orders":
         if (!startDate || !endDate) {
           return NextResponse.json(
@@ -167,12 +203,6 @@ export async function GET(request: NextRequest) {
         }
 
         data = await getCrewVisitsReport({ start: startDate, end: endDate }, sessionUser);
-        metadata = {
-          reportType,
-          generatedAt: new Date(),
-          filters: { startDate, endDate },
-          totalRecords: data.length,
-        };
         metadata = {
           reportType,
           generatedAt: new Date(),

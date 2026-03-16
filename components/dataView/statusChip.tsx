@@ -7,6 +7,7 @@ export type OrderStatus =
     | "assigned"
     | "in_progress"
     | "completed"
+    | "completed_special"
     | "cancelled"
     | "averia" // Asumiendo que 'averia' es un tipo especial o estado crítico
     | "hard"
@@ -37,6 +38,11 @@ const statusConfig: Record<string, { color: ChipProps["color"]; label: string; v
     completed: {
         color: "success",
         label: "Completada",
+        variant: "flat",
+    },
+    completed_special: {
+        color: "primary",
+        label: "Completada Especial",
         variant: "flat",
     },
     cancelled: {

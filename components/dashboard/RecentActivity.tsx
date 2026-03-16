@@ -103,6 +103,8 @@ export const RecentActivity = () => {
                 return 'Materiales Agregados';
             case 'completed':
                 return `Orden ${item.order?.subscriberNumber} Completada`;
+            case 'completed_special':
+                return `Orden ${item.order?.subscriberNumber} Completada Especial`;
             case 'cancelled':
                 return `Orden ${item.order?.subscriberNumber} Cancelada`;
             default:
@@ -139,6 +141,8 @@ export const RecentActivity = () => {
                 return 'bg-orange-500';
             case 'completed':
                 return 'bg-green-500';
+            case 'completed_special':
+                return 'bg-teal-500';
             case 'cancelled':
                 return 'bg-red-500';
             default:

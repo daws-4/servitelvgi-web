@@ -32,6 +32,7 @@ const statusOptions: SelectOption[] = [
     { key: "assigned", label: "Asignada" },
     { key: "in_progress", label: "En Progreso" },
     { key: "completed", label: "Completada" },
+    { key: "completed_special", label: "Completada Especial" },
     { key: "cancelled", label: "Cancelada" },
     { key: "hard", label: "Hard" },
     { key: "visita", label: "Visita" },

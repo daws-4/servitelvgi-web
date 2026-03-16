@@ -92,6 +92,39 @@ export function exportReportToPDF(
       });
       break;
 
+    case "inventory_balance":
+      columns = ["Código", "Descripción", "Entradas (+)", "A Cuadrillas (-)", "Devoluciones (+)", "Gasto (-)", "Ajustes", "Stock Actual"];
+      (data || []).forEach((item: any) => {
+        rows.push([
+          item.code,
+          item.description?.substring(0, 30) || "",
+          item.entradas,
+          item.salidasCuadrillas,
+          item.devoluciones,
+          item.gastoEnOrdenes,
+          item.ajustes,
+          item.stockActualBodega
+        ]);
+      });
+      break;
+
+    case "crew_inventory_balance":
+      columns = ["Cuadrilla", "Código", "Descripción", "Recibido (+)", "Devuelto (-)", "Gastado (-)", "En Mano (Live)"];
+      (data || []).forEach((crew: any) => {
+        (crew.items || []).forEach((itm: any) => {
+          rows.push([
+            crew.crewName,
+            itm.code,
+            itm.description?.substring(0, 30) || "",
+            itm.recibidoBodega,
+            itm.devueltoBodega,
+            itm.gastadoOrdenes,
+            itm.enManoActualmente
+          ]);
+        });
+      });
+      break;
+
     case "crew_performance":
       columns = ["Cuadrilla", "Total", "Instalaciones", "Averías", "Tiempo Prom."];
       rows = data.map((crew: any) => [
@@ -236,6 +269,8 @@ function getReportTypeName(type: ReportType): string {
     crew_inventory: "Inventario Cuadrillas",
     crew_visits: "Visitas por Cuadrilla",
     crew_orders: "Órdenes en Cuadrillas",
+    inventory_balance: "Balance General Inventario",
+    crew_inventory_balance: "Balance Inventario Cuadrillas",
   };
   return names[type] || type;
 }

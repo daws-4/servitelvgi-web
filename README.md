@@ -699,3 +699,11 @@ Para soporte técnico o consultas sobre el sistema, contactar al equipo de desar
 - [x] Añadir reporte de timestamps para saber qué cantidades de inventario habían en cada cuadrilla cada día
 - [x] añadir reporte de timestamps para saber qué cantidades de ordenes con sus estatuses habían en cada cuadrilla cada día
 - [X] hacer depuración de código con IA para encontrar posibles bugs
+
+## Task List 13/03/2026
+- [ ] Realizar reporte de inventario general que me muestre la cantidad de materiales que entraron a la empresa, la cantidad de materiales que salieron de la empresa y la cantidad de materiales que se encuentran en la empresa mostrando datos especificos por cada item
+- [ ] reporte general por cuadrilla que me muestre la cantidad de materiales que entraron a la empresa, la cantidad de materiales que salieron de la empresa y la cantidad de materiales que se encuentran en la empresa mostrando datos especificos por cada item por cada cuadrilla 
+- [x] Ajustar n8n para recibir nuevo item coupling
+- [x] incluir status completado especial en web, app y reportes
+- [x] las ordenes deben diferenciar cuando son completadas especiales y cuando son completadas normales
+- [x] reportes y filtros deben incluir este status

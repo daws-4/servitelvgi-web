@@ -1,4 +1,4 @@
-﻿// lib/reportService.ts
+// lib/reportService.ts
 // Servicio central para generación de reportes con agregaciones MongoDB
 
 import { connectDB } from "@/lib/db";
@@ -703,6 +703,15 @@ export async function getCrewStockReport(
   dateRange?: { start: string; end: string },
   crewId?: string
 ): Promise<any> {
+  const result = await _getCrewStockReport(dateRange, crewId);
+  return result;
+}
+
+// Rename the existing function to _getCrewStockReport to allow the facade above
+async function _getCrewStockReport(
+  dateRange?: { start: string; end: string },
+  crewId?: string
+): Promise<any> {
   await connectDB();
 
   const startDate = dateRange ? parseISO(dateRange.start) : startOfMonth(new Date());
@@ -957,6 +966,279 @@ export async function getCrewStockReport(
     crews: reportData,
     dailySnapshots: dailyData,
   };
+}
+
+/**
+ * 10. Balance General de Inventario (NUEVO)
+ * Muestra por cada item: entradas, salidas (asignaciones a cuadrillas),
+ * devoluciones, ajustes, gasto directo en órdenes y el stock actual en bodega.
+ */
+export async function getInventoryBalanceReport(
+  dateRange: { start: string; end: string },
+  sessionUser?: SessionUser
+): Promise<any[]> {
+  await connectDB();
+
+  const startDate = parseISO(dateRange.start);
+  const endDate = parseISO(dateRange.end);
+  endDate.setHours(23, 59, 59, 999);
+
+  // 1. Obtener todos los items de inventario (Stock actual en bodega)
+  const allItems = await InventoryModel.find().lean();
+  
+  // 2. Obtener la suma agrupada por tipo de movimiento e item
+  const movements = await InventoryHistoryModel.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          item: "$item",
+          type: "$type",
+        },
+        totalQty: { $sum: "$quantityChange" } // Consider raw value. For assignments & usage it's negative.
+      }
+    }
+  ]);
+
+  // 3. Crear un mapa para asociar cálculos por item
+  const itemStatsMap = new Map<string, any>();
+
+  allItems.forEach((itm: any) => {
+    itemStatsMap.set(itm._id.toString(), {
+      id: itm._id.toString(),
+      code: itm.code,
+      description: itm.description,
+      type: itm.type || "N/A",
+      unit: itm.unit || "uds",
+      entradas: 0,
+      salidasCuadrillas: 0, // Las assignment serán negativas, las guardamos como absolutas
+      devoluciones: 0,
+      ajustes: 0,
+      gastoEnOrdenes: 0,
+      stockActualBodega: itm.currentStock || 0
+    });
+  });
+
+  // 4. Poblar mapa con agregaciones
+  movements.forEach((mov: any) => {
+    const itemId = mov._id.item?.toString();
+    if (!itemId || !itemStatsMap.has(itemId)) return;
+
+    const stats = itemStatsMap.get(itemId);
+    const type = mov._id.type;
+    const qty = mov.totalQty;
+
+    switch (type) {
+      case "entry":
+        stats.entradas += qty;
+        break;
+      case "assignment":
+        stats.salidasCuadrillas += Math.abs(qty); // Es negativo en DB, sumamos valor absoluto
+        break;
+      case "return":
+        stats.devoluciones += qty; // Deberia ser positivo
+        break;
+      case "adjustment":
+        stats.ajustes += qty; // Puede ser positivo o negativo
+        break;
+      case "usage_order":
+        stats.gastoEnOrdenes += Math.abs(qty); // Es negativo
+        break;
+      // item_created, item_deleted are ignored for counting quantities
+    }
+  });
+
+  // 5. Transformar a array y ordenar
+  const reportArray = Array.from(itemStatsMap.values()).sort((a, b) => {
+    // Ordenar principalmente por tipo material > equipo > herramienta
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    return a.code.localeCompare(b.code);
+  });
+
+  // Optional: Filter out items with no movements inside the period AND 0 stock?
+  // Depending on preference. Let's return all, or just items with activity/stock.
+  const activeItems = reportArray.filter(i => 
+    i.entradas > 0 || i.salidasCuadrillas > 0 || i.devoluciones > 0 || 
+    i.ajustes !== 0 || i.gastoEnOrdenes > 0 || i.stockActualBodega > 0
+  );
+
+  return activeItems;
+}
+
+/**
+ * 11. Balance de Inventario por Cuadrilla (NUEVO)
+ * Muestra por cada cuadrilla, y por cada item: 
+ * cantidad asignada, devuelta, gastada en órdenes y cantidad actualmente en mano.
+ */
+export async function getCrewInventoryBalanceReport(
+  dateRange: { start: string; end: string },
+  sessionUser?: SessionUser,
+  crewId?: string
+): Promise<any[]> {
+  await connectDB();
+
+  const startDate = parseISO(dateRange.start);
+  const endDate = parseISO(dateRange.end);
+  endDate.setHours(23, 59, 59, 999);
+
+  // Filtro base: sólo cuadrillas activas
+  const crewFilter: any = { isActive: true };
+  if (crewId) crewFilter._id = crewId;
+
+  // 1. Obtener Cuadrillas con su inventario asignado en populate
+  const crews = await CrewModel.find(crewFilter)
+    .populate("assignedInventory.item", "code description type unit")
+    .select("number name isActive assignedInventory")
+    .lean();
+
+  const activeCrewsMap = new Map<string, any>();
+  crews.forEach((c: any) => {
+    activeCrewsMap.set(c._id.toString(), {
+      crewId: c._id.toString(),
+      crewNumber: c.number,
+      crewName: `Cuadrilla ${c.number}`,
+      items: new Map<string, any>() // map de itemId -> stats
+    });
+  });
+
+  const crewIds = Array.from(activeCrewsMap.keys());
+
+  // 2. Obtener la suma agrupada por tipo de movimiento, crew e item
+  const movements = await InventoryHistoryModel.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate, $lte: endDate },
+        crew: { $in: crewIds.map(id => new mongoose.Types.ObjectId(id)) }
+      },
+    },
+    {
+      $group: {
+        _id: {
+          crew: "$crew",
+          item: "$item",
+          type: "$type",
+        },
+        totalQty: { $sum: "$quantityChange" }
+      }
+    }
+  ]);
+
+  // 3. Obtener info de todos los items que tuvieron movimiento
+  const usedItemIds = Array.from(new Set(movements.map((m: any) => m._id.item?.toString()).filter(Boolean)));
+  const itemsInfoMatch = await InventoryModel.find({ _id: { $in: usedItemIds } }).select('code description type unit').lean();
+  
+  const itemsInfoMap = new Map<string, any>();
+  itemsInfoMatch.forEach((itm: any) => {
+    itemsInfoMap.set(itm._id.toString(), {
+      code: itm.code,
+      description: itm.description,
+      type: itm.type,
+      unit: itm.unit
+    });
+  });
+
+  // 4. Popular datos de movimiento en los mapas de cuadrilla -> item
+  movements.forEach((mov: any) => {
+    const cId = mov._id.crew?.toString();
+    const itemId = mov._id.item?.toString();
+    
+    if (!cId || !itemId || !activeCrewsMap.has(cId)) return;
+
+    const crewData = activeCrewsMap.get(cId);
+    
+    if (!crewData.items.has(itemId)) {
+      const info = itemsInfoMap.get(itemId) || { code: "N/A", description: "Desc. N/A" };
+      crewData.items.set(itemId, {
+        itemId: itemId,
+        code: info.code,
+        description: info.description,
+        type: info.type || "N/A",
+        unit: info.unit || "uds",
+        recibidoBodega: 0,
+        devueltoBodega: 0,
+        gastadoOrdenes: 0,
+        enManoActualmente: 0 // Se calculará despues del estado 'live'
+      });
+    }
+
+    const itemStats = crewData.items.get(itemId);
+    const type = mov._id.type;
+    const qty = mov.totalQty;
+
+    switch (type) {
+      case "assignment":
+        itemStats.recibidoBodega += Math.abs(qty); 
+        break;
+      case "return":
+        itemStats.devueltoBodega += qty; // es positivo
+        break;
+      case "usage_order":
+        itemStats.gastadoOrdenes += Math.abs(qty); // usage_order descuenta
+        break;
+    }
+  });
+
+  // 5. Popular la cantidad 'enManoActualmente' usando el assignedInventory de CrewModel
+  crews.forEach((c: any) => {
+    const cId = c._id.toString();
+    const crewData = activeCrewsMap.get(cId);
+
+    if (c.assignedInventory && Array.isArray(c.assignedInventory)) {
+      c.assignedInventory.forEach((invLine: any) => {
+        const itemObj = invLine.item;
+        if (!itemObj) return;
+
+        const itemId = itemObj._id?.toString() || itemObj.toString();
+        
+        // Si la cuadrilla tiene el item actualmente pero no tuvo movimientos en el periodo
+        if (!crewData.items.has(itemId)) {
+          crewData.items.set(itemId, {
+            itemId: itemId,
+            code: itemObj.code || "N/A",
+            description: itemObj.description || "N/A",
+            type: itemObj.type || "N/A",
+            unit: itemObj.unit || "uds",
+            recibidoBodega: 0,
+            devueltoBodega: 0,
+            gastadoOrdenes: 0,
+            enManoActualmente: 0
+          });
+        }
+
+        crewData.items.get(itemId).enManoActualmente = invLine.quantity || 0;
+      });
+    }
+  });
+
+  // 6. Transformar mapas anidados a array plano o por cuadrilla
+  const resultData: any[] = [];
+  
+  // Convertimos a un arreglo ordenado por cuadrilla
+  const sortedCrews = Array.from(activeCrewsMap.values()).sort((a, b) => a.crewNumber - b.crewNumber);
+  
+  sortedCrews.forEach(crew => {
+    const itemsArray = Array.from(crew.items.values()).sort((a: any, b: any) => a.code.localeCompare(b.code));
+    
+    // Filtrar items sin nada
+    const activeItems = itemsArray.filter((i: any) => 
+      i.recibidoBodega > 0 || i.devueltoBodega > 0 || i.gastadoOrdenes > 0 || i.enManoActualmente > 0
+    );
+
+    if (activeItems.length > 0) {
+      resultData.push({
+        crewId: crew.crewId,
+        crewNumber: crew.crewNumber,
+        crewName: crew.crewName,
+        items: activeItems
+      });
+    }
+  });
+
+  return resultData;
 }
 
 /**

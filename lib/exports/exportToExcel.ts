@@ -130,6 +130,39 @@ export function exportReportToExcel(
       }));
       break;
 
+    case "inventory_balance":
+      sheetName = "Balance de Inventario";
+      worksheetData = (data || []).map((item: any) => ({
+        "Código": item.code,
+        "Descripción": item.description,
+        "Entradas (+)": item.entradas,
+        "A Cuadrillas (-)": item.salidasCuadrillas,
+        "Devoluciones (+)": item.devoluciones,
+        "Gasto Órdenes (-)": item.gastoEnOrdenes,
+        "Ajustes": item.ajustes,
+        "Stock Actual Bodega": item.stockActualBodega,
+      }));
+      break;
+
+    case "crew_inventory_balance":
+      sheetName = "Balance por Cuadrilla";
+      const crewBalRows: any[] = [];
+      (data || []).forEach((crew: any) => {
+        (crew.items || []).forEach((itm: any) => {
+          crewBalRows.push({
+            "Cuadrilla": crew.crewName,
+            "Código": itm.code,
+            "Descripción": itm.description,
+            "Recibido Bodega (+)": itm.recibidoBodega,
+            "Devuelto Bodega (-)": itm.devueltoBodega,
+            "Gastado Órdenes (-)": itm.gastadoOrdenes,
+            "En Mano Actualmente": itm.enManoActualmente,
+          });
+        });
+      });
+      worksheetData = crewBalRows;
+      break;
+
     case "crew_performance":
       sheetName = "Rendimiento Detallado";
       worksheetData = (data.orders || []).map((order: any) => ({
@@ -448,6 +481,8 @@ export function exportReportToExcel(
     crew_stock: "stock_actual_cuadrillas",
     crew_visits: "visitas_cuadrillas",
     crew_orders: "ordenes_cuadrillas",
+    inventory_balance: "balance_inventario_general",
+    crew_inventory_balance: "balance_inventario_cuadrillas",
   };
 
   // Generar nombre de archivo con fecha en GMT-4

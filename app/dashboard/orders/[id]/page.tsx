@@ -26,7 +26,7 @@ export default function OrderEditPage() {
     // Logic to enable or disable sent button
     useEffect(() => {
         if (orderData) {
-            setIsAvaliableToSend(orderData.status === 'completed' || orderData.status === 'cancelled');
+            setIsAvaliableToSend(orderData.status === 'completed' || orderData.status === 'completed_special' || orderData.status === 'cancelled');
         }
     }, [orderData]);
 
@@ -138,8 +138,8 @@ export default function OrderEditPage() {
     const handleSyncNetuno = async () => {
         if (!orderId || !orderData || !certificateRef.current) return;
 
-        if (orderData.status !== 'completed' && orderData.status !== 'cancelled') {
-            alert('La orden debe estar completada o cancelada para sincronizar con Netuno');
+        if (orderData.status !== 'completed' && orderData.status !== 'completed_special' && orderData.status !== 'cancelled') {
+            alert('La orden debe estar completada, completada especial o cancelada para sincronizar con Netuno');
             return;
         }
 
@@ -270,6 +270,8 @@ export default function OrderEditPage() {
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200 uppercase">En Progreso</span>;
             case 'completed':
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 uppercase">Completada</span>;
+            case 'completed_special':
+                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200 uppercase">Completada Especial</span>;
             case 'cancelled':
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 uppercase">Cancelada</span>;
             case 'hard':

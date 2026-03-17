@@ -54,7 +54,13 @@ export async function GET(request: Request) {
     const dateField = url.searchParams.get("dateField") || "updatedAt";
 
     if (assignedTo) filters.assignedTo = assignedTo;
-    if (status) filters.status = status;
+    if (status) {
+      if (status.includes(',')) {
+        filters.status = { $in: status.split(',') };
+      } else {
+        filters.status = status;
+      }
+    }
     if (type) filters.type = type;
 
     // Handle Netuno sync flag

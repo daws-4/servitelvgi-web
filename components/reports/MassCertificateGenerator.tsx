@@ -66,7 +66,7 @@ export const MassCertificateGenerator = () => {
 
                 const response = await axios.get('/api/web/orders', {
                     params: {
-                        status: 'completed',
+                        status: 'completed,completed_special',
                         startDate,
                         endDate,
                         dateField: 'completionDate',

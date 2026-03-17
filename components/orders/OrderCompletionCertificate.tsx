@@ -75,11 +75,11 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
             </div>
 
             {/* SUBSCRIBER INFO, TECHNICAL DETAILS & MATERIALS - CUSTOM COLUMN LAYOUT */}
-            <div className="grid mb-3" style={{ gridTemplateColumns: '22% 22% 56%', gap: '0.75rem' }}>
-                {/* SUBSCRIBER INFO - 28% */}
+            <div className="grid mb-3" style={{ gridTemplateColumns: '22% 36% 42%', gap: '0.75rem' }}>
+                {/* SUBSCRIBER INFO - 22% */}
                 <div>
                     <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Datos del Abonado</h3>
-                    <div className="space-y-1.5 text-[14px]">
+                    <div className="space-y-1 text-[14px]">
                         <div>
                             <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Abonado:</span>
                             <span className="font-medium text-[12px] break-words">{data.subscriberName}</span>
@@ -102,48 +102,31 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                 {/* TECHNICAL DETAILS - 28% */}
                 <div>
                     <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Detalles Técnicos</h3>
-                    <div className="space-y-1.5 text-[14px]">
-                        <div>
-                            <span className="font-semibold block text-[12px] mb-0.5" style={{ color: colors.gray600 }}>Tipo de Orden:</span>
-                            <div className="uppercase font-medium px-1.5 py-0.5 rounded text-[12px] inline-block" style={{ backgroundColor: colors.gray100 }}>
-                                {data.type}
-                            </div>
-                        </div>
-                        <div>
-                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Nodo:</span>
-                            <span className="font-medium text-[12px] break-words">{data.node || 'N/A'}</span>
-                        </div>
-                        <div>
-                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Servicios / Trabajo Realizado:</span>
-                            <span className="font-medium text-[12px] break-words">{data.servicesToInstall || 'N/A'}</span>
-                        </div>
-                        {/* New Technical Fields */}
-                        <div className="grid grid-cols-2 gap-2 mt-1">
-                            <div>
-                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Potencia Nap:</span>
-                                <span className="font-medium text-[12px]">{data.powerNap || 'N/A'}</span>
+                    <div className="space-y-1 text-[14px]">
+                        <div className="flex">
+                            <div className="mr-4">
+                                <span className="font-semibold block text-[12px] mb-0.5" style={{ color: colors.gray600 }}>Tipo de Orden:</span>
+                                <div className="uppercase font-medium px-1.5 py-0.5 rounded text-[12px] inline-block" style={{ backgroundColor: colors.gray100 }}>
+                                    {data.type}
+                                </div>
                             </div>
                             <div>
-                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Potencia Roseta:</span>
-                                <span className="font-medium text-[12px]">{data.powerRoseta || 'N/A'}</span>
-                            </div>
-                            {/* New Fields: Serial NAP & Used Port */}
-                            <div>
-                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Serial Nap:</span>
-                                <span className="font-medium text-[12px]">{data.serialNap || 'N/A'}</span>
-                            </div>
-                            <div>
-                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Puerto Usado:</span>
-                                <span className="font-medium text-[12px]">{data.usedPort || 'N/A'}</span>
+                                <span className="font-semibold block text-[12px] mb-0.5" style={{ color: colors.gray600 }}>Estado:</span>
+                                <div className="uppercase font-medium px-1.5 py-0.5 rounded text-[12px] inline-block" style={{
+                                    backgroundColor: data.status === 'completed_special' ? '#ccfbf1' : '#dcfce7',
+                                    color: data.status === 'completed_special' ? '#115e59' : '#166534',
+                                    border: `1px solid ${data.status === 'completed_special' ? '#99f6e4' : '#bbf7d0'}`
+                                }}>
+                                    {data.status === 'completed_special' ? 'COMPLETADA ESPECIAL' : 'COMPLETADA'}
+                                </div>
                             </div>
                         </div>
-                        <div>
-                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Puertos Restantes:</span>
-                            <span className="font-medium text-[12px]">{data.remainingPorts !== undefined ? data.remainingPorts : 'N/A'}</span>
-                        </div>
-                        {/* Etiqueta Info */}
-                        <div className="grid grid-cols-2 gap-2 mt-1 pt-1" style={{ borderTop: `1px dashed ${colors.gray200}` }}>
-                            <div>
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Nodo:</span>
+                                <span className="font-medium text-[12px] break-words">{data.node || 'N/A'}</span>
+                            </div>
+                            <div className="flex-1">
                                 <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Color Etiqueta:</span>
                                 <span className="font-medium text-[12px] capitalize">
                                     {data.etiqueta?.color === 'verde' ? '🟢 Verde' :
@@ -152,16 +135,43 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                                                 data.etiqueta?.color || 'N/A'}
                                 </span>
                             </div>
-                            <div>
+                            <div className="flex-1">
                                 <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Nº Etiqueta:</span>
                                 <span className="font-medium text-[12px]">{data.etiqueta?.numero || 'N/A'}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <span className="font-semibold block text-[12px]" style={{ color: colors.gray600 }}>Servicios / Trabajo Realizado:</span>
+                            <span className="font-medium text-[12px] break-words">{data.servicesToInstall || 'N/A'}</span>
+                        </div>
+                        {/* Compact Technical Fields */}
+                        <div className="grid grid-cols-3 gap-y-1 gap-x-2 mt-1">
+                            <div>
+                                <span className="font-semibold block text-[11px]" style={{ color: colors.gray600 }}>Pot. Nap:</span>
+                                <span className="font-medium text-[12px]">{data.powerNap || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold block text-[11px]" style={{ color: colors.gray600 }}>Pot. Roseta:</span>
+                                <span className="font-medium text-[12px]">{data.powerRoseta || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold block text-[11px]" style={{ color: colors.gray600 }}>Serial Nap:</span>
+                                <span className="font-medium text-[12px]">{data.serialNap || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold block text-[11px]" style={{ color: colors.gray600 }}>Puerto Usado:</span>
+                                <span className="font-medium text-[12px]">{data.usedPort || 'N/A'}</span>
+                            </div>
+                            <div>
+                                <span className="font-semibold block text-[11px]" style={{ color: colors.gray600 }}>Ptos. Restantes:</span>
+                                <span className="font-medium text-[12px]">{data.remainingPorts !== undefined ? data.remainingPorts : 'N/A'}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* MATERIALS USED - 44% - CODE AND QUANTITY ONLY */}
-                <div>
+                {/* MATERIALS USED - 42% - CODE AND QUANTITY ONLY */}
+                <div className="pr-4">
                     <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Materiales Utilizados</h3>
                     {(usedMaterials.length > 0 || (data.type?.toLowerCase() === 'recuperacion' && (data.equipmentRecovered?.ontId || data.equipmentRecovered?.serialNumber))) ? (
                         <div className="grid grid-cols-2 gap-1.5">
@@ -272,7 +282,7 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                 </div>
 
                 {/* SIGNATURE - 1 COLUMN (RIGHT) */}
-                <div>
+                <div className="pr-4">
                     <h3 className="text-[14px] font-bold uppercase mb-2 pb-0.5" style={{ color: colors.primary, borderBottom: `1px solid ${colors.gray200}` }}>Firma del Cliente</h3>
                     <div className="flex flex-col items-center">
                         {data.customerSignature ? (

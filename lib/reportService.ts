@@ -94,6 +94,12 @@ export async function getDailyReport(
         status: { $in: ["completed", "completed_special"] },
       },
       {
+        // Fallback: completed orders without completionDate (old data)
+        completionDate: { $exists: false },
+        updatedAt: { $gte: startOfDay, $lte: endOfDay },
+        status: { $in: ["completed", "completed_special"] },
+      },
+      {
         assignmentDate: { $gte: startOfDay, $lte: endOfDay },
         status: { $in: ["assigned", "in_progress"] },
       },
@@ -201,6 +207,12 @@ export async function getMonthlyReport(
     $or: [
       {
         completionDate: { $gte: startDate, $lte: endDate },
+        status: { $in: ["completed", "completed_special"] },
+      },
+      {
+        // Fallback: completed orders without completionDate (old data)
+        completionDate: { $exists: false },
+        updatedAt: { $gte: startDate, $lte: endDate },
         status: { $in: ["completed", "completed_special"] },
       },
       {
@@ -439,7 +451,11 @@ export async function getNetunoOrdersReport(
   const filter: any = {
     status: { $in: ["completed", "completed_special"] },
     sentToNetuno: { $ne: true },
-    completionDate: { $gte: startDate, $lte: endDate },
+    $or: [
+      { completionDate: { $gte: startDate, $lte: endDate } },
+      // Fallback: completed orders without completionDate (old data)
+      { completionDate: { $exists: false }, updatedAt: { $gte: startDate, $lte: endDate } },
+    ],
   };
 
   if (crewId) {

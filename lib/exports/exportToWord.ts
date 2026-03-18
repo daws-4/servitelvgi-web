@@ -78,7 +78,7 @@ export async function exportReportToWord(
       (data.cuadrillas || []).forEach((crew: any) => {
         // Add completed
         (crew.completadas || []).forEach((order: any) => {
-          allOrders.push({ ...order, statusDisplayName: "Finalizada", crewName: crew.crewName });
+          allOrders.push({ ...order, statusDisplayName: order.status === "completed_special" ? "Completada Especial" : "Finalizada", crewName: crew.crewName });
         });
         // Add not completed
         (crew.noCompletadas || []).forEach((order: any) => {
@@ -217,7 +217,7 @@ export async function exportReportToWord(
         order.subscriberName || "",
         order.type === "instalacion" ? "Instalación" : "Avería",
         order.node || "",
-        order.status,
+        order.status === "completed" ? "Completada" : order.status === "completed_special" ? "Completada Especial" : order.status,
       ]);
       break;
 

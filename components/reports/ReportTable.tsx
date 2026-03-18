@@ -84,7 +84,7 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                             key: `${crew.crewId}-completada-${order._id}`,
                             _id: order._id, // Para navegación
                             crew: crew.crewName,
-                            estado: "Completada",
+                            estado: order.status === "completed_special" ? "Completada Especial" : "Completada",
                             ticket: order.ticket || "N/A",
                             subscriberNumber: order.subscriberNumber,
                             subscriberName: order.subscriberName,

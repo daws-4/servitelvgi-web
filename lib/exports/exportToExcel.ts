@@ -52,7 +52,7 @@ export function exportReportToExcel(
         crew.completadas.forEach((order: any) => {
           dailyOrders.push({
             "Cuadrilla": crew.crewName,
-            "Estado": "Completada",
+            "Estado": order.status === "completed_special" ? "Completada Especial" : "Completada",
             "Ticket": order.ticket || "N/A",
             "N° Abonado": order.subscriberNumber,
             "Nombre": order.subscriberName,
@@ -90,7 +90,7 @@ export function exportReportToExcel(
         crew.completadas.forEach((order: any) => {
           monthlyOrders.push({
             "Cuadrilla": crew.crewName,
-            "Estado": "Completada",
+            "Estado": order.status === "completed_special" ? "Completada Especial" : "Completada",
             "Ticket": order.ticket || "N/A",
             "N° Abonado": order.subscriberNumber,
             "Nombre": order.subscriberName,
@@ -250,7 +250,7 @@ export function exportReportToExcel(
           ? order.servicesToInstall.join(", ")
           : "",
         "Cuadrilla": (order.assignedTo?.number !== undefined && order.assignedTo?.number !== null) ? `Cuadrilla ${order.assignedTo.number}` : "S/A",
-        "Estado": order.status,
+        "Estado": order.status === "completed" ? "Completada" : order.status === "completed_special" ? "Completada Especial" : order.status,
       }));
       break;
   }

@@ -27,6 +27,7 @@ export const MassCertificateGenerator = () => {
     // New filter states
     const [ordersPerPage, setOrdersPerPage] = useState(3); // 1, 2, or 3
     const [selectedCrew, setSelectedCrew] = useState("all"); // "all" or crew _id
+    const [selectedStatus, setSelectedStatus] = useState("all"); // "all", "completed", or "completed_special"
     const [crews, setCrews] = useState<any[]>([]);
 
     // Container for rendering certificates off-screen
@@ -66,7 +67,7 @@ export const MassCertificateGenerator = () => {
 
                 const response = await axios.get('/api/web/orders', {
                     params: {
-                        status: 'completed,completed_special',
+                        status: selectedStatus === 'all' ? 'completed,completed_special' : selectedStatus,
                         startDate,
                         endDate,
                         dateField: 'completionDate',
@@ -227,7 +228,8 @@ export const MassCertificateGenerator = () => {
             }
 
             setStatusText("Guardando PDF...");
-            pdf.save(`certificados_completados_${startDate}_${endDate}.pdf`);
+            const statusLabel = selectedStatus === 'all' ? 'todas' : selectedStatus === 'completed' ? 'completadas' : 'especiales';
+            pdf.save(`certificados_${statusLabel}_${startDate}_${endDate}.pdf`);
             const skippedMsg = skippedOrders > 0 ? ` (${skippedOrders} omitidas por error)` : '';
             setStatusText(`¡Completado!${skippedMsg}`);
             if (skippedOrders > 0) {
@@ -289,6 +291,18 @@ export const MassCertificateGenerator = () => {
                                 Cuadrilla {crew.number}{crew.leader?.name ? ` - ${crew.leader.name}` : ''}
                             </option>
                         ))}
+                    </select>
+                </div>
+                <div className="w-full md:w-auto">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Estatus</label>
+                    <select
+                        value={selectedStatus}
+                        onChange={(e) => setSelectedStatus(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary bg-white"
+                    >
+                        <option value="all">Ambas</option>
+                        <option value="completed">Completadas</option>
+                        <option value="completed_special">Completadas Especiales</option>
                     </select>
                 </div>
                 <Button

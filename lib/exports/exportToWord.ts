@@ -192,7 +192,7 @@ export async function exportReportToWord(
       break;
 
     case "crew_orders":
-      tableHeaders = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asignadas", "En Proceso", "Completadas", "Canceladas", "Visitas", "Pendientes"];
+      tableHeaders = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asignadas", "En Proceso", "Completadas", "Comp. Especial", "Canceladas", "Visitas", "Pendientes"];
       tableRows = (data.crews || []).map((crew: any) => [
         crew.crewName,
         crew.leaderName || "",
@@ -203,6 +203,7 @@ export async function exportReportToWord(
         String(crew.assigned),
         String(crew.in_progress),
         String(crew.completed),
+        String(crew.completed_special || 0),
         String(crew.cancelled),
         String(crew.visita),
         String(crew.pending),

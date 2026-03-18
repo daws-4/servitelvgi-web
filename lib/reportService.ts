@@ -1275,6 +1275,7 @@ export async function getCrewOrdersReport(
     assigned: number;
     in_progress: number;
     completed: number;
+    completed_special: number;
     cancelled: number;
     visita: number;
     hard: number;
@@ -1310,6 +1311,7 @@ export async function getCrewOrdersReport(
           assigned: 0,
           in_progress: 0,
           completed: 0,
+          completed_special: 0,
           cancelled: 0,
           visita: 0,
           hard: 0,
@@ -1326,7 +1328,8 @@ export async function getCrewOrdersReport(
       summary.pending = orders.pending || 0;
       summary.assigned = orders.assigned || 0;
       summary.in_progress = orders.in_progress || 0;
-      summary.completed = orders.completed || 0;
+      summary.completed = (orders.completed || 0) + (orders.completed_special || 0);
+      summary.completed_special = orders.completed_special || 0;
       summary.cancelled = orders.cancelled || 0;
       summary.visita = orders.visita || 0;
       summary.hard = orders.hard || 0;
@@ -1359,7 +1362,8 @@ export async function getCrewOrdersReport(
         pending: orders.pending || 0,
         assigned: orders.assigned || 0,
         in_progress: orders.in_progress || 0,
-        completed: orders.completed || 0,
+        completed: (orders.completed || 0) + (orders.completed_special || 0),
+        completed_special: orders.completed_special || 0,
         cancelled: orders.cancelled || 0,
         visita: orders.visita || 0,
         hard: orders.hard || 0,

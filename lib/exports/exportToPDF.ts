@@ -167,7 +167,7 @@ export function exportReportToPDF(
       break;
 
     case "crew_orders":
-      columns = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asig.", "Proc.", "Comp.", "Canc.", "Vis.", "Pend."];
+      columns = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asig.", "Proc.", "Comp.", "C.Esp.", "Canc.", "Vis.", "Pend."];
       rows = (data.crews || []).map((crew: any) => [
         crew.crewName,
         crew.leaderName?.substring(0, 20) || "",
@@ -178,6 +178,7 @@ export function exportReportToPDF(
         crew.assigned,
         crew.in_progress,
         crew.completed,
+        crew.completed_special || 0,
         crew.cancelled,
         crew.visita,
         crew.pending,

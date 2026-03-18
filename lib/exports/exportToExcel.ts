@@ -218,6 +218,7 @@ export function exportReportToExcel(
           "Asignadas": crew.assigned,
           "En Proceso": crew.in_progress,
           "Completadas": crew.completed,
+          "Comp. Especial": crew.completed_special || 0,
           "Canceladas": crew.cancelled,
           "Visitas": crew.visita,
           "Pendientes": crew.pending,
@@ -377,7 +378,7 @@ export function exportReportToExcel(
       "instalacion_total", "instalacion_completed",
       "averia_total", "averia_completed",
       "recuperacion_total", "recuperacion_completed",
-      "assigned", "in_progress", "completed", "cancelled", "visita", "pending"
+      "assigned", "in_progress", "completed", "completed_special", "cancelled", "visita", "pending"
     ];
     const statusLabels: Record<string, string> = {
       total: "Global Total",
@@ -390,6 +391,7 @@ export function exportReportToExcel(
       assigned: "Asignadas",
       in_progress: "En Proceso",
       completed: "Completadas",
+      completed_special: "Comp. Especial",
       cancelled: "Canceladas",
       visita: "Visitas",
       pending: "Pendientes",

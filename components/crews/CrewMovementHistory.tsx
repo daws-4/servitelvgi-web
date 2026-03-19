@@ -16,7 +16,8 @@ interface HistoryEntry {
     };
     order?: {
         _id: string;
-        subscriberNumber: string;
+        subscriberNumber?: string;
+        ticket_id?: string;
     };
     performedBy?: {
         _id: string;
@@ -285,8 +286,14 @@ export const CrewMovementHistory: React.FC<CrewMovementHistoryProps> = ({
                                                 </p>
                                                 {entry.order?.subscriberNumber && (
                                                     <p className="text-xs text-neutral mt-1">
-                                                        <i className="fa-solid fa-file-lines mr-1"></i>
-                                                        Orden: {entry.order.subscriberNumber}
+                                                        <i className="fa-solid fa-user-tag mr-1"></i>
+                                                        N° Abonado: {entry.order.subscriberNumber}
+                                                    </p>
+                                                )}
+                                                {entry.order?.ticket_id && (
+                                                    <p className="text-xs text-neutral mt-1">
+                                                        <i className="fa-solid fa-ticket mr-1"></i>
+                                                        Ticket: {entry.order.ticket_id}
                                                     </p>
                                                 )}
                                                 {entry.reason && (

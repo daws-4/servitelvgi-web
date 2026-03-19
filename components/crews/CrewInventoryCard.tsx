@@ -18,6 +18,7 @@ interface CrewInventoryCardProps {
     crewId: string;
     assignedInventory: InventoryItem[];
     onReturnClick: (item: InventoryItem) => void;
+    onAdjustClick?: (item: InventoryItem) => void;
     onRefresh: () => void;
     onEquipmentClick?: () => void;
     onBobbinClick?: (item: InventoryItem) => void;
@@ -27,6 +28,7 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
     crewId,
     assignedInventory,
     onReturnClick,
+    onAdjustClick,
     onRefresh,
     onEquipmentClick,
     onBobbinClick,
@@ -122,25 +124,36 @@ export const CrewInventoryCard: React.FC<CrewInventoryCardProps> = ({
                                             </span>
                                         </td>
                                         <td className="py-3 text-center">
-                                            {isMeter && onBobbinClick ? (
-                                                <button
-                                                    onClick={() => onBobbinClick(inventoryItem)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors shadow-sm cursor-pointer"
-                                                    title="Ver bobinas asignadas"
-                                                >
-                                                    <i className="fa-solid fa-eye text-xs"></i>
-                                                    Ver Bobinas
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => onReturnClick(inventoryItem)}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors shadow-sm cursor-pointer"
-                                                    title="Devolver material al almacén"
-                                                >
-                                                    <i className="fa-solid fa-rotate-left text-xs"></i>
-                                                    Devolver
-                                                </button>
-                                            )}
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                {isMeter && onBobbinClick ? (
+                                                    <button
+                                                        onClick={() => onBobbinClick(inventoryItem)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors shadow-sm cursor-pointer"
+                                                        title="Ver bobinas asignadas"
+                                                    >
+                                                        <i className="fa-solid fa-eye text-xs"></i>
+                                                        Ver Bobinas
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => onReturnClick(inventoryItem)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 transition-colors shadow-sm cursor-pointer"
+                                                        title="Devolver material al almacén"
+                                                    >
+                                                        <i className="fa-solid fa-rotate-left text-xs"></i>
+                                                        Devolver
+                                                    </button>
+                                                )}
+                                                {onAdjustClick && (
+                                                    <button
+                                                        onClick={() => onAdjustClick(inventoryItem)}
+                                                        className="inline-flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-amber-700 bg-amber-100 rounded-lg hover:bg-amber-200 transition-colors cursor-pointer"
+                                                        title="Ajustar cantidad manualmente"
+                                                    >
+                                                        <i className="fa-solid fa-wrench text-xs"></i>
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 )

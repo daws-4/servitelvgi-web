@@ -6,6 +6,7 @@ import {
   restockInventory,
   assignMaterialToCrew,
   returnMaterialFromCrew,
+  adjustCrewInventory,
 } from "@/lib/inventoryService";
 import { getUserFromRequest } from "@/lib/authHelpers";
 
@@ -118,11 +119,59 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case "adjust": {
+        // Ajuste manual de inventario de cuadrilla
+        const { crewId, inventoryId, newQuantity, reason, batchCode } = data;
+
+        if (!crewId) {
+          return NextResponse.json(
+            { success: false, error: "crewId es requerido" },
+            { status: 400 }
+          );
+        }
+
+        if (!inventoryId) {
+          return NextResponse.json(
+            { success: false, error: "inventoryId es requerido" },
+            { status: 400 }
+          );
+        }
+
+        if (newQuantity === undefined || newQuantity < 0) {
+          return NextResponse.json(
+            { success: false, error: "newQuantity debe ser mayor o igual a 0" },
+            { status: 400 }
+          );
+        }
+
+        if (!reason) {
+          return NextResponse.json(
+            { success: false, error: "Motivo es requerido" },
+            { status: 400 }
+          );
+        }
+
+        const result = await adjustCrewInventory(
+          crewId,
+          inventoryId,
+          newQuantity,
+          reason,
+          batchCode,
+          sessionUser || undefined
+        );
+
+        return NextResponse.json({
+          success: true,
+          message: "Ajuste aplicado correctamente",
+          result,
+        });
+      }
+
       default:
         return NextResponse.json(
           {
             success: false,
-            error: `Acción no válida: ${action}. Usar 'restock', 'assign' o 'return'`,
+            error: `Acción no válida: ${action}. Usar 'restock', 'assign', 'return' o 'adjust'`,
           },
           { status: 400 }
         );

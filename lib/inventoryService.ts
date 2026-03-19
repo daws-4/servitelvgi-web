@@ -2336,3 +2336,144 @@ export async function returnEquipmentInstances(
   }
 }
 
+/**
+ * Ajusta manualmente el inventario de una cuadrilla (para corregir discrepancias).
+ * Solo modifica la cantidad asignada en la cuadrilla y opcionalmente la bobina.
+ * NO mueve stock al/del almacén — esto es un ajuste contable, no un movimiento físico.
+ * @param crewId - ID de la cuadrilla
+ * @param inventoryId - ID del item de inventario
+ * @param newQuantity - Nueva cantidad deseada
+ * @param reason - Motivo del ajuste
+ * @param batchCode - Código de bobina (opcional, solo para bobinas)
+ * @param sessionUser - Usuario que realiza el ajuste
+ */
+export async function adjustCrewInventory(
+  crewId: string,
+  inventoryId: string,
+  newQuantity: number,
+  reason: string,
+  batchCode?: string,
+  sessionUser?: SessionUser
+) {
+  await connectDB();
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const crew = await CrewModel.findById(crewId).session(session);
+    if (!crew) {
+      throw new Error(`Cuadrilla no encontrada: ${crewId}`);
+    }
+
+    const inventoryItem = await InventoryModel.findById(inventoryId)
+      .select("code description unit")
+      .session(session)
+      .lean() as { code: string; description: string; unit: string } | null;
+
+    if (!inventoryItem) {
+      throw new Error(`Item de inventario no encontrado: ${inventoryId}`);
+    }
+
+    if (newQuantity < 0) {
+      throw new Error("La cantidad no puede ser negativa");
+    }
+
+    // Find the item in the crew's assigned inventory
+    const itemIndex = crew.assignedInventory.findIndex(
+      (inv: any) => inv.item.toString() === inventoryId
+    );
+
+    let oldQuantity = 0;
+
+    if (itemIndex >= 0) {
+      oldQuantity = crew.assignedInventory[itemIndex].quantity;
+    }
+
+    const quantityChange = newQuantity - oldQuantity;
+
+    if (quantityChange === 0) {
+      throw new Error("La cantidad nueva es igual a la actual. No hay cambio que aplicar.");
+    }
+
+    // Update bobbin if batch is specified
+    let batchOldQuantity: number | null = null;
+    let batchNewQuantity: number | null = null;
+    if (batchCode) {
+      const batch = await InventoryBatchModel.findOne({
+        batchCode: batchCode.toUpperCase(),
+        crew: crewId,
+      }).session(session);
+
+      if (batch) {
+        batchOldQuantity = batch.currentQuantity;
+        batch.currentQuantity = Math.max(0, batch.currentQuantity + quantityChange);
+        batchNewQuantity = batch.currentQuantity;
+        if (batch.currentQuantity <= 0) {
+          batch.status = "depleted";
+        } else if (batch.status === "depleted") {
+          batch.status = "active";
+        }
+        await batch.save({ session });
+      }
+    }
+
+    // Update crew's assignedInventory
+    if (newQuantity === 0) {
+      // Remove item from crew
+      if (itemIndex >= 0) {
+        crew.assignedInventory.splice(itemIndex, 1);
+      }
+    } else if (itemIndex >= 0) {
+      // Update existing
+      crew.assignedInventory[itemIndex].quantity = newQuantity;
+      crew.assignedInventory[itemIndex].lastUpdate = new Date();
+    } else {
+      // Add new entry
+      crew.assignedInventory.push({
+        item: new mongoose.Types.ObjectId(inventoryId),
+        quantity: newQuantity,
+        lastUpdate: new Date(),
+      });
+    }
+
+    crew.markModified("assignedInventory");
+    await crew.save({ session });
+
+    // Create history record
+    await InventoryHistoryModel.create(
+      [
+        {
+          item: inventoryId,
+          batch: batchCode
+            ? (await InventoryBatchModel.findOne({ batchCode: batchCode.toUpperCase() }).session(session))?._id
+            : undefined,
+          type: "adjustment",
+          quantityChange: quantityChange,
+          reason: batchCode && batchOldQuantity !== null && batchNewQuantity !== null
+            ? `Ajuste manual Bobina ${batchCode.toUpperCase()}: ${batchOldQuantity} → ${batchNewQuantity} ${inventoryItem.unit}. Motivo: ${reason}`
+            : `Ajuste manual: ${oldQuantity} → ${newQuantity} ${inventoryItem.unit}. Motivo: ${reason}`,
+          crew: crewId,
+          performedBy: sessionUser?.userId,
+          performedByModel: sessionUser?.userModel,
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    return {
+      success: true,
+      item: inventoryItem.description,
+      oldQuantity,
+      newQuantity,
+      change: quantityChange,
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}

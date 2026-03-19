@@ -6,6 +6,7 @@ import axios from "axios";
 import { CrewEditForm } from "@/components/crews/CrewEditForm";
 import { CrewInventoryCard } from "@/components/crews/CrewInventoryCard";
 import { ReturnMaterialModal } from "@/components/crews/ReturnMaterialModal";
+import { AdjustInventoryModal } from "@/components/crews/AdjustInventoryModal";
 import CrewEquipmentModal from "@/components/crews/CrewEquipmentModal";
 import CrewBobbinModal from "@/components/crews/CrewBobbinModal";
 import MonthSelector from "@/components/crews/MonthSelector";
@@ -60,6 +61,9 @@ export default function CrewEditPage() {
     const [returnModalOpen, setReturnModalOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<InventoryItem | null>(null);
     const [equipmentModalOpen, setEquipmentModalOpen] = useState(false);
+    // Adjust Modal State
+    const [adjustModalOpen, setAdjustModalOpen] = useState(false);
+    const [adjustMaterial, setAdjustMaterial] = useState<InventoryItem | null>(null);
     // Bobbin Modal State
     const [bobbinModalOpen, setBobbinModalOpen] = useState(false);
     const [bobbinModalItem, setBobbinModalItem] = useState<{ id: string, code: string, description: string } | null>(null);
@@ -152,6 +156,18 @@ export default function CrewEditPage() {
         setBobbinModalOpen(true);
     };
 
+    // Handler for Adjust click
+    const handleAdjustClick = (material: InventoryItem) => {
+        setAdjustMaterial(material);
+        setAdjustModalOpen(true);
+    };
+
+    const handleAdjustSuccess = async () => {
+        setAdjustModalOpen(false);
+        setAdjustMaterial(null);
+        await fetchData();
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -214,6 +230,7 @@ export default function CrewEditPage() {
                         crewId={crew._id}
                         assignedInventory={crew.assignedInventory || []}
                         onReturnClick={handleReturnClick}
+                        onAdjustClick={handleAdjustClick}
                         onRefresh={fetchData}
                         onEquipmentClick={() => setEquipmentModalOpen(true)}
                         onBobbinClick={handleBobbinClick}
@@ -280,6 +297,15 @@ export default function CrewEditPage() {
                         setBobbinModalOpen(false);
                         await fetchData();
                     }}
+                />
+
+                {/* Adjust Inventory Modal */}
+                <AdjustInventoryModal
+                    isOpen={adjustModalOpen}
+                    onClose={() => setAdjustModalOpen(false)}
+                    crewId={crew._id}
+                    material={adjustMaterial}
+                    onSuccess={handleAdjustSuccess}
                 />
             </div>
         </main>

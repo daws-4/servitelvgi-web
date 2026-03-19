@@ -276,17 +276,25 @@ export const AdjustInventoryModal: React.FC<AdjustInventoryModalProps> = ({
                                 type="number"
                                 value={newQuantity}
                                 onChange={(e) => setNewQuantity(e.target.value)}
-                                className="w-full px-4 py-2 pr-16 rounded-lg border border-neutral/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                                className={`w-full px-4 py-2 pr-16 rounded-lg border border-neutral/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm ${
+                                    batches.length > 0 && !selectedBatchCode ? "bg-gray-100 cursor-not-allowed" : ""
+                                }`}
                                 placeholder="0"
                                 min="0"
                                 step="any"
                                 required
-                                disabled={isSubmitting}
+                                disabled={isSubmitting || (batches.length > 0 && !selectedBatchCode)}
                             />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral">
                                 {material.item.unit}
                             </span>
                         </div>
+                        {batches.length > 0 && !selectedBatchCode && (
+                            <p className="text-xs text-amber-600 mt-1">
+                                <i className="fa-solid fa-info-circle mr-1"></i>
+                                Seleccione una bobina primero para poder ajustar la cantidad.
+                            </p>
+                        )}
 
                         {/* Change indicator */}
                         {diff !== 0 && !isNaN(diff) && (

@@ -376,7 +376,8 @@ export async function PUT(request: NextRequest) {
         const currBatch = curr.batchCode;
 
         const match = newMaterials.find((newMat: any) => {
-          const newInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
+          const rawNewInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
+          const newInvId = rawNewInvId ? rawNewInvId.toString() : undefined;
           return newInvId === currInvId && newMat.batchCode === currBatch;
         });
 
@@ -420,7 +421,8 @@ export async function PUT(request: NextRequest) {
           const currInvId = (curr.item && typeof curr.item === 'object') ? curr.item._id.toString() : (curr.item || curr.inventoryId).toString();
 
           const match = newMaterials.find((newMat: any) => {
-            const newInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
+            const rawNewInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
+            const newInvId = rawNewInvId ? rawNewInvId.toString() : undefined;
             return newInvId === currInvId && !newMat.batchCode; // Match regular materials only
           });
 
@@ -485,7 +487,8 @@ export async function PUT(request: NextRequest) {
 
         materialsToProcess.forEach((newMat: any) => {
           // Check against current (DB)
-          const newInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
+          const rawNewInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
+          const newInvId = rawNewInvId ? rawNewInvId.toString() : undefined;
           const newBatch = newMat.batchCode;
 
           // For equipment instances, idempotency is handled inside processOrderUsage (status check)

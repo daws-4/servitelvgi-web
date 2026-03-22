@@ -1,8 +1,24 @@
 import UserModel from "@/models/User";
 import { connectDB } from "@/lib/db";
 
+function normalizePhoneNumber(phone?: string): string | undefined {
+  if (!phone) return phone;
+  const digits = String(phone).replace(/\D/g, "");
+  
+  if (digits.startsWith("0")) {
+    return "58" + digits.substring(1);
+  } else if (!digits.startsWith("58") && digits.length === 10) {
+    return "58" + digits;
+  }
+  
+  return digits;
+}
+
 export async function createUser(data: any) {
   await connectDB();
+  if (data.phoneNumber) {
+    data.phoneNumber = normalizePhoneNumber(data.phoneNumber);
+  }
   return await UserModel.create(data);
 }
 
@@ -18,6 +34,9 @@ export async function getUserById(id: string) {
 
 export async function updateUser(id: string, data: any) {
   await connectDB();
+  if (data.phoneNumber !== undefined) {
+    data.phoneNumber = normalizePhoneNumber(data.phoneNumber);
+  }
   return await UserModel.findByIdAndUpdate(
     id,
     { $set: data },
@@ -29,3 +48,4 @@ export async function deleteUser(id: string) {
   await connectDB();
   return await UserModel.findByIdAndDelete(id).lean();
 }
+

@@ -94,7 +94,8 @@ export function exportReportToExcel(
             "Ticket": order.ticket || "N/A",
             "N° Abonado": order.subscriberNumber,
             "Nombre": order.subscriberName,
-            "Fecha": formatDateVenezuela(order.completionDate),
+            "Fecha de Asignación": formatDateVenezuela(order.assignmentDate),
+            "Fecha de Completación": formatDateVenezuela(order.completionDate),
           });
         });
 
@@ -106,7 +107,8 @@ export function exportReportToExcel(
             "Ticket": order.ticket || "N/A",
             "N° Abonado": order.subscriberNumber,
             "Nombre": order.subscriberName,
-            "Fecha": formatDateVenezuela(order.assignmentDate),
+            "Fecha de Asignación": formatDateVenezuela(order.assignmentDate),
+            "Fecha de Completación": "-",
           });
         });
       });

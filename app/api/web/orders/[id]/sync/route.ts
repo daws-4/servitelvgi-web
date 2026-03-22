@@ -33,7 +33,7 @@ export async function POST(
             // Body might be empty, ignore JSON parse error
         }
 
-        const result = await syncOrderToNetuno(id, certificateUrl);
+        const result = await syncOrderToNetuno(id, certificateUrl, sessionUser);
 
         if (result.success) {
             revalidateTag("orders", "max");

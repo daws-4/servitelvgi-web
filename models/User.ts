@@ -10,8 +10,10 @@ export interface IUser {
   name: string;
   surname: string;
   email: string;
+  phoneNumber?: string;
   role: "admin";
   isActive: boolean;
+  isAutopilot?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -42,6 +44,10 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    phoneNumber: {
+      type: String,
+      required: false,
+    },
     role: {
       type: String,
       enum: ["admin"],
@@ -51,6 +57,10 @@ const UserSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    isAutopilot: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

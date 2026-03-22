@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/authHelpers";
+import UserModel from "@/models/User";
 import {
   getDailyReport,
   getMonthlyReport,
@@ -31,6 +32,16 @@ export async function GET(request: NextRequest) {
     const sessionUser = await getUserFromRequest(request);
     if (!sessionUser) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    let adminPhoneNumber = null;
+    try {
+      if (sessionUser.userModel === 'User') {
+        const adminUser = await UserModel.findById(sessionUser.userId).select("phoneNumber").lean() as any;
+        adminPhoneNumber = adminUser?.phoneNumber || null;
+      }
+    } catch(e) {
+      console.error("Error fetching admin phone number:", e);
     }
 
     const { searchParams } = new URL(request.url);
@@ -241,7 +252,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data,
-      metadata,
+      metadata: { ...metadata, adminPhoneNumber },
     });
   } catch (error: any) {
     console.error("Error generando reporte:", error);

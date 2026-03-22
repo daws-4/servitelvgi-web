@@ -68,31 +68,57 @@ export async function exportReportToWord(
   switch (reportType) {
     case "daily_installations":
     case "daily_repairs":
-    case "monthly_installations":
-    case "monthly_repairs":
-    case "monthly_recoveries":
       tableHeaders = ["N° Abonado", "Nombre", "Dirección", "Tipo", "Estado", "Cuadrilla"];
-      const allOrders: any[] = [];
+      const dailyOrders: any[] = [];
 
       // Flatten cuadrillas data
       (data.cuadrillas || []).forEach((crew: any) => {
         // Add completed
         (crew.completadas || []).forEach((order: any) => {
-          allOrders.push({ ...order, statusDisplayName: order.status === "completed_special" ? "Completada Especial" : "Finalizada", crewName: crew.crewName });
+          dailyOrders.push({ ...order, statusDisplayName: order.status === "completed_special" ? "Completada Especial" : "Finalizada", crewName: crew.crewName });
         });
         // Add not completed
         (crew.noCompletadas || []).forEach((order: any) => {
-          allOrders.push({ ...order, statusDisplayName: "Pendiente", crewName: crew.crewName });
+          dailyOrders.push({ ...order, statusDisplayName: "Pendiente", crewName: crew.crewName });
         });
       });
 
-      tableRows = allOrders.map((order: any) => [
+      tableRows = dailyOrders.map((order: any) => [
         order.subscriberNumber,
         order.subscriberName || "",
         order.address || "",
         order.type === "instalacion" ? "Instalación" : order.type === "averia" ? "Avería" : "Recuperación",
         order.statusDisplayName,
         order.crewName || "N/A",
+      ]);
+      break;
+
+    case "monthly_installations":
+    case "monthly_repairs":
+    case "monthly_recoveries":
+      tableHeaders = ["N° Abonado", "Nombre", "Tipo", "Estado", "Cuadrilla", "Asignación", "Completación"];
+      const monthlyOrdersWord: any[] = [];
+
+      // Flatten cuadrillas data
+      (data.cuadrillas || []).forEach((crew: any) => {
+        // Add completed
+        (crew.completadas || []).forEach((order: any) => {
+          monthlyOrdersWord.push({ ...order, statusDisplayName: order.status === "completed_special" ? "Completada Especial" : "Finalizada", crewName: crew.crewName });
+        });
+        // Add not completed
+        (crew.noCompletadas || []).forEach((order: any) => {
+          monthlyOrdersWord.push({ ...order, statusDisplayName: "Pendiente", crewName: crew.crewName });
+        });
+      });
+
+      tableRows = monthlyOrdersWord.map((order: any) => [
+        order.subscriberNumber,
+        order.subscriberName || "",
+        order.type === "instalacion" ? "Instalación" : order.type === "averia" ? "Avería" : "Recuperación",
+        order.statusDisplayName,
+        order.crewName || "N/A",
+        order.assignmentDate ? new Date(order.assignmentDate).toLocaleDateString("es-ES") : "-",
+        ['completed', 'completed_special'].includes(order.status) && order.completionDate ? new Date(order.completionDate).toLocaleDateString("es-ES") : "-",
       ]);
       break;
 

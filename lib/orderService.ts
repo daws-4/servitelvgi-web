@@ -427,6 +427,11 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
     // console.log(`Order ${id} has no crew assigned, skipping status change notification`);
   }
 
+  // --- AUTOMATIC SYNC ---
+  if (statusChanged && (data.status === 'completed' || data.status === 'completed_special')) {
+    syncOrderToNetuno(id, undefined, sessionUser).catch(e => console.error("Error auto-syncing to Netuno:", e));
+  }
+
   return updatedOrder;
 }
 
@@ -437,8 +442,23 @@ export async function deleteOrder(id: string) {
 }
 
 // Función manual para sincronizar con Netuno (n8n)
-export async function syncOrderToNetuno(id: string, certificateUrlOverride?: string) {
+export async function syncOrderToNetuno(id: string, certificateUrlOverride?: string, sessionUser?: any) {
   await connectDB();
+
+  let adminPhoneNumbers = "";
+  
+  try {
+    const UserModel = require("@/models/User").default;
+    const autopilotAdmins = await UserModel.find({ isAutopilot: true }).select("phoneNumber").lean();
+    if (autopilotAdmins && autopilotAdmins.length > 0) {
+        adminPhoneNumbers = autopilotAdmins.map((a: any) => a.phoneNumber).filter(Boolean).join(",");
+    } else if (sessionUser?.userModel === 'User') { // Fallback if no override
+        const adminUser = await UserModel.findById(sessionUser.userId).select("phoneNumber").lean();
+        if (adminUser?.phoneNumber) {
+            adminPhoneNumbers = adminUser.phoneNumber;
+        }
+    }
+  } catch(e) {}
 
   if (!process.env.N8N_WEBHOOK_URL) {
     throw new Error('N8N_WEBHOOK_URL is not defined in .env');
@@ -470,6 +490,7 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
 
   // Build detailed payload with requested aliases and backward compatibility
   const payload: any = {
+    adminPhoneNumbers, // Multiple numbers isolated by commas
     // 1. Requested Aliases (User specific request)
     technician: '', // Will be populated below
     ticket: order.ticket_id || order.subscriberNumber,

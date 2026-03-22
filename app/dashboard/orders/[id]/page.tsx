@@ -116,22 +116,29 @@ export default function OrderEditPage() {
             return;
         }
 
-        const response = await axios.put('/api/web/orders', {
-            id: orderId,
-            ...data,
-            powerNap: data.powerNap,
-            powerRoseta: data.powerRoseta,
-            remainingPorts: data.remainingPorts,
-            phones: data.phones.split(',').map(p => p.trim()).filter(p => p),
-            servicesToInstall: data.servicesToInstall.split(',').map(s => s.trim()).filter(s => s),
-            serialNap: data.serialNap,
-            usedPort: data.usedPort,
-        });
+        try {
+            const response = await axios.put('/api/web/orders', {
+                id: orderId,
+                ...data,
+                powerNap: data.powerNap,
+                powerRoseta: data.powerRoseta,
+                remainingPorts: data.remainingPorts,
+                phones: data.phones.split(',').map(p => p.trim()).filter(p => p),
+                servicesToInstall: data.servicesToInstall.split(',').map(s => s.trim()).filter(s => s),
+                serialNap: data.serialNap,
+                usedPort: data.usedPort,
+            });
 
-        if (response.status === 200) {
-            alert('¡Orden actualizada correctamente!');
-            // Optionally refresh the data
-            window.location.reload();
+            if (response.status === 200) {
+                alert('¡Orden actualizada correctamente!');
+                // Optionally refresh the data
+                window.location.reload();
+            }
+        } catch (error: any) {
+            if (error.response?.data?.error) {
+                alert(`Validación del Sistema: ${error.response.data.error}`);
+            }
+            throw error;
         }
     };
 

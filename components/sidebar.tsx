@@ -14,7 +14,8 @@ import {
     SatelliteIcon,
     LogoutIcon,
     CrewsIcon,
-    MobileIcon
+    MobileIcon,
+    UsersIcon
 } from "@/components/dashboard-icons";
 import Link from "next/link";
 import { UserCell } from "@/components/dataView/User";
@@ -42,6 +43,7 @@ const gestionItems: NavItem[] = [
     { href: "/dashboard/inventory", label: "Inventario", icon: InventoryIcon },
     { href: "/dashboard/reports", label: "Reportes", icon: ReportsIcon },
     { href: "/dashboard/apk", label: "Versiones APK", icon: MobileIcon },
+    { href: "/dashboard/users", label: "Administradores", icon: UsersIcon },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ children, isOpen = false, onClose }) => {

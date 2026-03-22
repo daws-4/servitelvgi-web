@@ -26,6 +26,7 @@ export async function sendReportToN8n(
     // Transformar datos al formato esperado por n8n
     const payload = {
       reportType,
+      adminPhoneNumber: metadata?.adminPhoneNumber || null,
       data: transformDataForN8n(reportType, data),
       metadata: {
         generatedAt: new Date().toISOString(),

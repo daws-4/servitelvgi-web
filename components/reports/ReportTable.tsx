@@ -69,7 +69,8 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
 
                 // Agregar fecha si es reporte mensual
                 if (['monthly_installations', 'monthly_repairs', 'monthly_recoveries'].includes(reportType)) {
-                    cols.push({ key: "date", label: "FECHA" });
+                    cols.push({ key: "assignmentDate", label: "FECHA ASIGNACIÓN" });
+                    cols.push({ key: "completionDate", label: "FECHA COMPLETACIÓN" });
                 }
 
                 // Agrupar por cuadrilla - filtrar por crewId si está seleccionado
@@ -88,7 +89,8 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                             ticket: order.ticket || "N/A",
                             subscriberNumber: order.subscriberNumber,
                             subscriberName: order.subscriberName,
-                            date: order.completionDate ? format(new Date(order.completionDate), 'dd/MM/yyyy') : '-'
+                            assignmentDate: order.assignmentDate ? format(new Date(order.assignmentDate), 'dd/MM/yyyy') : '-',
+                            completionDate: order.completionDate ? format(new Date(order.completionDate), 'dd/MM/yyyy') : '-'
                         });
                     });
 
@@ -102,7 +104,8 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                             ticket: order.ticket || "N/A",
                             subscriberNumber: order.subscriberNumber,
                             subscriberName: order.subscriberName,
-                            date: order.assignmentDate ? format(new Date(order.assignmentDate), 'dd/MM/yyyy') : '-'
+                            assignmentDate: order.assignmentDate ? format(new Date(order.assignmentDate), 'dd/MM/yyyy') : '-',
+                            completionDate: '-'
                         });
                     });
                 });

@@ -442,23 +442,27 @@ export async function deleteOrder(id: string) {
 }
 
 // Función manual para sincronizar con Netuno (n8n)
-export async function syncOrderToNetuno(id: string, certificateUrlOverride?: string, sessionUser?: any) {
+export async function syncOrderToNetuno(id: string, certificateUrlOverride?: string, sessionUser?: any, adminPhoneOverride?: string) {
   await connectDB();
 
-  let adminPhoneNumbers = "";
+  let adminPhoneNumbers = adminPhoneOverride || "";
   
-  try {
-    const UserModel = require("@/models/User").default;
-    const autopilotAdmins = await UserModel.find({ isAutopilot: true }).select("phoneNumber").lean();
-    if (autopilotAdmins && autopilotAdmins.length > 0) {
-        adminPhoneNumbers = autopilotAdmins.map((a: any) => a.phoneNumber).filter(Boolean).join(",");
-    } else if (sessionUser?.userModel === 'User') { // Fallback if no override
-        const adminUser = await UserModel.findById(sessionUser.userId).select("phoneNumber").lean();
-        if (adminUser?.phoneNumber) {
-            adminPhoneNumbers = adminUser.phoneNumber;
+  if (!adminPhoneNumbers) {
+      try {
+        const UserModel = require("@/models/User").default;
+        const autopilotAdmins = await UserModel.find({ isAutopilot: true }).select("phoneNumber").lean();
+        
+        if (autopilotAdmins && autopilotAdmins.length > 0) {
+            adminPhoneNumbers = autopilotAdmins.map((a: any) => a.phoneNumber).filter(Boolean).join(",");
+        } else {
+            // Enforce new rule: Stop execution if no autopilot is active
+            console.log(`Sync for order ${id} aborted: No active autopilot admin found.`);
+            return { success: false, error: "No hay ningún administrador con Piloto Automático activado." };
         }
-    }
-  } catch(e) {}
+      } catch(e) {
+          console.error("Error retrieving autopilot admins:", e);
+      }
+  }
 
   if (!process.env.N8N_WEBHOOK_URL) {
     throw new Error('N8N_WEBHOOK_URL is not defined in .env');

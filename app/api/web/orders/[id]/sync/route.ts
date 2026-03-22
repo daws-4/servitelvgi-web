@@ -33,7 +33,26 @@ export async function POST(
             // Body might be empty, ignore JSON parse error
         }
 
-        const result = await syncOrderToNetuno(id, certificateUrl, sessionUser);
+        let adminPhone = undefined;
+        if (sessionUser.userModel === 'User') {
+            const UserModel = require("@/models/User").default;
+            const adminUser = await UserModel.findById(sessionUser.userId).select("phoneNumber").lean();
+            if (adminUser?.phoneNumber) {
+                adminPhone = adminUser.phoneNumber;
+            } else {
+                return NextResponse.json(
+                    { success: false, error: "No tienes un número de teléfono guardado en tu perfil para recibir el comprobante." },
+                    { status: 400 }
+                );
+            }
+        } else {
+            return NextResponse.json(
+                { success: false, error: "Solo los administradores en sesión pueden enviarse el comprobante a sí mismos de forma manual." },
+                { status: 403 }
+            );
+        }
+
+        const result = await syncOrderToNetuno(id, certificateUrl, sessionUser, adminPhone);
 
         if (result.success) {
             revalidateTag("orders", "max");

@@ -33,103 +33,104 @@ export async function generateCertificateArrayBuffer(order: any): Promise<ArrayB
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    width: '800px',
-                    height: '1100px',
+                    width: '1200px',
+                    height: '800px',
                     backgroundColor: colors.white,
                     color: colors.black,
-                    padding: '16px',
+                    padding: '40px',
                     fontFamily: 'sans-serif',
-                    fontSize: '12px'
                 }}
             >
                 {/* HEADER */}
                 <div
                     style={{
                         display: 'flex',
+                        flexDirection: 'row',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        paddingBottom: '8px',
-                        marginBottom: '12px',
-                        borderBottom: `2px solid ${colors.primary}`,
+                        paddingBottom: '20px',
+                        marginBottom: '20px',
+                        borderBottom: `4px solid ${colors.primary}`,
                     }}
                 >
-                    {/* LEFT: LOGO */}
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {/* LOGO */}
+                    <div style={{ display: 'flex', alignItems: 'center', width: '250px' }}>
                         <img
                             src={logoUrl}
-                            width={126}
-                            height={126}
+                            width={220}
                             style={{ objectFit: 'contain' }}
                             alt="Netuno"
                         />
                     </div>
 
                     {/* CENTER: TITLE & ORDER INFO */}
-                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'center', alignItems: 'center', position: 'absolute', left: '337px' }}>
-                        <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: colors.gray800, margin: 0, marginBottom: '4px' }}>FORMATO DE FINALIZACIÓN</h2>
-                        <p style={{ fontSize: '14px', color: colors.gray600, margin: 0 }}>Orden #{order.ticket_id || order.subscriberNumber}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'center', alignItems: 'center' }}>
+                        <h2 style={{ fontSize: '32px', fontWeight: 'bold', color: colors.gray800, margin: 0, marginBottom: '8px' }}>FORMATO DE FINALIZACIÓN</h2>
+                        <p style={{ fontSize: '24px', color: colors.gray600, margin: 0 }}>Orden #{order.ticket_id || order.subscriberNumber}</p>
                     </div>
 
                     {/* RIGHT: METADATA */}
-                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right', alignItems: 'flex-end', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right', alignItems: 'flex-end', width: '250px' }}>
                         {order.createdAt && (
-                            <p style={{ fontWeight: '500', color: colors.gray600, margin: '2px 0' }}>
+                            <p style={{ fontSize: '16px', fontWeight: '500', color: colors.gray600, margin: '4px 0' }}>
                                 Hora Asignada: <span style={{ fontWeight: 'bold' }}>{new Date(order.createdAt).toLocaleDateString()} {new Date(order.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                             </p>
                         )}
                         {order.updatedAt && (
-                            <p style={{ fontWeight: '500', color: colors.gray600, margin: '2px 0' }}>
+                            <p style={{ fontSize: '16px', fontWeight: '500', color: colors.gray600, margin: '4px 0' }}>
                                 Fecha de Finalización: <span style={{ fontWeight: 'bold' }}>{new Date(order.updatedAt).toLocaleDateString()} {new Date(order.updatedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
                             </p>
                         )}
                         {technicianName && (
-                            <p style={{ fontSize: '14px', fontWeight: '500', color: colors.primary, margin: '2px 0' }}>
+                            <p style={{ fontSize: '20px', fontWeight: '500', color: colors.primary, marginTop: '8px', marginBottom: '0px' }}>
                                 Técnico: <span style={{ fontWeight: 'bold' }}>{technicianName}</span>
                             </p>
                         )}
                     </div>
                 </div>
 
-                {/* SUBSCRIBER INFO, TECHNICAL DETAILS & MATERIALS */}
-                <div style={{ display: 'flex', flexDirection: 'row', marginBottom: '12px', gap: '12px' }}>
-                    {/* SUBSCRIBER */}
-                    <div style={{ display: 'flex', flexDirection: 'column', width: '22%' }}>
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `1px solid ${colors.gray200}`, paddingBottom: '2px', marginBottom: '8px', margin: 0 }}>Datos del Abonado</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', gap: '4px' }}>
+                {/* MIDDLE ROW: SUBSCRIBER INFO, TECHNICAL DETAILS & MATERIALS */}
+                <div style={{ display: 'flex', flexDirection: 'row', marginBottom: '20px', minHeight: '350px' }}>
+                    
+                    {/* SUBSCRIBER - 25% */}
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '280px', paddingRight: '20px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `2px solid ${colors.gray200}`, paddingBottom: '4px', marginBottom: '16px', margin: 0 }}>DATOS DEL ABONADO</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', fontSize: '16px', gap: '12px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px' }}>Abonado:</span>
-                                <span style={{ fontWeight: '500' }}>{order.subscriberName}</span>
+                                <span style={{ fontWeight: '600', color: colors.gray600 }}>Abonado:</span>
+                                <span style={{ fontWeight: '500', fontSize: '18px', textTransform: 'uppercase' }}>{order.subscriberName}</span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px' }}>Nº Abonado:</span>
-                                <span style={{ fontWeight: '500' }}>{order.subscriberNumber}</span>
+                                <span style={{ fontWeight: '600', color: colors.gray600 }}>Nº Abonado:</span>
+                                <span style={{ fontWeight: '500', fontSize: '18px' }}>{order.subscriberNumber}</span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px' }}>Dirección:</span>
-                                <span style={{ fontWeight: '500', lineHeight: 1.2 }}>{order.address?.substring(0, 50)}{order.address?.length > 50 ? '...' : ''}</span>
+                                <span style={{ fontWeight: '600', color: colors.gray600 }}>Dirección:</span>
+                                <span style={{ fontWeight: '500', fontSize: '16px', lineHeight: 1.3 }}>{order.address?.substring(0, 100)}{order.address?.length > 100 ? '...' : ''}</span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px' }}>Teléfonos:</span>
-                                <span style={{ fontWeight: '500' }}>{order.phones || order.subscriberNumber}</span>
+                                <span style={{ fontWeight: '600', color: colors.gray600 }}>Teléfonos:</span>
+                                <span style={{ fontWeight: '500', fontSize: '16px' }}>{order.phones || order.subscriberNumber}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* TECHNICAL */}
-                    <div style={{ display: 'flex', flexDirection: 'column', width: '36%' }}>
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `1px solid ${colors.gray200}`, paddingBottom: '2px', marginBottom: '8px', margin: 0 }}>Detalles Técnicos</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'row', gap: '16px' }}>
+                    {/* TECHNICAL - 35% */}
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '380px', paddingRight: '20px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `2px solid ${colors.gray200}`, paddingBottom: '4px', marginBottom: '16px', margin: 0 }}>DETALLES TÉCNICOS</h3>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px', marginBottom: '2px' }}>Tipo de Orden:</span>
-                                    <div style={{ textTransform: 'uppercase', fontWeight: '500', padding: '2px 6px', borderRadius: '4px', backgroundColor: colors.gray100, fontSize: '12px', display: 'flex' }}>
+                                    <span style={{ fontWeight: '600', color: colors.gray600, marginBottom: '4px' }}>Tipo de Orden:</span>
+                                    <div style={{ textTransform: 'uppercase', fontWeight: '500', padding: '4px 12px', borderRadius: '4px', backgroundColor: colors.gray100, display: 'flex' }}>
                                         {order.type}
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px', marginBottom: '2px' }}>Estado:</span>
+                                    <span style={{ fontWeight: '600', color: colors.gray600, marginBottom: '4px' }}>Estado:</span>
                                     <div style={{
-                                        textTransform: 'uppercase', fontWeight: '500', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', display: 'flex',
+                                        textTransform: 'uppercase', fontWeight: '500', padding: '4px 12px', borderRadius: '4px', display: 'flex',
                                         backgroundColor: order.status === 'completed_special' ? '#ccfbf1' : '#dcfce7',
                                         color: order.status === 'completed_special' ? '#115e59' : '#166534',
                                         border: `1px solid ${order.status === 'completed_special' ? '#99f6e4' : '#bbf7d0'}`
@@ -138,103 +139,145 @@ export async function generateCertificateArrayBuffer(order: any): Promise<ArrayB
                                     </div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'row', gap: '8px' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px' }}>Nodo:</span>
-                                    <span style={{ fontWeight: '500' }}>{order.node || 'N/A'}</span>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: '600', color: colors.gray600 }}>Nodo:</span>
+                                    <span style={{ fontWeight: '500', fontSize: '18px' }}>{order.node || 'N/A'}</span>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px' }}>Color Etiqueta:</span>
-                                    <span style={{ fontWeight: '500', textTransform: 'capitalize' }}>
-                                        {order.etiqueta?.color === 'verde' ? 'Verde' :
-                                            order.etiqueta?.color === 'rojo' ? 'Rojo' :
-                                                order.etiqueta?.color === 'azul' ? 'Azul' :
-                                                    order.etiqueta?.color || 'N/A'}
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: '600', color: colors.gray600 }}>Color Etiqueta:</span>
+                                    <span style={{ fontWeight: '500', textTransform: 'capitalize', display: 'flex', alignItems: 'center' }}>
+                                        {order.etiqueta?.color && (
+                                            <div style={{ width: '12px', height: '12px', borderRadius: '6px', marginRight: '6px', backgroundColor: order.etiqueta.color === 'verde' ? '#10b981' : order.etiqueta.color === 'rojo' ? '#ef4444' : order.etiqueta.color === 'azul' ? '#3b82f6' : 'transparent' }}></div>
+                                        )}
+                                        {order.etiqueta?.color === 'verde' ? 'Verde' : order.etiqueta?.color === 'rojo' ? 'Rojo' : order.etiqueta?.color === 'azul' ? 'Azul' : 'N/A'}
                                     </span>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px' }}>Nº Etiqueta:</span>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <span style={{ fontWeight: '600', color: colors.gray600 }}>Nº Etiqueta:</span>
                                     <span style={{ fontWeight: '500' }}>{order.etiqueta?.numero || 'N/A'}</span>
                                 </div>
                             </div>
+
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px' }}>Servicios / Trabajo:</span>
-                                <span style={{ fontWeight: '500' }}>{order.servicesToInstall || 'N/A'}</span>
+                                <span style={{ fontWeight: '600', color: colors.gray600 }}>Servicios / Trabajo Realizado:</span>
+                                <span style={{ fontWeight: '500' }}>{Array.isArray(order.servicesToInstall) ? order.servicesToInstall.join(', ') : order.servicesToInstall || 'N/A'}</span>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', marginTop: '4px' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '11px' }}>Pot. Nap:</span>
-                                    <span style={{ fontWeight: '500', fontSize: '12px' }}>{order.powerNap || 'N/A'}</span>
+                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '14px' }}>Pot. Nap:</span>
+                                    <span style={{ fontWeight: '500', fontSize: '16px' }}>{order.powerNap || 'N/A'}</span>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '11px' }}>Pot. Roseta:</span>
-                                    <span style={{ fontWeight: '500', fontSize: '12px' }}>{order.powerRoseta || 'N/A'}</span>
+                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '14px' }}>Pot. Roseta:</span>
+                                    <span style={{ fontWeight: '500', fontSize: '16px' }}>{order.powerRoseta || 'N/A'}</span>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '11px' }}>Serial Nap:</span>
-                                    <span style={{ fontWeight: '500', fontSize: '12px' }}>{order.serialNap || 'N/A'}</span>
+                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '14px' }}>Serial Nap:</span>
+                                    <span style={{ fontWeight: '500', fontSize: '16px' }}>{order.serialNap || 'N/A'}</span>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '11px' }}>Pto Usado:</span>
-                                    <span style={{ fontWeight: '500', fontSize: '12px' }}>{order.usedPort || 'N/A'}</span>
+                                    <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '14px' }}>Puerto Usado:</span>
+                                    <span style={{ fontWeight: '500', fontSize: '16px' }}>{order.usedPort || 'N/A'}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* MATERIALS */}
-                    <div style={{ display: 'flex', flexDirection: 'column', width: '42%' }}>
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `1px solid ${colors.gray200}`, paddingBottom: '2px', marginBottom: '8px', margin: 0 }}>Materiales Utilizados</h3>
+                    {/* MATERIALS - 40% (2 column grid layout) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '460px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `2px solid ${colors.gray200}`, paddingBottom: '4px', marginBottom: '16px', margin: 0 }}>MATERIALES UTILIZADOS</h3>
                         {usedMaterials.length > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '8px' }}>
                                 {usedMaterials.map((mat: any, idx: number) => (
-                                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', padding: '4px 8px', borderRadius: '4px', backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}`, fontSize: '11px' }}>
+                                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', width: '226px', padding: '10px', borderRadius: '8px', backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                            <span style={{ fontWeight: '600', color: mat.item ? colors.gray700 : colors.gray400 }}>
-                                                {mat.item?.code ?? '(Material eliminado)'}
+                                            <span style={{ fontSize: '14px', fontWeight: '600', color: mat.item ? colors.gray700 : colors.gray400, flex: 1 }}>
+                                                {mat.item?.code ?? mat.item ?? '(Material eliminado)'}
                                             </span>
-                                            <span style={{ fontWeight: 'bold', marginLeft: '8px', color: colors.gray800 }}>×{mat.quantity}</span>
+                                            <span style={{ fontSize: '16px', fontWeight: 'bold', color: colors.gray800 }}>×{mat.quantity}</span>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <p style={{ fontStyle: 'italic', fontSize: '11px', padding: '4px 0', margin: 0, color: colors.gray500 }}>No se registraron materiales.</p>
+                            <p style={{ fontStyle: 'italic', fontSize: '16px', color: colors.gray500, margin: 0 }}>No se registraron materiales.</p>
                         )}
                     </div>
                 </div>
 
-                {/* LOGS, SIGNATURE */}
-                <div style={{ display: 'flex', flexDirection: 'row', gap: '12px', marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `1px solid ${colors.gray200}`, paddingBottom: '2px', marginBottom: '8px', margin: 0 }}>Bitácora</h3>
-                        <div style={{ display: 'flex', padding: '8px', borderRadius: '4px', textAlign: 'center', backgroundColor: colors.gray50, border: `1px dashed ${colors.gray300}` }}>
-                            <p style={{ fontSize: '12px', fontStyle: 'italic', padding: '16px 0', margin: 0, color: colors.gray500 }}>{order.installerLog?.[0]?.log ? order.installerLog[order.installerLog.length - 1].log : 'Sin bitácora.'}</p>
+                {/* BOTTOM ROW: SPEEDTEST, LOG, SIGNATURE */}
+                <div style={{ display: 'flex', flexDirection: 'row', marginTop: 'auto', gap: '20px' }}>
+                    
+                    {/* SPEEDTEST */}
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '360px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `2px solid ${colors.gray200}`, paddingBottom: '4px', marginBottom: '16px', margin: 0 }}>PRUEBA DE VELOCIDAD</h3>
+                        {order.internetTest ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', padding: '12px 16px', borderRadius: '8px', backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}` }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '14px', textTransform: 'uppercase', color: colors.gray500 }}>DESCARGA</span>
+                                    <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                                        <span style={{ fontSize: '20px', fontWeight: 'bold', color: colors.green600 }}>{order.internetTest.downloadSpeed || 0}</span>
+                                        <span style={{ fontSize: '14px', color: colors.gray400, marginLeft: '6px' }}>Mbps</span>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '14px', textTransform: 'uppercase', color: colors.gray500 }}>CARGA</span>
+                                    <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                                        <span style={{ fontSize: '20px', fontWeight: 'bold', color: colors.blue600 }}>{order.internetTest.uploadSpeed || 0}</span>
+                                        <span style={{ fontSize: '14px', color: colors.gray400, marginLeft: '6px' }}>Mbps</span>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '14px', textTransform: 'uppercase', color: colors.gray500 }}>PING</span>
+                                    <div style={{ display: 'flex', alignItems: 'baseline' }}>
+                                        <span style={{ fontSize: '20px', fontWeight: 'bold', color: colors.gray700 }}>{order.internetTest.ping || 0}</span>
+                                        <span style={{ fontSize: '14px', color: colors.gray400, marginLeft: '6px' }}>ms</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', padding: '16px', borderRadius: '8px', textAlign: 'center', backgroundColor: colors.gray50, border: `1px dashed ${colors.gray300}` }}>
+                                <p style={{ fontSize: '16px', fontStyle: 'italic', margin: 0, color: colors.gray500 }}>No se realizó prueba.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* LOG */}
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '400px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `2px solid ${colors.gray200}`, paddingBottom: '4px', marginBottom: '16px', margin: 0 }}>BITÁCORA</h3>
+                        <div style={{ display: 'flex', padding: '16px', borderRadius: '8px', backgroundColor: colors.gray50, border: `1px solid ${colors.gray100}`, minHeight: '100px' }}>
+                            <p style={{ fontSize: '16px', color: colors.gray700, margin: 0 }}>{order.installerLog?.[0]?.log ? order.installerLog[order.installerLog.length - 1].log : order.installerLog?.log || 'Sin bitácora.'}</p>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                        <h3 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `1px solid ${colors.gray200}`, paddingBottom: '2px', marginBottom: '8px', margin: 0 }}>Firma del Cliente</h3>
+
+                    {/* SIGNATURE */}
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '320px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: colors.primary, borderBottom: `2px solid ${colors.gray200}`, paddingBottom: '4px', marginBottom: '16px', margin: 0 }}>FIRMA DEL CLIENTE</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             {order.customerSignature ? (
-                                <div style={{ display: 'flex', marginBottom: '4px', paddingBottom: '4px', width: '100%', borderBottom: `1px solid ${colors.gray300}`, justifyContent: 'center' }}>
-                                    <img src={order.customerSignature} height={64} style={{ objectFit: 'contain' }} alt="Firma" />
+                                <div style={{ display: 'flex', paddingBottom: '8px', marginBottom: '8px', width: '100%', borderBottom: `1px solid ${colors.gray300}`, justifyContent: 'center' }}>
+                                    <img src={order.customerSignature} height={90} style={{ objectFit: 'contain' }} alt="Firma" />
                                 </div>
                             ) : (
-                                <div style={{ display: 'flex', height: '64px', marginBottom: '4px', width: '100%', borderBottom: `1px solid ${colors.gray300}` }}></div>
+                                <div style={{ display: 'flex', height: '90px', marginBottom: '8px', width: '100%', borderBottom: `1px solid ${colors.gray300}` }}></div>
                             )}
-                            <p style={{ fontSize: '12px', textAlign: 'center', color: colors.gray400, margin: 0 }}>Acepto conforme</p>
+                            <p style={{ fontSize: '16px', textAlign: 'center', color: colors.gray400, margin: 0 }}>Acepto conforme el trabajo realizado</p>
                         </div>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', marginTop: '16px', paddingTop: '8px', justifyContent: 'center', borderTop: `1px solid ${colors.gray100}`, fontSize: '12px', color: colors.gray400 }}>
-                    <p style={{ margin: 0 }}>Generado automáticamente el {new Date().toLocaleDateString()} • ENLARED Web Platform API</p>
+                {/* FOOTER */}
+                <div style={{ display: 'flex', marginTop: '20px', paddingTop: '16px', justifyContent: 'center', color: colors.gray400 }}>
+                    <p style={{ fontSize: '14px', margin: 0 }}>Generado automáticamente el {new Date().toLocaleDateString()} • ENLARED Web Platform API</p>
                 </div>
             </div>
         ),
         {
-            width: 800,
-            height: 520,
+            width: 1200,
+            height: 750,
         }
     );
 

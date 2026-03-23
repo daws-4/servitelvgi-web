@@ -499,12 +499,16 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
 
   // console.log(`🚀 Manually triggering n8n webhook for order ${id}...`);
 
-  // If no certificate was manually taken, dynamically generate and permanently SAVE it to PocketBase
-  let resolvedCertificateUrl = certificateUrlOverride || order.certificateUrl || '';
+  // Ensure certificate is forcefully regenerated every time it is synced to catch last-minute database edits
+  let resolvedCertificateUrl = certificateUrlOverride || '';
   
-  if (!resolvedCertificateUrl) {
+  // We always force the generation because the user wants the latest Material/Name changes to reflect instantly on WhatsApp
+  // However, we still fetch the old URL to clean up if we had one.
+  const oldCertificateUrl = order.certificateUrl;
+  
+  if (!resolvedCertificateUrl && (String(order.type).toLowerCase() === 'instalacion' || String(order.type).toLowerCase() === 'revision')) {
     try {
-      console.log(`[AUTO-GENERATE] Generating server-rendered certificate for order ${id}...`);
+      console.log(`[AUTO-GENERATE] Forcibly generating server-rendered certificate for order ${id}...`);
       const arrayBuffer = await generateCertificateArrayBuffer(order);
       const blob = new Blob([arrayBuffer], { type: 'image/png' });
 
@@ -536,9 +540,12 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
       
       resolvedCertificateUrl = publicUrl;
     } catch (e) {
-      console.error(`[AUTO-GENERATE] Failed to generate/upload dynamically. Falling back to placeholder... Error:`, e);
-      resolvedCertificateUrl = 'https://placehold.co/800x600/eeeeee/666666/png?text=Certificado+Pendiente+por+Generar';
+      console.error(`[AUTO-GENERATE] Failed to generate/upload dynamically. Falling back to old url or placeholder... Error:`, e);
+      resolvedCertificateUrl = oldCertificateUrl || 'https://placehold.co/800x600/eeeeee/666666/png?text=Certificado+Pendiente+por+Generar';
     }
+  } else if (!resolvedCertificateUrl) {
+    // If it's not INSTALACION or REVISION and has no url, fallback to old url
+    resolvedCertificateUrl = oldCertificateUrl || '';
   }
 
   // Build detailed payload with requested aliases and backward compatibility

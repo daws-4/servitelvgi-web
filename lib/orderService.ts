@@ -461,10 +461,9 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
       if (autopilotAdmins && autopilotAdmins.length > 0) {
         adminPhoneNumbers = autopilotAdmins.map((a: any) => a.phoneNumber).filter(Boolean).join(",");
       } else {
-        // No autopilot admin found - log warning but continue
-        // Google Sheets data should still be sent even without a WhatsApp recipient
-        console.log(`Sync for order ${id}: No active autopilot admin found. Continuing for Google Sheets data.`);
-        adminPhoneNumbers = "";
+        // Enforce rule: Stop execution if no autopilot is active
+        console.log(`Sync for order ${id} aborted: No active autopilot admin found.`);
+        return { success: false, error: "No hay ningún administrador con el Piloto Automático activado." };
       }
     } catch (e) {
       console.error("Error retrieving autopilot admins:", e);

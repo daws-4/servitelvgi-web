@@ -429,7 +429,11 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
 
   // --- AUTOMATIC SYNC ---
   if (statusChanged && (data.status === 'completed' || data.status === 'completed_special')) {
-    syncOrderToNetuno(id, undefined, sessionUser).catch(e => console.error("Error auto-syncing to Netuno:", e));
+    try {
+      await syncOrderToNetuno(id, undefined, sessionUser);
+    } catch (e) {
+      console.error("Error auto-syncing to Netuno:", e);
+    }
   }
 
   return updatedOrder;
@@ -442,7 +446,9 @@ export async function deleteOrder(id: string) {
 }
 
 // Función manual para sincronizar con Netuno (n8n)
-export async function syncOrderToNetuno(id: string, certificateUrlOverride?: string, sessionUser?: any, adminPhoneOverride?: string) {
+// syncMode: 'full' = envía datos a Sheets + WhatsApp (default)
+//           'whatsapp_only' = solo envía WhatsApp con certificado (evita duplicados en Sheets)
+export async function syncOrderToNetuno(id: string, certificateUrlOverride?: string, sessionUser?: any, adminPhoneOverride?: string, syncMode: 'full' | 'whatsapp_only' = 'full') {
   await connectDB();
 
   let adminPhoneNumbers = adminPhoneOverride || "";
@@ -455,9 +461,10 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
         if (autopilotAdmins && autopilotAdmins.length > 0) {
             adminPhoneNumbers = autopilotAdmins.map((a: any) => a.phoneNumber).filter(Boolean).join(",");
         } else {
-            // Enforce new rule: Stop execution if no autopilot is active
-            console.log(`Sync for order ${id} aborted: No active autopilot admin found.`);
-            return { success: false, error: "No hay ningún administrador con Piloto Automático activado." };
+            // No autopilot admin found - log warning but continue
+            // Google Sheets data should still be sent even without a WhatsApp recipient
+            console.log(`Sync for order ${id}: No active autopilot admin found. Continuing for Google Sheets data.`);
+            adminPhoneNumbers = "";
         }
       } catch(e) {
           console.error("Error retrieving autopilot admins:", e);
@@ -492,23 +499,26 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
 
   // console.log(`🚀 Manually triggering n8n webhook for order ${id}...`);
 
+  // Resolve certificate URL: explicit override > stored in DB > empty
+  const resolvedCertificateUrl = certificateUrlOverride || order.certificateUrl || '';
+
   // Build detailed payload with requested aliases and backward compatibility
   const payload: any = {
     adminPhoneNumbers, // Multiple numbers isolated by commas
     // 1. Requested Aliases (User specific request)
     technician: '', // Will be populated below
     ticket: order.ticket_id || order.subscriberNumber,
-    enlace_imagen: certificateUrlOverride || order.certificateUrl || '',
+    enlace_imagen: resolvedCertificateUrl,
 
     // 2. Standard Logic (Backward Compatibility for existing n8n nodes)
     timestamp: formatDateToVenezuela(order.updatedAt || new Date()),
     ticket_id: order.ticket_id || order.subscriberNumber,
     subscriberNumber: order.subscriberNumber || '',
     abonado: order.subscriberNumber || '',
-    certificateUrl: certificateUrlOverride || order.certificateUrl || '',
+    certificateUrl: resolvedCertificateUrl,
     type: order.type || 'instalacion',
     status: order.status || 'pending',
-    estado: order.status || 'pending', // Spanish translation for n8n compatibility
+    estado: order.status || 'pending', // Spanish alias for n8n compatibility
   };
 
   // Extract leader name from crew (only leader, not all members)

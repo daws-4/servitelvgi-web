@@ -66,7 +66,7 @@ export async function generateCertificateArrayBuffer(order: any): Promise<ArrayB
                     fontFamily: 'sans-serif',
                 }}
             >
-                    /* HEADER */
+                {/* HEADER */}
                 <div
                     style={{
                         display: 'flex',

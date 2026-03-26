@@ -1,6 +1,8 @@
 import UserModel from "@/models/User";
 import { connectDB } from "@/lib/db";
 
+import bcrypt from "bcryptjs";
+
 function normalizePhoneNumber(phone?: string): string | undefined {
   if (!phone) return phone;
   const digits = String(phone).replace(/\D/g, "");
@@ -19,6 +21,12 @@ export async function createUser(data: any) {
   if (data.phoneNumber) {
     data.phoneNumber = normalizePhoneNumber(data.phoneNumber);
   }
+  
+  // Hash password with bcryptjs
+  if (data.password) {
+    data.password = await bcrypt.hash(data.password, 10);
+  }
+  
   return await UserModel.create(data);
 }
 
@@ -37,6 +45,12 @@ export async function updateUser(id: string, data: any) {
   if (data.phoneNumber !== undefined) {
     data.phoneNumber = normalizePhoneNumber(data.phoneNumber);
   }
+  
+  // Hash password if modified
+  if (data.password) {
+    data.password = await bcrypt.hash(data.password, 10);
+  }
+  
   return await UserModel.findByIdAndUpdate(
     id,
     { $set: data },

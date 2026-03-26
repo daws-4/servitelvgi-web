@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
 import DataUsageModel from "@/models/DataUsage";
 import { getUserFromRequest, getInstallerFromBearerToken } from "@/lib/authHelpers";
+import { getStartAndEndOfDay } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -90,8 +91,8 @@ export async function GET(request: NextRequest) {
 
         if (startDate && endDate) {
             query.createdAt = {
-                $gte: new Date(startDate),
-                $lte: new Date(endDate)
+                $gte: getStartAndEndOfDay(startDate).start,
+                $lte: getStartAndEndOfDay(endDate).end
             };
         }
 

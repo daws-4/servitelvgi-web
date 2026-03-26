@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/lib/authHelpers";
 import NotificationMetricsModel from "@/models/NotificationMetrics";
 import { connectDB } from "@/lib/db";
+import { getStartAndEndOfDay } from "@/lib/timezone";
 
 /**
  * GET /api/admin/notification-metrics
@@ -27,12 +28,10 @@ export async function GET(request: NextRequest) {
         const days = daysParam ? parseInt(daysParam, 10) : 7;
 
         // Calculate date range
-        const endDate = new Date();
-        endDate.setHours(23, 59, 59, 999);
-
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - days);
-        startDate.setHours(0, 0, 0, 0);
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() - days);
+        const { start: startDate } = getStartAndEndOfDay(targetDate);
+        const { end: endDate } = getStartAndEndOfDay();
 
         // Fetch metrics
         const metrics = await NotificationMetricsModel.find({

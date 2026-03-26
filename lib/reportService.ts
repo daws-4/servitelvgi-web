@@ -12,6 +12,7 @@ import OrderSnapshotModel from "@/models/OrderSnapshot";
 import mongoose from "mongoose";
 import { SessionUser } from "@/lib/authHelpers";
 import { startOfMonth, endOfMonth, format, parseISO } from "date-fns";
+import { getStartAndEndOfDay, getStartOfMonthMTG4 } from "@/lib/timezone";
 import type { Types } from "mongoose";
 import type {
   DailyReportData,
@@ -80,12 +81,9 @@ export async function getDailyReport(
 ): Promise<DailyReportData> {
   await connectDB();
 
-  // Usar fecha actual
-  const today = new Date();
-  const startOfDay = new Date(today);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(today);
-  endOfDay.setHours(23, 59, 59, 999);
+  // Usar fecha actual en MTG-4
+  const todayForFormat = new Date(Date.now() - (4 * 60 * 60 * 1000));
+  const { start: startOfDay, end: endOfDay } = getStartAndEndOfDay();
 
   const baseFilter: any = {
     $or: [
@@ -165,7 +163,7 @@ export async function getDailyReport(
   );
 
   return {
-    fecha: format(today, "yyyy-MM-dd"),
+    fecha: format(todayForFormat, "yyyy-MM-dd"),
     cuadrillas,
     totales,
   };
@@ -182,11 +180,8 @@ export async function getMonthlyReport(
 ): Promise<DailyReportData> { // Reuse DailyReportData as structure is identical
   await connectDB();
 
-  const startDate = parseISO(dateRange.start);
-  const endDate = parseISO(dateRange.end);
-
-  // Set end of day for the last day of month
-  endDate.setHours(23, 59, 59, 999);
+  const { start: startDate } = getStartAndEndOfDay(dateRange.start);
+  const { end: endDate } = getStartAndEndOfDay(dateRange.end);
 
   // DIAGNOSTICO 1: Buscar CUALQUIER orden en este rango de fechas (sin importar status ni type)
   const broadQuery = {
@@ -283,7 +278,7 @@ export async function getMonthlyReport(
   );
 
   return {
-    fecha: format(startDate, "yyyy-MM"),
+    fecha: dateRange.start.substring(0, 7),
     cuadrillas,
     totales,
   };
@@ -300,9 +295,8 @@ export async function getInventoryReport(
 
   await connectDB();
 
-  const startDate = parseISO(dateRange.start);
-  const endDate = parseISO(dateRange.end);
-  endDate.setHours(23, 59, 59, 999);
+  const { start: startDate } = getStartAndEndOfDay(dateRange.start);
+  const { end: endDate } = getStartAndEndOfDay(dateRange.end);
 
   // 1. Entradas desde Netuno (type: "entry")
   const entradasNetuno = await InventoryHistoryModel.aggregate([
@@ -444,9 +438,8 @@ export async function getNetunoOrdersReport(
   await connectDB();
 
   // NO cachear - debe ser siempre actualizado
-  const startDate = parseISO(dateRange.start);
-  const endDate = parseISO(dateRange.end);
-  endDate.setHours(23, 59, 59, 999); // Ensure end of day
+  const { start: startDate } = getStartAndEndOfDay(dateRange.start);
+  const { end: endDate } = getStartAndEndOfDay(dateRange.end);
 
   const filter: any = {
     status: { $in: ["completed", "completed_special"] },
@@ -499,8 +492,10 @@ export async function getCrewPerformanceReport(
 ): Promise<{ summary: any[], orders: any[] }> {
   await connectDB();
 
-  const start = new Date(`${dateRange.start}T00:00:00.000Z`);
-  const end = new Date(`${dateRange.end}T23:59:59.999Z`);
+  const { start, end } = {
+    start: getStartAndEndOfDay(dateRange.start).start,
+    end: getStartAndEndOfDay(dateRange.end).end
+  };
 
   const crewFilter: any = { isActive: true };
   if (crewId) {
@@ -610,9 +605,8 @@ export async function getCrewInventoryReport(
 ): Promise<any[]> {
   await connectDB();
 
-  const startDate = parseISO(dateRange.start);
-  const endDate = parseISO(dateRange.end);
-  endDate.setHours(23, 59, 59, 999);
+  const { start: startDate } = getStartAndEndOfDay(dateRange.start);
+  const { end: endDate } = getStartAndEndOfDay(dateRange.end);
 
   const filter: any = {
     type: { $in: ["assignment", "return", "usage_order"] },
@@ -656,8 +650,8 @@ export async function getCrewVisitsReport(
   await connectDB();
 
 
-  const startDate = parseISO(dateRange.start);
-  const endDate = parseISO(dateRange.end);
+  const { start: startDate } = getStartAndEndOfDay(dateRange.start);
+  const { end: endDate } = getStartAndEndOfDay(dateRange.end);
 
   // Agregación para sumar visitCount por cuadrilla y contar por tipo de orden
   const visitsData = await OrderModel.aggregate([
@@ -995,9 +989,8 @@ export async function getInventoryBalanceReport(
 ): Promise<any[]> {
   await connectDB();
 
-  const startDate = parseISO(dateRange.start);
-  const endDate = parseISO(dateRange.end);
-  endDate.setHours(23, 59, 59, 999);
+  const { start: startDate } = getStartAndEndOfDay(dateRange.start);
+  const { end: endDate } = getStartAndEndOfDay(dateRange.end);
 
   // 1. Obtener todos los items de inventario (Stock actual en bodega)
   const allItems = await InventoryModel.find().lean();
@@ -1097,9 +1090,8 @@ export async function getCrewInventoryBalanceReport(
 ): Promise<any[]> {
   await connectDB();
 
-  const startDate = parseISO(dateRange.start);
-  const endDate = parseISO(dateRange.end);
-  endDate.setHours(23, 59, 59, 999);
+  const { start: startDate } = getStartAndEndOfDay(dateRange.start);
+  const { end: endDate } = getStartAndEndOfDay(dateRange.end);
 
   // Filtro base: sólo cuadrillas activas
   const crewFilter: any = { isActive: true };
@@ -1267,12 +1259,15 @@ export async function getCrewOrdersReport(
 ): Promise<any> {
   await connectDB();
 
-  const startDate = dateRange ? parseISO(dateRange.start) : startOfMonth(new Date());
-  const endDate = dateRange ? parseISO(dateRange.end) : new Date();
-
-  startDate.setHours(0, 0, 0, 0);
-  const endOfDayDate = new Date(endDate);
-  endOfDayDate.setHours(23, 59, 59, 999);
+  let startDate, endOfDayDate;
+  if (dateRange) {
+    startDate = getStartAndEndOfDay(dateRange.start).start;
+    endOfDayDate = getStartAndEndOfDay(dateRange.end).end;
+  } else {
+    startDate = getStartOfMonthMTG4();
+    endOfDayDate = getStartAndEndOfDay().end;
+  }
+  const endDate = endOfDayDate;
 
   // Obtener todos los OrderSnapshots del rango
   const snapshots = await OrderSnapshotModel.find({

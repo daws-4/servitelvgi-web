@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { connectDB } from "@/lib/db";
+import { getStartAndEndOfDay } from "@/lib/timezone";
 import OrderModel from "@/models/Order";
 
 const CORS_HEADERS = {
@@ -41,19 +42,7 @@ const getCachedDashboardStats = unstable_cache(
     async () => {
         await connectDB();
 
-        const today = new Date();
-        const startOfDay = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate(),
-            0, 0, 0, 0
-        );
-        const endOfDay = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate(),
-            23, 59, 59, 999
-        );
+        const { start: startOfDay, end: endOfDay } = getStartAndEndOfDay();
 
         const pipeline = [
             {

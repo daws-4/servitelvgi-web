@@ -8,6 +8,7 @@ import { OrderCompletionCertificate } from '@/components/orders/OrderCompletionC
 import axios from 'axios';
 import PocketBase from 'pocketbase';
 import html2canvas from 'html2canvas';
+import { getStatusConfig } from '@/lib/orderConstants';
 
 export default function OrderEditPage() {
     const router = useRouter();
@@ -26,7 +27,8 @@ export default function OrderEditPage() {
     // Logic to enable or disable sent button
     useEffect(() => {
         if (orderData) {
-            setIsAvaliableToSend(orderData.status === 'completed' || orderData.status === 'completed_special' || orderData.status === 'cancelled');
+            const config = getStatusConfig(orderData.status);
+            setIsAvaliableToSend(config.countsAsCompleted || orderData.status === 'cancelled');
         }
     }, [orderData]);
 
@@ -145,8 +147,9 @@ export default function OrderEditPage() {
     const handleSyncNetuno = async () => {
         if (!orderId || !orderData || !certificateRef.current) return;
 
-        if (orderData.status !== 'completed' && orderData.status !== 'completed_special' && orderData.status !== 'cancelled') {
-            alert('La orden debe estar completada, completada especial o cancelada para sincronizar con Netuno');
+        const config = getStatusConfig(orderData.status);
+        if (!config.countsAsCompleted && orderData.status !== 'cancelled') {
+            alert('La orden debe estar completada o cancelada para sincronizar con Netuno');
             return;
         }
 
@@ -268,26 +271,8 @@ export default function OrderEditPage() {
     };
 
     const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-200 uppercase">Pendiente</span>;
-            case 'assigned':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 uppercase">Asignada</span>;
-            case 'in_progress':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200 uppercase">En Progreso</span>;
-            case 'completed':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 uppercase">Completada</span>;
-            case 'completed_special':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-800 border border-teal-200 uppercase">Completada Especial</span>;
-            case 'cancelled':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 uppercase">Cancelada</span>;
-            case 'hard':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-800 border border-orange-200 uppercase">Hard</span>;
-            case 'visita':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200 uppercase">Visita</span>;
-            default:
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-800 border border-gray-200 uppercase">Cargando...</span>;
-        }
+        const config = getStatusConfig(status);
+        return <span className={`px-3 py-1 rounded-full text-xs font-bold ${config.badgeClass} uppercase`}>{config.label}</span>;
     };
 
     if (loading) {

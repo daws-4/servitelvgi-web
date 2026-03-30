@@ -1,86 +1,21 @@
 import React from "react";
 import { Chip, ChipProps } from "@heroui/react";
+import { getStatusConfig } from "@/lib/orderConstants";
 
-// Definimos los tipos de estado posibles según tu lógica de negocio
-export type OrderStatus =
-    | "pending"
-    | "assigned"
-    | "in_progress"
-    | "completed"
-    | "completed_special"
-    | "cancelled"
-    | "averia" // Asumiendo que 'averia' es un tipo especial o estado crítico
-    | "hard"
-    | "visita";
+export type OrderStatus = string;
 
 interface StatusChipProps extends Omit<ChipProps, "children"> {
     status: string; // Recibimos el string del estado (puede venir de la DB)
 }
 
-// Mapa de configuración para cada estado
-// Esto hace que sea muy fácil añadir nuevos estados en el futuro
-const statusConfig: Record<string, { color: ChipProps["color"]; label: string; variant?: ChipProps["variant"] }> = {
-    pending: {
-        color: "warning",
-        label: "Pendiente",
-        variant: "flat",
-    },
-    assigned: {
-        color: "primary", // Usará tu azul corporativo (#3e78b2) si está configurado en el tema
-        label: "Asignada",
-        variant: "flat",
-    },
-    in_progress: {
-        color: "secondary", // O un azul más oscuro
-        label: "En Progreso",
-        variant: "dot",
-    },
-    completed: {
-        color: "success",
-        label: "Completada",
-        variant: "flat",
-    },
-    completed_special: {
-        color: "primary",
-        label: "Completada Especial",
-        variant: "flat",
-    },
-    cancelled: {
-        color: "default",
-        label: "Cancelada",
-        variant: "solid",
-    },
-    averia: {
-        color: "danger",
-        label: "Avería",
-        variant: "flat",
-    },
-    hard: {
-        color: "warning",
-        label: "Hard",
-        variant: "solid",
-    },
-    visita: {
-        color: "success",
-        label: "Visita",
-        variant: "flat",
-    },
-    // Estado por defecto para valores desconocidos
-    unknown: {
-        color: "default",
-        label: "Desconocido",
-        variant: "bordered",
-    },
-};
-
 export const StatusChip: React.FC<StatusChipProps> = ({ status, ...props }) => {
-    // Buscamos la configuración, si no existe usamos 'unknown'
-    const config = statusConfig[status] || statusConfig.unknown;
+    // Buscamos la configuración, si no existe getStatusConfig ya provee un unknown fallback
+    const config = getStatusConfig(status);
 
     return (
         <Chip
-            color={config.color}
-            variant={config.variant}
+            color={config.color as ChipProps["color"]}
+            variant={config.chipVariant as ChipProps["variant"]}
             size="sm" // Tamaño pequeño por defecto para tablas
             classNames={{
                 content: "font-medium",
@@ -92,19 +27,4 @@ export const StatusChip: React.FC<StatusChipProps> = ({ status, ...props }) => {
     );
 };
 
-export default StatusChip;
-
-
-// ### Cómo usarlo en tu `DataTable` u otras vistas
-
-// Simplemente importa el componente y pásale el estado "crudo" que viene de tu base de datos.
-
-// ```tsx
-// import { StatusChip } from "@/components/ui/StatusChip";
-
-// // Ejemplo dentro de una celda de tu tabla
-// <StatusChip status="pending" />
-
-// // Ejemplo con un estado que viene de una variable
-// const orden = { id: 1, estado: "completed" };
-// <StatusChip status={orden.estado} />
+export default StatusChip;

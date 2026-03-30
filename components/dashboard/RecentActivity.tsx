@@ -93,6 +93,11 @@ export const RecentActivity = () => {
     };
 
     const getOrderTitle = (item: any) => {
+        if (VALID_STATUSES.includes(item.changeType as any)) {
+            const config = getStatusConfig(item.changeType);
+            return `Orden ${item.order?.subscriberNumber} ${config.label}`;
+        }
+
         switch (item.changeType) {
             case 'created':
                 return `Orden ${item.order?.subscriberNumber} Creada`;
@@ -102,14 +107,6 @@ export const RecentActivity = () => {
                 return `Cuadrilla Asignada`;
             case 'materials_added':
                 return 'Materiales Agregados';
-            case 'completed':
-                return `Orden ${item.order?.subscriberNumber} Completada`;
-            case 'completed_special':
-                return `Orden ${item.order?.subscriberNumber} Completada Especial`;
-            case 'completed_via500':
-                return `Orden ${item.order?.subscriberNumber} Completada Vía 500`;
-            case 'cancelled':
-                return `Orden ${item.order?.subscriberNumber} Cancelada`;
             default:
                 return 'Cambio en Orden';
         }

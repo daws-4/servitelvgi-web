@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-export type OrderStatus = "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "cancelled" | "hard" | "visita";
-export type OrderType = "instalacion" | "averia" | "recuperacion" | "otro";
+import { getStatusConfig, ORDER_STATUSES, VALID_STATUSES, OrderStatus, OrderType, VALID_TYPES, ORDER_TYPES } from '@/lib/orderConstants';
 
 interface Crew {
     _id: string;
@@ -41,12 +40,8 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
     isSaving = false
 }) => {
     // Validate and normalize initialType to ensure it's a valid OrderType
-    const validTypes: OrderType[] = ["instalacion", "averia", "recuperacion", "otro"];
-    const normalizedType: OrderType = validTypes.includes(initialType) ? initialType : "otro";
-
-    // Validate and normalize initialStatus to ensure it's a valid OrderStatus
-    const validStatuses: OrderStatus[] = ["pending", "assigned", "in_progress", "completed", "completed_special", "cancelled", "hard", "visita"];
-    const normalizedStatus = validStatuses.includes(initialStatus) ? initialStatus : "pending";
+    const normalizedType: OrderType = VALID_TYPES.includes(initialType as OrderType) ? initialType as OrderType : "otro";
+    const normalizedStatus = VALID_STATUSES.includes(initialStatus as OrderStatus) ? initialStatus as OrderStatus : "pending";
 
     const [status, setStatus] = useState<OrderStatus>(normalizedStatus);
     const [type, setType] = useState<OrderType>(normalizedType);
@@ -118,66 +113,6 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
         }
     };
 
-    const getStatusConfig = (currentStatus: OrderStatus) => {
-        switch (currentStatus) {
-            case 'pending':
-                return {
-                    colorClass: "text-yellow-500",
-                    badgeClass: "bg-yellow-100 text-yellow-800 border-yellow-200",
-                    description: "Orden creada, pendiente de asignación."
-                };
-            case 'assigned':
-                return {
-                    colorClass: "text-blue-500",
-                    badgeClass: "bg-blue-100 text-blue-800 border-blue-200",
-                    description: "Cuadrilla notificada. En espera de inicio."
-                };
-            case 'in_progress':
-                return {
-                    colorClass: "text-purple-500",
-                    badgeClass: "bg-purple-100 text-purple-800 border-purple-200",
-                    description: "La cuadrilla está trabajando en el sitio."
-                };
-            case 'completed':
-                return {
-                    colorClass: "text-green-500",
-                    badgeClass: "bg-green-100 text-green-800 border-green-200",
-                    description: "Trabajo finalizado y reportado."
-                };
-            case 'completed_special':
-                return {
-                    colorClass: "text-teal-500",
-                    badgeClass: "bg-teal-100 text-teal-800 border-teal-200",
-                    description: "Completada con condiciones especiales."
-                };
-            case 'cancelled':
-                return {
-                    colorClass: "text-red-500",
-                    badgeClass: "bg-red-100 text-red-800 border-red-200",
-                    description: "Orden cancelada por el operador."
-                };
-            case 'hard':
-                return {
-                    colorClass: "text-orange-500",
-                    badgeClass: "bg-orange-100 text-orange-800 border-orange-200",
-                    description: "Orden Hard. Requiere atención especial."
-                };
-            case 'visita':
-                return {
-                    colorClass: "text-green-500",
-                    badgeClass: "bg-green-100 text-green-800 border-green-200",
-                    description: "Visita técnica realizada."
-                };
-            default:
-                // Fallback for any unexpected status values
-                return {
-                    colorClass: "text-yellow-500",
-                    badgeClass: "bg-yellow-100 text-yellow-800 border-yellow-200",
-                    description: "Orden creada, pendiente de asignación."
-                };
-        }
-    };
-
     const statusConfig = getStatusConfig(status);
 
     return (
@@ -198,18 +133,13 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                             onChange={(e) => handleStatusChange(e.target.value as OrderStatus)}
                             className="w-full pl-10 pr-10 py-2.5 border-2 border-gray-200 rounded-md bg-white font-semibold text-gray-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer"
                         >
-                            <option value="pending">Pendiente</option>
-                            <option value="assigned">Asignada</option>
-                            <option value="in_progress">En Progreso</option>
-                            <option value="completed">Completada</option>
-                            <option value="completed_special">Completada Especial</option>
-                            <option value="cancelled">Cancelada</option>
-                            <option value="hard">Hard</option>
-                            <option value="visita">Visita</option>
+                            {Object.entries(ORDER_STATUSES).map(([key, config]) => (
+                                <option key={key} value={key}>{config.label}</option>
+                            ))}
                         </select>
                         {/* Status Icon */}
                         <div className="absolute inset-y-0 left-0 flex items-center px-3 pointer-events-none">
-                            <i className={`fa-solid fa-circle ${statusConfig.colorClass}`}></i>
+                            <i className={`fa-solid fa-${statusConfig.icon} ${statusConfig.textColor || 'text-gray-500'}`}></i>
                         </div>
                         {/* Chevron */}
                         <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-gray-500">
@@ -261,10 +191,9 @@ export const OrderStatusManager: React.FC<OrderStatusManagerProps> = ({
                         onChange={(e) => handleTypeChange(e.target.value as OrderType)}
                         className="w-full px-3 py-2.5 border-2 border-gray-200 rounded-md bg-white focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all appearance-none cursor-pointer"
                     >
-                        <option value="instalacion">Instalación</option>
-                        <option value="averia">Avería</option>
-                        <option value="recuperacion">Recuperación</option>
-                        <option value="otro">Otro</option>
+                        {Object.entries(ORDER_TYPES).map(([key, config]) => (
+                            <option key={key} value={key}>{config.label}</option>
+                        ))}
                     </select>
                 </div>
 

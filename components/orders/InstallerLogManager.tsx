@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { OrderStatus } from './OrderStatusManager';
+import { getStatusConfig, OrderStatus } from '@/lib/orderConstants';
 
 export interface InstallerLogEntry {
     timestamp: Date;

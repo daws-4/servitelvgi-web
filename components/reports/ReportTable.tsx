@@ -101,7 +101,7 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                             key: `${crew.crewId}-pendiente-${order._id}`,
                             _id: order._id, // Para navegación
                             crew: crew.crewName,
-                            estado: "Pendiente",
+                            estado: order.status ? getStatusConfig(order.status).label : "Pendiente",
                             ticket: order.ticket || "N/A",
                             subscriberNumber: order.subscriberNumber,
                             subscriberName: order.subscriberName,

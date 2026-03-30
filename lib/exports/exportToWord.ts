@@ -15,6 +15,7 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import type { ReportType, ReportMetadata } from "@/types/reportTypes";
+import { getStatusConfig } from "@/lib/orderConstants";
 
 /**
  * Exporta datos de reporte a archivo Word (.docx)
@@ -75,11 +76,11 @@ export async function exportReportToWord(
       (data.cuadrillas || []).forEach((crew: any) => {
         // Add completed
         (crew.completadas || []).forEach((order: any) => {
-          dailyOrders.push({ ...order, statusDisplayName: order.status === "completed_special" ? "Completada Especial" : "Finalizada", crewName: crew.crewName });
+          dailyOrders.push({ ...order, statusDisplayName: getStatusConfig(order.status).label, crewName: crew.crewName });
         });
         // Add not completed
         (crew.noCompletadas || []).forEach((order: any) => {
-          dailyOrders.push({ ...order, statusDisplayName: "Pendiente", crewName: crew.crewName });
+          dailyOrders.push({ ...order, statusDisplayName: order.status ? getStatusConfig(order.status).label : "Pendiente", crewName: crew.crewName });
         });
       });
 
@@ -103,11 +104,11 @@ export async function exportReportToWord(
       (data.cuadrillas || []).forEach((crew: any) => {
         // Add completed
         (crew.completadas || []).forEach((order: any) => {
-          monthlyOrdersWord.push({ ...order, statusDisplayName: order.status === "completed_special" ? "Completada Especial" : "Finalizada", crewName: crew.crewName });
+          monthlyOrdersWord.push({ ...order, statusDisplayName: getStatusConfig(order.status).label, crewName: crew.crewName });
         });
         // Add not completed
         (crew.noCompletadas || []).forEach((order: any) => {
-          monthlyOrdersWord.push({ ...order, statusDisplayName: "Pendiente", crewName: crew.crewName });
+          monthlyOrdersWord.push({ ...order, statusDisplayName: order.status ? getStatusConfig(order.status).label : "Pendiente", crewName: crew.crewName });
         });
       });
 
@@ -243,7 +244,7 @@ export async function exportReportToWord(
         order.subscriberName || "",
         order.type === "instalacion" ? "Instalación" : "Avería",
         order.node || "",
-        order.status === "completed" ? "Completada" : order.status === "completed_special" ? "Completada Especial" : order.status,
+        getStatusConfig(order.status).label,
       ]);
       break;
 

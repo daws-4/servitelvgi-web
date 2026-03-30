@@ -5,7 +5,7 @@ import { FormInput } from '@/components/interactiveForms/Input';
 import { FormTextarea } from '@/components/interactiveForms/Textarea';
 import { MaterialsManager, Material } from './MaterialsManager';
 import { OrderStatusManager } from './OrderStatusManager';
-import { OrderStatus, OrderType } from '@/lib/orderConstants';
+import { OrderStatus, OrderType, getStatusConfig } from '@/lib/orderConstants';
 import { PhotoEvidenceManager } from './PhotoEvidenceManager';
 import { InternetTestCard } from './InternetTestCard';
 import { CustomerSignatureCard } from './CustomerSignatureCard';
@@ -255,10 +255,10 @@ export const OrderEditForm: React.FC<OrderEditFormProps> = ({
                             </div>
                         )}
                         {(() => {
-                            // Use completionDate if available, otherwise fallback to installer log with status 'completed'
+                            // Use completionDate if available, otherwise fallback to installer log with a completed status
                             const completionDate = formData.completionDate
                                 || installerLog
-                                    .filter(entry => entry.status === 'completed')
+                                    .filter(entry => getStatusConfig(entry.status).countsAsCompleted)
                                     .pop()?.timestamp;
 
                             if (!completionDate) return null;

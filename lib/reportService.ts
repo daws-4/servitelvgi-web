@@ -1395,6 +1395,108 @@ export async function getCrewOrdersReport(
     }
   }
 
+  // ─── 3. Fallback: Include ALL active crews via live query ───
+  // Historical snapshots may not include all crews (e.g. crews with 0 orders).
+  // Query all active crews and their current order counts to fill gaps.
+  const crewFilter: any = { isActive: true };
+  if (crewId) crewFilter._id = crewId;
+
+  const allCrews = await CrewModel.find(crewFilter)
+    .populate('leader', 'name surname')
+    .select('number leader')
+    .sort({ number: 1 })
+    .lean();
+
+  // Live aggregation of orders per crew within the date range
+  const liveAggregation = await OrderModel.aggregate([
+    {
+      $match: {
+        assignedTo: { $ne: null },
+        ...(crewId ? { assignedTo: new mongoose.Types.ObjectId(crewId) } : {}),
+      },
+    },
+    {
+      $group: {
+        _id: {
+          crew: "$assignedTo",
+          status: "$status",
+          type: "$type",
+        },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $group: {
+        _id: "$_id.crew",
+        statuses: {
+          $push: {
+            status: "$_id.status",
+            type: "$_id.type",
+            count: "$count",
+          },
+        },
+        total: { $sum: "$count" },
+      },
+    },
+  ]);
+
+  const liveMap = new Map<string, any>();
+  for (const entry of liveAggregation) {
+    liveMap.set(entry._id.toString(), entry);
+  }
+
+  // Add missing crews to the summary map
+  for (const crew of allCrews) {
+    const cIdStr = (crew as any)._id.toString();
+    if (crewSummaryMap.has(cIdStr)) continue; // Already in snapshot data
+
+    const leaderName = (crew as any).leader
+      ? `${(crew as any).leader.name} ${(crew as any).leader.surname}`
+      : 'Sin líder';
+
+    const liveEntry = liveMap.get(cIdStr);
+
+    // Build summary from live data
+    const summary: any = {
+      crewNumber: (crew as any).number,
+      crewName: `Cuadrilla ${(crew as any).number}`,
+      leaderName,
+      pending: 0,
+      assigned: 0,
+      in_progress: 0,
+      completed: 0,
+      completed_special: 0,
+      completed_via500: 0,
+      cancelled: 0,
+      visita: 0,
+      hard: 0,
+      total: 0,
+      instalacion: { total: 0, completed: 0 },
+      averia: { total: 0, completed: 0 },
+      recuperacion: { total: 0, completed: 0 },
+      daysCount: 0,
+    };
+
+    if (liveEntry) {
+      for (const { status, type, count } of liveEntry.statuses) {
+        if (status) summary[status] = (summary[status] || 0) + count;
+
+        const t = (type || 'otro').toLowerCase();
+        if (['instalacion', 'averia', 'recuperacion'].includes(t)) {
+          summary[t].total = (summary[t].total || 0) + count;
+          if (COMPLETED_STATUSES.includes(status)) {
+            summary[t].completed = (summary[t].completed || 0) + count;
+          }
+        }
+      }
+      summary.total = liveEntry.total;
+      // Recalculate completed as sum of completed statuses
+      summary.completed = (summary.completed || 0) + (summary.completed_special || 0) + (summary.completed_via500 || 0);
+    }
+
+    crewSummaryMap.set(cIdStr, summary);
+  }
+
   // Ordenar crews por número
   const crews = Array.from(crewSummaryMap.values())
     .sort((a, b) => a.crewNumber - b.crewNumber)

@@ -3,6 +3,7 @@
 
 import * as XLSX from "xlsx";
 import type { ReportType, ReportMetadata } from "@/types/reportTypes";
+import { getStatusConfig } from "@/lib/orderConstants";
 
 /**
  * Convierte una fecha a GMT-4 (hora de Venezuela) y la formatea
@@ -52,7 +53,7 @@ export function exportReportToExcel(
         crew.completadas.forEach((order: any) => {
           dailyOrders.push({
             "Cuadrilla": crew.crewName,
-            "Estado": order.status === "completed_special" ? "Completada Especial" : "Completada",
+            "Estado": getStatusConfig(order.status).label,
             "Ticket": order.ticket || "N/A",
             "N° Abonado": order.subscriberNumber,
             "Nombre": order.subscriberName,
@@ -63,7 +64,7 @@ export function exportReportToExcel(
         crew.noCompletadas.forEach((order: any) => {
           dailyOrders.push({
             "Cuadrilla": crew.crewName,
-            "Estado": "Pendiente",
+            "Estado": order.status ? getStatusConfig(order.status).label : "Pendiente",
             "Ticket": order.ticket || "N/A",
             "N° Abonado": order.subscriberNumber,
             "Nombre": order.subscriberName,
@@ -90,7 +91,7 @@ export function exportReportToExcel(
         crew.completadas.forEach((order: any) => {
           monthlyOrders.push({
             "Cuadrilla": crew.crewName,
-            "Estado": order.status === "completed_special" ? "Completada Especial" : "Completada",
+            "Estado": getStatusConfig(order.status).label,
             "Ticket": order.ticket || "N/A",
             "N° Abonado": order.subscriberNumber,
             "Nombre": order.subscriberName,
@@ -103,7 +104,7 @@ export function exportReportToExcel(
         crew.noCompletadas.forEach((order: any) => {
           monthlyOrders.push({
             "Cuadrilla": crew.crewName,
-            "Estado": "Pendiente",
+            "Estado": order.status ? getStatusConfig(order.status).label : "Pendiente",
             "Ticket": order.ticket || "N/A",
             "N° Abonado": order.subscriberNumber,
             "Nombre": order.subscriberName,
@@ -252,7 +253,7 @@ export function exportReportToExcel(
           ? order.servicesToInstall.join(", ")
           : "",
         "Cuadrilla": (order.assignedTo?.number !== undefined && order.assignedTo?.number !== null) ? `Cuadrilla ${order.assignedTo.number}` : "S/A",
-        "Estado": order.status === "completed" ? "Completada" : order.status === "completed_special" ? "Completada Especial" : order.status,
+        "Estado": getStatusConfig(order.status).label,
       }));
       break;
   }

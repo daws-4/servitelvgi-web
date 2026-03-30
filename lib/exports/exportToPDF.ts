@@ -4,6 +4,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { ReportType, ReportMetadata } from "@/types/reportTypes";
+import { getStatusConfig } from "@/lib/orderConstants";
 
 /**
  * Exporta datos de reporte a archivo PDF con tablas formateadas
@@ -51,11 +52,11 @@ export function exportReportToPDF(
       (data.cuadrillas || []).forEach((crew: any) => {
         // Add completed
         (crew.completadas || []).forEach((order: any) => {
-          dailyOrders.push({ ...order, statusDisplayName: order.status === "completed_special" ? "Completada Especial" : "Finalizada", crewName: crew.crewName });
+          dailyOrders.push({ ...order, statusDisplayName: getStatusConfig(order.status).label, crewName: crew.crewName });
         });
         // Add not completed
         (crew.noCompletadas || []).forEach((order: any) => {
-          dailyOrders.push({ ...order, statusDisplayName: "Pendiente", crewName: crew.crewName });
+          dailyOrders.push({ ...order, statusDisplayName: order.status ? getStatusConfig(order.status).label : "Pendiente", crewName: crew.crewName });
         });
       });
 
@@ -79,11 +80,11 @@ export function exportReportToPDF(
       (data.cuadrillas || []).forEach((crew: any) => {
         // Add completed
         (crew.completadas || []).forEach((order: any) => {
-          monthlyOrdersPDF.push({ ...order, statusDisplayName: order.status === "completed_special" ? "Completada Especial" : "Finalizada", crewName: crew.crewName });
+          monthlyOrdersPDF.push({ ...order, statusDisplayName: getStatusConfig(order.status).label, crewName: crew.crewName });
         });
         // Add not completed
         (crew.noCompletadas || []).forEach((order: any) => {
-          monthlyOrdersPDF.push({ ...order, statusDisplayName: "Pendiente", crewName: crew.crewName });
+          monthlyOrdersPDF.push({ ...order, statusDisplayName: order.status ? getStatusConfig(order.status).label : "Pendiente", crewName: crew.crewName });
         });
       });
 
@@ -230,7 +231,7 @@ export function exportReportToPDF(
         order.subscriberName?.substring(0, 25) || "",
         order.type === "instalacion" ? "Instalación" : "Avería",
         order.node || "",
-        order.status === "completed" ? "Completada" : order.status === "completed_special" ? "Completada Especial" : order.status,
+        getStatusConfig(order.status).label,
       ]);
       break;
   }

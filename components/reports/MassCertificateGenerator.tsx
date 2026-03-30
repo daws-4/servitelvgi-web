@@ -11,6 +11,7 @@ import { OrderEditData } from '@/components/orders/OrderEditForm';
 import { OrderCompletionCertificate } from '@/components/orders/OrderCompletionCertificate';
 import { CertificateErrorBoundary } from '@/components/orders/CertificateErrorBoundary';
 import { transformOrderToEditData } from '@/lib/orderUtils';
+import { COMPLETED_STATUSES, getStatusConfig } from '@/lib/orderConstants';
 
 export const MassCertificateGenerator = () => {
     // Default to current month
@@ -67,7 +68,7 @@ export const MassCertificateGenerator = () => {
 
                 const response = await axios.get('/api/web/orders', {
                     params: {
-                        status: selectedStatus === 'all' ? 'completed,completed_special' : selectedStatus,
+                        status: selectedStatus === 'all' ? COMPLETED_STATUSES.join(',') : selectedStatus,
                         startDate,
                         endDate,
                         dateField: 'completionDate',
@@ -228,7 +229,7 @@ export const MassCertificateGenerator = () => {
             }
 
             setStatusText("Guardando PDF...");
-            const statusLabel = selectedStatus === 'all' ? 'todas' : selectedStatus === 'completed' ? 'completadas' : 'especiales';
+            const statusLabel = selectedStatus === 'all' ? 'todas' : getStatusConfig(selectedStatus).label.toLowerCase();
             pdf.save(`certificados_${statusLabel}_${startDate}_${endDate}.pdf`);
             const skippedMsg = skippedOrders > 0 ? ` (${skippedOrders} omitidas por error)` : '';
             setStatusText(`¡Completado!${skippedMsg}`);
@@ -300,9 +301,10 @@ export const MassCertificateGenerator = () => {
                         onChange={(e) => setSelectedStatus(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-secondary focus:border-secondary bg-white"
                     >
-                        <option value="all">Ambas</option>
-                        <option value="completed">Completadas</option>
-                        <option value="completed_special">Completadas Especiales</option>
+                        <option value="all">Todas las completadas</option>
+                        {COMPLETED_STATUSES.map((status) => (
+                            <option key={status} value={status}>{getStatusConfig(status).label}</option>
+                        ))}
                     </select>
                 </div>
                 <Button

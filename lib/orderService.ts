@@ -713,10 +713,16 @@ export async function createOrderSnapshot() {
   let totalCompleted = 0;
   let totalPending = 0;
 
-  const crewSnapshots = aggregated
-    .filter((entry: any) => crewMap.has(entry._id.toString()))
-    .map((entry: any) => {
-      const crew = crewMap.get(entry._id.toString());
+  // Build a map of aggregated data keyed by crew ID for quick lookup
+  const aggregatedMap = new Map<string, any>();
+  for (const entry of aggregated) {
+    aggregatedMap.set(entry._id.toString(), entry);
+  }
+
+  // Iterate ALL active crews so every crew appears in the snapshot (even with 0 orders)
+  const crewSnapshots = crews.map((crew: any) => {
+      const crewIdStr = crew._id.toString();
+      const entry = aggregatedMap.get(crewIdStr);
 
       // Init legacy orders structure
       const orders: Record<string, number> = {};
@@ -730,36 +736,38 @@ export async function createOrderSnapshot() {
         for (const s of validStatuses) byType[t][s] = 0;
       }
 
-      // Fill data
-      for (const { status, type, count } of entry.statuses) {
-        // Global totals (legacy)
-        if (validStatuses.includes(status)) {
-          orders[status] = (orders[status] || 0) + count;
+      // Fill data from aggregation (if this crew had orders)
+      if (entry) {
+        for (const { status, type, count } of entry.statuses) {
+          // Global totals (legacy)
+          if (validStatuses.includes(status)) {
+            orders[status] = (orders[status] || 0) + count;
+          }
+
+          // Type breakdown
+          const t = (type || 'otro').toLowerCase();
+          const targetType = validTypes.includes(t) ? t : 'otro';
+
+          if (validStatuses.includes(status)) {
+            byType[targetType][status] = (byType[targetType][status] || 0) + count;
+          }
+          byType[targetType].total = (byType[targetType].total || 0) + count;
         }
 
-        // Type breakdown
-        const t = (type || 'otro').toLowerCase();
-        const targetType = validTypes.includes(t) ? t : 'otro';
-
-        if (validStatuses.includes(status)) {
-          byType[targetType][status] = (byType[targetType][status] || 0) + count;
-        }
-        byType[targetType].total = (byType[targetType].total || 0) + count;
+        orders.total = entry.total;
       }
 
-      orders.total = entry.total;
-
-      totalOrders += entry.total;
+      totalOrders += orders.total;
       totalCompleted += orders.completed;
       totalPending += orders.pending;
 
-      const leaderName = crew?.leader
+      const leaderName = crew.leader
         ? `${crew.leader.name} ${crew.leader.surname}`
         : 'Sin líder';
 
       return {
-        crew: entry._id,
-        crewNumber: crew?.number || 0,
+        crew: crew._id,
+        crewNumber: crew.number || 0,
         leaderName,
         orders,
         byType

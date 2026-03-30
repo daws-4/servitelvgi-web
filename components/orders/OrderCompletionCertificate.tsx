@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { OrderEditData } from './OrderEditForm';
 import Image from 'next/image';
 import netunoLogo from './assets/netuno_logo.png';
+import { getStatusConfig } from '@/lib/orderConstants';
 
 interface OrderCompletionCertificateProps {
     data: OrderEditData;
@@ -112,13 +113,18 @@ export const OrderCompletionCertificate = forwardRef<HTMLDivElement, OrderComple
                             </div>
                             <div>
                                 <span className="font-semibold block text-[12px] mb-0.5" style={{ color: colors.gray600 }}>Estado:</span>
-                                <div className="uppercase font-medium px-1.5 py-0.5 rounded text-[12px] inline-block" style={{
-                                    backgroundColor: data.status === 'completed_special' ? '#ccfbf1' : '#dcfce7',
-                                    color: data.status === 'completed_special' ? '#115e59' : '#166534',
-                                    border: `1px solid ${data.status === 'completed_special' ? '#99f6e4' : '#bbf7d0'}`
-                                }}>
-                                    {data.status === 'completed_special' ? 'COMPLETADA ESPECIAL' : 'COMPLETADA'}
-                                </div>
+                                {(() => {
+                                    const statusCfg = getStatusConfig(data.status);
+                                    return (
+                                        <div className="uppercase font-medium px-1.5 py-0.5 rounded text-[12px] inline-block" style={{
+                                            backgroundColor: statusCfg.hexBgColor || '#dcfce7',
+                                            color: statusCfg.hexColor || '#166534',
+                                            border: `1px solid ${statusCfg.hexBgColor || '#bbf7d0'}`
+                                        }}>
+                                            {statusCfg.label}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                         <div className="flex gap-2">

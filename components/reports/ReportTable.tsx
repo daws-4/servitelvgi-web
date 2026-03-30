@@ -11,6 +11,7 @@ import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure
 import { Button } from "@heroui/button";
 import type { ReportType } from "@/types/reportTypes";
 import { format } from "date-fns";
+import { getStatusConfig } from "@/lib/orderConstants";
 import CrewBobbinModal from "../crews/CrewBobbinModal";
 // import CrewEquipmentModal from "../crews/CrewEquipmentModal"; // Comentado hasta que exista
 
@@ -85,7 +86,7 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                             key: `${crew.crewId}-completada-${order._id}`,
                             _id: order._id, // Para navegación
                             crew: crew.crewName,
-                            estado: order.status === "completed_special" ? "Completada Especial" : "Completada",
+                            estado: getStatusConfig(order.status).label,
                             ticket: order.ticket || "N/A",
                             subscriberNumber: order.subscriberNumber,
                             subscriberName: order.subscriberName,
@@ -357,14 +358,15 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
 
         switch (columnKey) {
             case "status":
+                const config = getStatusConfig(value as string);
                 return (
                     <Chip
                         size="sm"
-                        variant="flat"
-                        color={value === "completed" ? "success" : value === "completed_special" ? "primary" : value === "assigned" ? "warning" : "default"}
+                        variant={config.chipVariant as any}
+                        color={config.color as any}
                         className="capitalize"
                     >
-                        {value === "completed" ? "Finalizada" : value === "completed_special" ? "Completada Especial" : value === "in_progress" ? "En Proceso" : value === "assigned" ? "Asignada" : value}
+                        {config.label}
                     </Chip>
                 );
             case "type":

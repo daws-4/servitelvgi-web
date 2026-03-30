@@ -10,6 +10,8 @@ import { notifyNewOrderAssigned, notifyOrderReassigned, notifyOrderStatusChanged
 import { formatDateToVenezuela } from "@/lib/dateUtils";
 import pb, { ensureAuth } from "@/lib/pocketBase";
 import { generateCertificateArrayBuffer } from "@/lib/certificateGenerator";
+import { COMPLETED_STATUSES, VALID_STATUSES } from "@/lib/orderConstants";
+
 // Ensure Installer and Crew models are registered for populate
 void InstallerModel;
 void CrewModel;
@@ -267,7 +269,7 @@ async function trackChanges(orderId: string, oldOrder: any, newData: any, sessio
   if (newData.status && oldOrder.status !== newData.status) {
     historyEntries.push({
       order: orderId,
-      changeType: (newData.status === "completed" || newData.status === "completed_special") ? "completed" : newData.status === "cancelled" ? "cancelled" : "status_change",
+      changeType: COMPLETED_STATUSES.includes(newData.status as any) ? "completed" : newData.status === "cancelled" ? "cancelled" : "status_change",
       previousValue: oldOrder.status,
       newValue: newData.status,
       description: `Estado cambiado de "${oldOrder.status}" a "${newData.status}"`,
@@ -329,7 +331,7 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
     data.assignmentDate = new Date();
   }
 
-  if ((data.status === 'completed' || data.status === 'completed_special') && !data.completionDate) {
+  if (COMPLETED_STATUSES.includes(data.status as any) && !data.completionDate) {
     data.completionDate = new Date();
   }
 
@@ -429,7 +431,7 @@ export async function updateOrder(id: string, data: any, sessionUser?: SessionUs
   }
 
   // --- AUTOMATIC SYNC ---
-  if (statusChanged && (data.status === 'completed' || data.status === 'completed_special')) {
+  if (statusChanged && COMPLETED_STATUSES.includes(data.status as any)) {
     try {
       await syncOrderToNetuno(id, undefined, sessionUser);
     } catch (e) {
@@ -704,7 +706,7 @@ export async function createOrderSnapshot() {
   );
 
   // Build crew snapshots
-  const validStatuses = ['pending', 'assigned', 'in_progress', 'completed', 'completed_special', 'cancelled', 'visita', 'hard'];
+  const validStatuses = [...VALID_STATUSES] as string[];
   const validTypes = ['instalacion', 'averia', 'recuperacion', 'otro'];
 
   let totalOrders = 0;

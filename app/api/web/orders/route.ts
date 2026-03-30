@@ -311,6 +311,32 @@ export async function PUT(request: NextRequest) {
       const currentMaterials = currentOrder.materialsUsed || [];
       const newMaterials = data.materialsUsed || [];
 
+      // Helper: Normaliza cualquier ID (ObjectId, objeto con _id, string) a string
+      const normalizeId = (id: any): string => {
+        if (!id) return '';
+        if (typeof id === 'object' && id._id) return id._id.toString();
+        return id.toString();
+      };
+
+      // Helper: Normaliza batchCode para comparación case-insensitive
+      const normalizeBatch = (bc: any): string => (bc || '').toString().toUpperCase().trim();
+
+      // Early exit: Si los materiales no cambiaron realmente, skip toda la lógica de inventario
+      const serializeMaterials = (mats: any[]) => JSON.stringify(
+        (mats || []).map((m: any) => ({
+          item: normalizeId(m.item || m.inventoryId),
+          quantity: m.quantity,
+          batchCode: normalizeBatch(m.batchCode),
+          instanceIds: (m.instanceIds || []).slice().sort()
+        })).sort((a: any, b: any) => a.item.localeCompare(b.item))
+      );
+
+      const materialsActuallyChanged = serializeMaterials(currentMaterials) !== serializeMaterials(newMaterials);
+
+      if (!materialsActuallyChanged) {
+        console.log('[DEBUG] Materials unchanged, skipping inventory processing.');
+      }
+
       const materialsToRestore: any[] = [];
 
       // 1. Check for removed Instances (Equipment)
@@ -322,7 +348,7 @@ export async function PUT(request: NextRequest) {
         if (m.instanceIds && m.instanceIds.length > 0) {
           m.instanceIds.forEach((iid: string) => {
             currentInstanceIds.add(iid);
-            const invId = (m.item && typeof m.item === 'object') ? m.item._id.toString() : (m.item || m.inventoryId).toString();
+            const invId = normalizeId(m.item || m.inventoryId);
             instanceIdToMaterialMap.set(iid, invId);
           });
         }
@@ -372,13 +398,12 @@ export async function PUT(request: NextRequest) {
         // Skip if it was an equipment instance (already handled above)
         if (curr.instanceIds && curr.instanceIds.length > 0) return;
 
-        const currInvId = (curr.item && typeof curr.item === 'object') ? curr.item._id.toString() : (curr.item || curr.inventoryId).toString();
-        const currBatch = curr.batchCode;
+        const currInvId = normalizeId(curr.item || curr.inventoryId);
+        const currBatch = normalizeBatch(curr.batchCode);
 
         const match = newMaterials.find((newMat: any) => {
-          const rawNewInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
-          const newInvId = rawNewInvId ? rawNewInvId.toString() : undefined;
-          return newInvId === currInvId && newMat.batchCode === currBatch;
+          const newInvId = normalizeId(newMat.item || newMat.inventoryId);
+          return newInvId === currInvId && normalizeBatch(newMat.batchCode) === currBatch;
         });
 
         if (!match) {
@@ -418,11 +443,10 @@ export async function PUT(request: NextRequest) {
           // Skip if it was an equipment instance (already handled above)
           if (curr.instanceIds && curr.instanceIds.length > 0) return;
 
-          const currInvId = (curr.item && typeof curr.item === 'object') ? curr.item._id.toString() : (curr.item || curr.inventoryId).toString();
+          const currInvId = normalizeId(curr.item || curr.inventoryId);
 
           const match = newMaterials.find((newMat: any) => {
-            const rawNewInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
-            const newInvId = rawNewInvId ? rawNewInvId.toString() : undefined;
+            const newInvId = normalizeId(newMat.item || newMat.inventoryId);
             return newInvId === currInvId && !newMat.batchCode; // Match regular materials only
           });
 
@@ -447,15 +471,13 @@ export async function PUT(request: NextRequest) {
         });
       }
 
-      // Execute Restoration if needed
-      if (materialsToRestore.length > 0 && previousCrewId) {
+      // Execute Restoration if needed (SOLO si los materiales realmente cambiaron)
+      if (materialsActuallyChanged && materialsToRestore.length > 0 && previousCrewId) {
         try {
           console.log("Restoring materials:", JSON.stringify(materialsToRestore));
           await restoreInventoryFromOrder(id, previousCrewId, materialsToRestore, sessionUser || undefined);
         } catch (restoreErr) {
           console.error("Error restoring inventory:", restoreErr);
-          // We log but maybe shouldn't block the update? 
-          // Or strictly block to ensure consistency? Blocking is safer.
           return NextResponse.json(
             { error: `Error restaurando inventario: ${String(restoreErr)}` },
             { status: 400, headers: CORS_HEADERS }
@@ -486,10 +508,12 @@ export async function PUT(request: NextRequest) {
         const deltaMaterials: any[] = [];
 
         materialsToProcess.forEach((newMat: any) => {
+          // Skip delta calculation if materials didn't actually change
+          if (!materialsActuallyChanged) return;
+
           // Check against current (DB)
-          const rawNewInvId = (newMat.item && typeof newMat.item === 'object') ? newMat.item._id : (newMat.item || newMat.inventoryId);
-          const newInvId = rawNewInvId ? rawNewInvId.toString() : undefined;
-          const newBatch = newMat.batchCode;
+          const newInvId = normalizeId(newMat.item || newMat.inventoryId);
+          const newBatch = normalizeBatch(newMat.batchCode);
 
           // For equipment instances, idempotency is handled inside processOrderUsage (status check)
           if (newMat.instanceIds && newMat.instanceIds.length > 0) {
@@ -499,8 +523,8 @@ export async function PUT(request: NextRequest) {
 
           // For bobbins and generic materials, we need to check if it already exists in DB
           const oldMat = currentMaterials.find((curr: any) => {
-            const currInvId = (curr.item && typeof curr.item === 'object') ? curr.item._id.toString() : (curr.item || curr.inventoryId).toString();
-            return currInvId === newInvId && curr.batchCode === newBatch;
+            const currInvId = normalizeId(curr.item || curr.inventoryId);
+            return currInvId === newInvId && normalizeBatch(curr.batchCode) === newBatch;
           });
 
           if (!oldMat) {

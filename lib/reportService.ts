@@ -12,6 +12,7 @@ import OrderSnapshotModel from "@/models/OrderSnapshot";
 import mongoose from "mongoose";
 import { SessionUser } from "@/lib/authHelpers";
 import { startOfMonth, endOfMonth, format, parseISO } from "date-fns";
+import { COMPLETED_STATUSES } from "@/lib/orderConstants";
 import { getStartAndEndOfDay, getStartOfMonthMTG4 } from "@/lib/timezone";
 import type { Types } from "mongoose";
 import type {
@@ -89,13 +90,13 @@ export async function getDailyReport(
     $or: [
       {
         completionDate: { $gte: startOfDay, $lte: endOfDay },
-        status: { $in: ["completed", "completed_special"] },
+        status: { $in: [...COMPLETED_STATUSES] },
       },
       {
         // Fallback: completed orders without completionDate (old data)
         completionDate: { $exists: false },
         updatedAt: { $gte: startOfDay, $lte: endOfDay },
-        status: { $in: ["completed", "completed_special"] },
+        status: { $in: [...COMPLETED_STATUSES] },
       },
       {
         assignmentDate: { $gte: startOfDay, $lte: endOfDay },
@@ -139,7 +140,7 @@ export async function getDailyReport(
     const crewData = crewMap.get(crewId)!;
     const orderSummary = transformToOrderSummary(order);
 
-    if (["completed", "completed_special"].includes(order.status)) {
+    if ((COMPLETED_STATUSES as readonly string[]).includes(order.status)) {
       crewData.completadas.push(orderSummary);
       crewData.totales.completadas++;
     } else {
@@ -202,13 +203,13 @@ export async function getMonthlyReport(
     $or: [
       {
         completionDate: { $gte: startDate, $lte: endDate },
-        status: { $in: ["completed", "completed_special"] },
+        status: { $in: [...COMPLETED_STATUSES] },
       },
       {
         // Fallback: completed orders without completionDate (old data)
         completionDate: { $exists: false },
         updatedAt: { $gte: startDate, $lte: endDate },
-        status: { $in: ["completed", "completed_special"] },
+        status: { $in: [...COMPLETED_STATUSES] },
       },
       {
         assignmentDate: { $gte: startDate, $lte: endDate },
@@ -254,7 +255,7 @@ export async function getMonthlyReport(
     const crewData = crewMap.get(crewId)!;
     const orderSummary = transformToOrderSummary(order);
 
-    if (["completed", "completed_special"].includes(order.status)) {
+    if ((COMPLETED_STATUSES as readonly string[]).includes(order.status)) {
       crewData.completadas.push(orderSummary);
       crewData.totales.completadas++;
     } else {
@@ -442,7 +443,7 @@ export async function getNetunoOrdersReport(
   const { end: endDate } = getStartAndEndOfDay(dateRange.end);
 
   const filter: any = {
-    status: { $in: ["completed", "completed_special"] },
+    status: { $in: [...COMPLETED_STATUSES] },
     sentToNetuno: { $ne: true },
     $or: [
       { completionDate: { $gte: startDate, $lte: endDate } },
@@ -518,7 +519,7 @@ export async function getCrewPerformanceReport(
     const validOrders = await OrderModel.find({
       assignedTo: crew._id,
       assignmentDate: { $gte: start, $lte: end },
-      status: { $in: ['completed', 'completed_special'] },
+      status: { $in: [...COMPLETED_STATUSES] },
       $expr: { $ne: ["$createdAt", "$updatedAt"] }
     }).select('ticket_id subscriberName assignedTo createdAt updatedAt assignmentDate completionDate').lean();
 
@@ -1287,6 +1288,7 @@ export async function getCrewOrdersReport(
     in_progress: number;
     completed: number;
     completed_special: number;
+    completed_via500: number;
     cancelled: number;
     visita: number;
     hard: number;
@@ -1323,6 +1325,7 @@ export async function getCrewOrdersReport(
           in_progress: 0,
           completed: 0,
           completed_special: 0,
+          completed_via500: 0,
           cancelled: 0,
           visita: 0,
           hard: 0,
@@ -1339,8 +1342,9 @@ export async function getCrewOrdersReport(
       summary.pending = orders.pending || 0;
       summary.assigned = orders.assigned || 0;
       summary.in_progress = orders.in_progress || 0;
-      summary.completed = (orders.completed || 0) + (orders.completed_special || 0);
+      summary.completed = (orders.completed || 0) + (orders.completed_special || 0) + (orders.completed_via500 || 0);
       summary.completed_special = orders.completed_special || 0;
+      summary.completed_via500 = orders.completed_via500 || 0;
       summary.cancelled = orders.cancelled || 0;
       summary.visita = orders.visita || 0;
       summary.hard = orders.hard || 0;
@@ -1373,8 +1377,9 @@ export async function getCrewOrdersReport(
         pending: orders.pending || 0,
         assigned: orders.assigned || 0,
         in_progress: orders.in_progress || 0,
-        completed: (orders.completed || 0) + (orders.completed_special || 0),
+        completed: (orders.completed || 0) + (orders.completed_special || 0) + (orders.completed_via500 || 0),
         completed_special: orders.completed_special || 0,
+        completed_via500: orders.completed_via500 || 0,
         cancelled: orders.cancelled || 0,
         visita: orders.visita || 0,
         hard: orders.hard || 0,

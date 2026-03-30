@@ -1,0 +1,551 @@
+# Agregar Status "Completada Vía 500" + Config Dinámica con la Sesión
+
+## Estrategia Definitiva: Context + AsyncStorage (sin React Query)
+
+La config de statuses es **datos casi estáticos** — solo cambia cuando se hace deploy de un cambio en `orderConstants.ts`. React Query está diseñado para datos que cambian frecuentemente (listas de órdenes, notificaciones). Para la config, es overkill y añade complejidad innecesaria.
+
+### Flujo propuesto
+
+```mermaid
+graph TD
+    subgraph "Login"
+        L1[Usuario hace login] --> L2[POST /api/mobile/auth/login → token + profile]
+        L2 --> L3[GET /api/web/order-config → config]
+        L3 --> L4[AsyncStorage.setItem config]
+        L4 --> L5[OrderConfigContext.setState config]
+    end
+
+    subgraph "App reabre con sesión existente"
+        R1[App abre] --> R2[AuthContext: ¿hay token?]
+        R2 -->|Sí| R3[AsyncStorage.getItem config<br/>INSTANTÁNEO, 0 peticiones]
+        R3 --> R4[OrderConfigContext.setState config]
+        R4 --> R5[App lista con config cargada]
+    end
+
+    subgraph "Componentes"
+        R5 --> C1[StatusPicker, OrderCard, etc.<br/>useOrderConfig → leer del contexto]
+    end
+
+    style L4 fill:#3b82f6,color:#fff
+    style R3 fill:#3b82f6,color:#fff
+    style C1 fill:#8b5cf6,color:#fff
+```
+
+**Resumen**: 
+- **Login**: 1 petición extra (config). Se guarda en AsyncStorage junto con la sesión
+- **App reabre**: 0 peticiones. Lee de AsyncStorage (instantáneo)
+- **¿Cuándo se re-descarga?**: Solo al hacer login nuevo. Opcionalmente al hacer pull-to-refresh en la pantalla de órdenes
+
+**Peticiones al backend por la config**: ~1 por sesión (en vez de cada 30 min con React Query)
+
+---
+
+## Fase 1 — Backend Web (Next.js)
+
+### 1.1 [MODIFY] [orderConstants.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/lib/orderConstants.ts)
+Agregar el nuevo status después de `completed_special`:
+```typescript
+completed_via500: {
+    label: "Completada Vía 500",
+    color: "primary",
+    icon: "road",
+    badgeClass: "bg-cyan-100 text-cyan-800 border-cyan-200",
+    dotColor: "bg-cyan-500",
+    bgColor: "bg-cyan-100",
+    textColor: "text-cyan-800",
+    borderColor: "border-cyan-200",
+    description: "Completada vía formulario 500.",
+    isTerminal: true,
+    countsAsCompleted: true,
+    chipVariant: "flat",
+},
+```
+
+> [!NOTE]
+> Con esto, `COMPLETED_STATUSES`, `TERMINAL_STATUSES`, `VALID_STATUSES`, `getStatusFilterOptions()` y el endpoint `/api/web/order-config` se actualizan **automáticamente** sin tocar nada más en esos archivos.
+
+### 1.2 [MODIFY] [Order.ts (modelo Mongoose)](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/models/Order.ts)
+Agregar `"completed_via500"` en 3 lugares:
+
+**Interfaz IOrder (L11):**
+```diff
+-status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "cancelled" | "visita";
++status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "completed_via500" | "cancelled" | "visita";
+```
+
+**Schema enum (L105-114):**
+```diff
+ enum: [
+     "pending",
+     "assigned",
+     "in_progress",
+     "completed",
+     "completed_special",
++    "completed_via500",
+     "cancelled",
+     "hard",
+     "visita",
+ ],
+```
+
+**InstallerLog status enum (L174):**
+```diff
+-enum: ["pending", "assigned", "in_progress", "completed", "completed_special", "cancelled", "visita"],
++enum: ["pending", "assigned", "in_progress", "completed", "completed_special", "completed_via500", "cancelled", "visita"],
+```
+
+### 1.3 [MODIFY] [orderService.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/lib/orderService.ts)
+Refactorizar hardcodes usando las constantes centralizadas:
+
+```diff
++import { COMPLETED_STATUSES, VALID_STATUSES } from "@/lib/orderConstants";
+
+ // L270 trackChanges
+-changeType: (newData.status === "completed" || newData.status === "completed_special") ? "completed" : ...
++changeType: COMPLETED_STATUSES.includes(newData.status) ? "completed" : ...
+
+ // L332 completionDate
+-if ((data.status === 'completed' || data.status === 'completed_special') && !data.completionDate)
++if (COMPLETED_STATUSES.includes(data.status) && !data.completionDate)
+
+ // L432 auto-sync
+-if (statusChanged && (data.status === 'completed' || data.status === 'completed_special'))
++if (statusChanged && COMPLETED_STATUSES.includes(data.status))
+
+ // L707 snapshot validStatuses
+-const validStatuses = ['pending', 'assigned', ...];
++const validStatuses = [...VALID_STATUSES] as string[];
+```
+
+### 1.4 [MODIFY] [reportService.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/lib/reportService.ts)
+Refactorizar ~9 ocurrencias:
+
+```diff
++import { COMPLETED_STATUSES } from "@/lib/orderConstants";
+
+ // ~7 ocurrencias de:
+-status: { $in: ["completed", "completed_special"] },
++status: { $in: [...COMPLETED_STATUSES] },
+
+ // ~2 ocurrencias de:
+-if (["completed", "completed_special"].includes(order.status))
++if ((COMPLETED_STATUSES as readonly string[]).includes(order.status))
+```
+
+### 1.5 [MODIFY] [dashboard-stats/route.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/app/api/web/dashboard-stats/route.ts)
+```diff
++import { COMPLETED_STATUSES, TERMINAL_STATUSES } from "@/lib/orderConstants";
+
+ // Pipelines de agregación:
+-{ $in: ["completed", "completed_special"] }
++{ $in: [...COMPLETED_STATUSES] }
+
+-{ $nin: ["completed", "completed_special", "cancelled", "canceled", "visita"] }
++{ $nin: [...TERMINAL_STATUSES, "canceled"] }
+```
+
+### 1.6 [MODIFY] [OrderSnapshot.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/models/OrderSnapshot.ts)
+Agregar `completed_via500: { type: Number, default: 0 }` en cada bloque (5 bloques: orders, byType.instalacion, byType.averia, byType.recuperacion, byType.otro).
+
+### 1.7 [MODIFY] [certificateGenerator.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/lib/certificateGenerator.tsx)
+```diff
++import { COMPLETED_STATUSES, getStatusConfig } from "@/lib/orderConstants";
+
+ // Badge de status en el certificado:
+-backgroundColor: order.status === 'completed_special' ? '#ccfbf1' : '#dcfce7',
++backgroundColor: getStatusConfig(order.status).bgColor === 'bg-teal-100' ? '#ccfbf1' : 
++                 getStatusConfig(order.status).bgColor === 'bg-cyan-100' ? '#cffafe' : '#dcfce7',
+```
+(O simplificar con un mapa de bgColor → hex)
+
+### 1.8 [MODIFY] [FilterToolbar.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/components/orders/FilterToolbar.tsx)
+```diff
++import { getStatusFilterOptions } from "@/lib/orderConstants";
+
+-const statusOptions: SelectOption[] = [
+-    { key: "all", label: "Estado: Todos" },
+-    { key: "pending", label: "Pendiente" },
+-    ...
+-];
++const statusOptions: SelectOption[] = getStatusFilterOptions();
+```
+
+### 1.9 Archivos de Reportes y Exportaciones
+
+**[ReportTable.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/components/reports/ReportTable.tsx):** Usar `getStatusConfig(value).label` y `getStatusConfig(value).color` en vez de cadenas de ternarios.
+
+**[RecentActivity.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/components/dashboard/RecentActivity.tsx):** Reemplazar `case 'completed_special':` con lógica basada en `getStatusConfig()`.
+
+**[MassCertificateGenerator.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/components/reports/MassCertificateGenerator.tsx):** Generar opciones de filtro desde `COMPLETED_STATUSES`.
+
+**[exportToExcel.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/lib/exports/exportToExcel.ts), [exportToWord.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/lib/exports/exportToWord.ts), [exportToPDF.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/web/lib/exports/exportToPDF.ts):** Usar `getStatusConfig(status).label` en vez de ternarios hardcodeados como `status === "completed_special" ? "Completada Especial" : "Completada"`.
+
+---
+
+## Fase 2 — App Móvil (Config con la Sesión)
+
+### 2.1 [CREATE] `mobile/app/contexts/OrderConfigContext.tsx`
+
+Nuevo contexto simple (sin React Query) que gestiona la config de statuses:
+
+```typescript
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import orderConfigService from '@/services/api/orderConfig';
+import {
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_COLORS,
+  ORDER_STATUS_ICONS,
+} from '@/constants/orderStates';
+
+const CONFIG_KEY = '@enlared/order_config';
+
+export interface MobileStatusConfig {
+  label: string;
+  color: string;
+  icon: string;
+  isTerminal: boolean;
+  countsAsCompleted: boolean;
+}
+
+interface OrderConfigContextType {
+  statuses: Record<string, MobileStatusConfig>;
+  completedStatuses: string[];
+  terminalStatuses: string[];
+  validStatuses: string[];
+  getStatusConfig: (status: string) => MobileStatusConfig;
+  isLoaded: boolean;
+}
+
+const OrderConfigContext = createContext<OrderConfigContextType | undefined>(undefined);
+
+export function OrderConfigProvider({ children }: { children: ReactNode }) {
+  const [statuses, setStatuses] = useState<Record<string, MobileStatusConfig>>(buildFallback());
+  const [completedStatuses, setCompletedStatuses] = useState<string[]>(['completed', 'completed_special']);
+  const [terminalStatuses, setTerminalStatuses] = useState<string[]>([]);
+  const [validStatuses, setValidStatuses] = useState<string[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Al montar: cargar desde AsyncStorage (instantáneo, sin red)
+  useEffect(() => {
+    loadFromStorage();
+  }, []);
+
+  async function loadFromStorage() {
+    try {
+      const stored = await AsyncStorage.getItem(CONFIG_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        applyConfig(data);
+      }
+    } catch (e) {
+      console.warn('Error loading config from storage:', e);
+    }
+    setIsLoaded(true);
+  }
+
+  // Llamado por AuthContext después del login exitoso
+  async function fetchAndStoreConfig() {
+    try {
+      const data = await orderConfigService.getOrderConfig();
+      await AsyncStorage.setItem(CONFIG_KEY, JSON.stringify(data));
+      applyConfig(data);
+    } catch (e) {
+      console.warn('Error fetching order config:', e);
+      // No crash — ya tenemos fallback o AsyncStorage previo
+    }
+  }
+
+  function applyConfig(data: any) {
+    if (data.statuses) {
+      const mobile: Record<string, MobileStatusConfig> = {};
+      for (const [key, cfg] of Object.entries(data.statuses) as any) {
+        mobile[key] = {
+          label: cfg.label,
+          color: mapColorToHex(cfg.color, key),
+          icon: cfg.icon,
+          isTerminal: cfg.isTerminal,
+          countsAsCompleted: cfg.countsAsCompleted,
+        };
+      }
+      setStatuses(mobile);
+    }
+    if (data.completedStatuses) setCompletedStatuses(data.completedStatuses);
+    if (data.terminalStatuses) setTerminalStatuses(data.terminalStatuses);
+    if (data.validStatuses) setValidStatuses(data.validStatuses);
+  }
+
+  function getStatusConfig(status: string): MobileStatusConfig {
+    return statuses[status] || { label: status || 'Desconocido', color: '#9e9e9e', icon: 'help-circle', isTerminal: false, countsAsCompleted: false };
+  }
+
+  const value = { statuses, completedStatuses, terminalStatuses, validStatuses, getStatusConfig, isLoaded, fetchAndStoreConfig };
+  return <OrderConfigContext.Provider value={value}>{children}</OrderConfigContext.Provider>;
+}
+
+export function useOrderConfig() {
+  const ctx = useContext(OrderConfigContext);
+  if (!ctx) throw new Error('useOrderConfig must be inside OrderConfigProvider');
+  return ctx;
+}
+```
+
+### 2.2 [MODIFY] [_layout.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/app/_layout.tsx)
+
+Agregar `OrderConfigProvider` al árbol de providers (reemplaza la dependencia de React Query para config):
+
+```diff
++import { OrderConfigProvider } from './contexts/OrderConfigContext';
+
+ <AuthProvider>
+   <SecurityProvider>
+     <ThemeProvider>
+-      <OfflineProvider>
++      <OrderConfigProvider>
++        <OfflineProvider>
+           <ProtectedLayout>
+             ...
+           </ProtectedLayout>
+-      </OfflineProvider>
++        </OfflineProvider>
++      </OrderConfigProvider>
+     </ThemeProvider>
+   </SecurityProvider>
+ </AuthProvider>
+```
+
+### 2.3 [MODIFY] [AuthContext.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/app/contexts/AuthContext.tsx)
+
+Después del login exitoso, descargar y guardar la config:
+
+```diff
++import { useOrderConfig } from './OrderConfigContext';
+
+ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
++    // Nota: el OrderConfigProvider debe estar ARRIBA en el árbol
++    // para que AuthProvider pueda acceder al contexto
+     ...
+
+     const login = async (username: string, password: string) => {
+         ...
+         const response = await authService.login(username, password);
+         ...
+         setInstaller(response.installer);
+         setIsAuthenticated(true);
+
++        // Descargar config de statuses junto con la sesión
++        // Importar directamente para evitar dependencia circular
++        try {
++            const orderConfigService = require('@/services/api/orderConfig').default;
++            const data = await orderConfigService.getOrderConfig();
++            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
++            await AsyncStorage.setItem('@enlared/order_config', JSON.stringify(data));
++        } catch (e) {
++            console.warn('Config fetch failed (non-critical):', e);
++        }
+         ...
+     };
+```
+
+> [!NOTE]
+> **Alternativa más limpia**: En vez de meter el fetch en AuthContext, el `OrderConfigProvider` puede escuchar cambios en `isAuthenticated` del AuthContext y triggear el fetch automáticamente. Esto evita acoplamiento.
+
+### 2.4 [MODIFY] [types/Order.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/types/Order.ts)
+
+```diff
+-export type OrderStatus =
+-  | 'pending'
+-  | 'assigned'
+-  | 'in_progress'
+-  | 'completed'
+-  | 'completed_special'
+-  | 'cancelled'
+-  | 'hard'
+-  | 'visita';
++/** Status dinámico — los valores válidos vienen del servidor via OrderConfigContext */
++export type OrderStatus = string;
+```
+
+### 2.5 [MODIFY] [StatusPicker.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/components/orders/StatusPicker.tsx)
+
+Eliminar `STATUS_OPTIONS[]` hardcodeado. Generar desde el contexto:
+
+```diff
+-const STATUS_OPTIONS: StatusOption[] = [
+-    { value: 'pending', label: 'Pendiente', color: '#ca8a04', bgColor: '#fef9c3' },
+-    ...
+-];
++import { useOrderConfig } from '@/app/contexts/OrderConfigContext';
++
++// Dentro del componente:
++const { statuses, completedStatuses } = useOrderConfig();
++const STATUS_OPTIONS = Object.entries(statuses).map(([key, cfg]) => ({
++    value: key,
++    label: cfg.label,
++    color: cfg.color,
++    bgColor: lightenColor(cfg.color, 0.85), // helper para generar bgColor claro
++}));
+
+ // canComplete check:
+-if ((status === 'completed' || status === 'completed_special') && !canComplete)
++if (completedStatuses.includes(status) && !canComplete)
+```
+
+### 2.6 [MODIFY] [OrderCard.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/components/orders/OrderCard.tsx)
+
+```diff
+-const STATUS_CONFIG: Record<OrderStatus, { label: string; bg: string; text: string }> = {
+-    pending: { label: 'Pendiente', bg: '#fef9c3', text: '#ca8a04' },
+-    ...
+-};
++import { useOrderConfig } from '@/app/contexts/OrderConfigContext';
+
+ export default function OrderCard({ order, onPress }: OrderCardProps) {
++    const { getStatusConfig } = useOrderConfig();
+-    const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
++    const cfg = getStatusConfig(order.status);
++    const statusConfig = { label: cfg.label, bg: lightenColor(cfg.color, 0.9), text: cfg.color };
+```
+
+### 2.7 [MODIFY] [OrderFilters.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/components/orders/OrderFilters.tsx)
+
+```diff
+-const STATUS_OPTIONS: { value: OrderStatus | 'all'; label: string }[] = [
+-    { value: 'all', label: 'Todos' },
+-    ...
+-];
++import { useOrderConfig } from '@/app/contexts/OrderConfigContext';
+
+ export default function OrderFilters({ ... }) {
++    const { statuses } = useOrderConfig();
++    const STATUS_OPTIONS = [
++        { value: 'all', label: 'Todos' },
++        ...Object.entries(statuses).map(([key, cfg]) => ({ value: key, label: cfg.label })),
++    ];
+```
+
+### 2.8 [MODIFY] [InstallerLogManager.tsx](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/components/orders/InstallerLogManager.tsx)
+
+```diff
+-const STATUS_OPTIONS: { value: OrderStatus; label: string; color: string }[] = [
+-    { value: 'pending', label: 'Pendiente', color: '#94a3b8' },
+-    ...
+-];
++import { useOrderConfig } from '@/app/contexts/OrderConfigContext';
+
+ export default function InstallerLogManager({ ... }) {
++    const { statuses, getStatusConfig } = useOrderConfig();
++    const STATUS_OPTIONS = Object.entries(statuses).map(([key, cfg]) => ({
++        value: key,
++        label: cfg.label,
++        color: cfg.color,
++    }));
+```
+
+### 2.9 [MODIFY] [hooks/useOrderConfig.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/hooks/useOrderConfig.ts)
+
+**Reemplazar completamente**: En vez de ser un hook con React Query, se convierte en un **re-export** del contexto para no romper imports existentes:
+
+```typescript
+// hooks/useOrderConfig.ts
+// Re-export del contexto para compatibilidad
+export { useOrderConfig } from '@/app/contexts/OrderConfigContext';
+export type { MobileStatusConfig } from '@/app/contexts/OrderConfigContext';
+```
+
+### 2.10 [MODIFY] [constants/orderStates.ts](file:///c:/Users/USUARIO/Desktop/proyectos/servitelv/mobile/constants/orderStates.ts)
+
+Agregar `completed_via500` a todas las constantes locales (usado solo como fallback de emergencia):
+
+```diff
+ export const ORDER_STATUSES = {
+     ...
+     COMPLETED_SPECIAL: 'completed_special',
++    COMPLETED_VIA500: 'completed_via500',
+     CANCELLED: 'cancelled',
+     HARD: 'hard',
+ } as const;
+
+ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+     ...
++    completed_via500: 'Completada Vía 500',
+ };
+
+ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
+     ...
++    completed_via500: '#06b6d4',   // Cyan
+ };
+
+ export const ORDER_STATUS_ICONS: Record<OrderStatus, string> = {
+     ...
++    completed_via500: 'road',
+ };
+```
+
+> [!NOTE]
+> Este archivo pasa a ser **solo fallback**. Los componentes ya no lo importan directamente — consumen del `OrderConfigContext`.
+
+---
+
+## Resumen Final
+
+### Archivos a modificar
+
+| # | Proyecto | Archivo | Cambio |
+|---|----------|---------|--------|
+| 1 | Web | `lib/orderConstants.ts` | Agregar `completed_via500` |
+| 2 | Web | `models/Order.ts` | Agregar al enum + interfaz |
+| 3 | Web | `models/OrderSnapshot.ts` | Agregar campo |
+| 4 | Web | `lib/orderService.ts` | Usar `COMPLETED_STATUSES` |
+| 5 | Web | `lib/reportService.ts` | Usar `COMPLETED_STATUSES` (~9 lugares) |
+| 6 | Web | `app/api/web/dashboard-stats/route.ts` | Usar constantes |
+| 7 | Web | `lib/certificateGenerator.tsx` | Usar `getStatusConfig()` |
+| 8 | Web | `components/orders/FilterToolbar.tsx` | Usar `getStatusFilterOptions()` |
+| 9 | Web | `components/reports/ReportTable.tsx` | Usar `getStatusConfig()` |
+| 10 | Web | `components/dashboard/RecentActivity.tsx` | Usar `getStatusConfig()` |
+| 11 | Web | `components/reports/MassCertificateGenerator.tsx` | Usar `COMPLETED_STATUSES` |
+| 12 | Web | `lib/exports/exportToExcel.ts` | Usar `getStatusConfig().label` |
+| 13 | Web | `lib/exports/exportToWord.ts` | Usar `getStatusConfig().label` |
+| 14 | Web | `lib/exports/exportToPDF.ts` | Usar `getStatusConfig().label` |
+| 15 | Móvil | **`app/contexts/OrderConfigContext.tsx`** | **CREAR** — Provider con AsyncStorage |
+| 16 | Móvil | `app/_layout.tsx` | Agregar OrderConfigProvider |
+| 17 | Móvil | `app/contexts/AuthContext.tsx` | Fetch config al login |
+| 18 | Móvil | `types/Order.ts` | `OrderStatus = string` |
+| 19 | Móvil | `components/orders/StatusPicker.tsx` | Config dinámica |
+| 20 | Móvil | `components/orders/OrderCard.tsx` | Config dinámica |
+| 21 | Móvil | `components/orders/OrderFilters.tsx` | Config dinámica |
+| 22 | Móvil | `components/orders/InstallerLogManager.tsx` | Config dinámica |
+| 23 | Móvil | `hooks/useOrderConfig.ts` | Re-export del contexto |
+| 24 | Móvil | `constants/orderStates.ts` | Agregar fallback |
+
+### Peticiones al backend
+
+| Escenario | Peticiones /api/web/order-config |
+|---|---|
+| Login | 1 (junto con el flujo de auth) |
+| App reabre con sesión | 0 (lee AsyncStorage) |
+| App en uso todo el día | 0 (ya tiene config) |
+| **Total por técnico por día** | **~1** |
+| **20 técnicos** | **~20 peticiones/día** |
+
+### Resultado
+
+| Acción futura | Qué hay que hacer |
+|---|---|
+| Agregar un status nuevo | **Solo editar `orderConstants.ts` + schema Mongoose** |
+| ¿Nuevo APK? | **No** — la app se actualiza sola al hacer login |
+| ¿Editar componentes móviles? | **No** — todos leen del contexto |
+| ¿Editar reportes/exportaciones? | **No** — todos usan `COMPLETED_STATUSES` y `getStatusConfig()` |
+
+---
+
+## Open Questions
+
+> [!IMPORTANT]
+> 1. **¿Qué ícono y color prefieres para "Completada Vía 500"?** Propongo cyan (`#06b6d4`) con ícono `road`. ¿Te parece bien?
+
+> [!IMPORTANT]  
+> 2. **¿"Completada Vía 500" debe activar auto-sync a Netuno (n8n)?** Con la refactorización, cualquier status con `countsAsCompleted: true` dispara el sync automáticamente. ¿Es correcto para este caso?
+
+> [!IMPORTANT]
+> 3. **¿Apruebas el plan para proceder con la implementación?** Empezaría por la Fase 1 (backend web) y luego Fase 2 (app móvil).

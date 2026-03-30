@@ -5,6 +5,7 @@ import { FormInput } from "@/components/interactiveForms/Input";
 import { FormSelect, SelectOption } from "@/components/interactiveForms/Select";
 import { FormButton } from "@/components/interactiveForms/Button";
 import { DateFilter } from "@/components/interactiveForms/DateRangePicker";
+import { getStatusFilterOptions } from "@/lib/orderConstants";
 
 interface FilterToolbarProps {
     searchValue?: string;
@@ -26,17 +27,7 @@ interface FilterToolbarProps {
     onNewOrder?: () => void;
 }
 
-const statusOptions: SelectOption[] = [
-    { key: "all", label: "Estado: Todos" },
-    { key: "pending", label: "Pendiente" },
-    { key: "assigned", label: "Asignada" },
-    { key: "in_progress", label: "En Progreso" },
-    { key: "completed", label: "Completada" },
-    { key: "completed_special", label: "Completada Especial" },
-    { key: "cancelled", label: "Cancelada" },
-    { key: "hard", label: "Hard" },
-    { key: "visita", label: "Visita" },
-];
+const statusOptions: SelectOption[] = getStatusFilterOptions();
 
 const typeOptions: SelectOption[] = [
     { key: "all", label: "Tipo: Todos" },

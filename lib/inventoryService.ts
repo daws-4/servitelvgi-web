@@ -871,28 +871,26 @@ export async function restoreInventoryFromOrder(
             performedByModel: sessionUser?.userModel,
           }], { session });
 
-        } else {
-          // Si el batch ya no existe (raro), se podría intentar recrear o loguear error
-          // Por simplificación, si no existe el batch en la crew, asumimos que fue movido y no podemos restaurar fácilmente 
-          // O simplemente lo ignoramos para evitar bloqueos, o lanzamos error.
-          // Optamos por log warning y continuar (o lanzar error si es estricto)
-          console.warn(`Batch ${material.batchCode} no encontrado en crew ${crewId} para restauración.`);
-        }
+          // Actualizar asignación en la cuadrilla (SOLO si el batch fue encontrado)
+          const itemIndex = crew.assignedInventory.findIndex(
+            (inv: any) => inv.item.toString() === material.inventoryId
+          );
 
-        // Actualizar asignación en la cuadrilla
-        const itemIndex = crew.assignedInventory.findIndex(
-          (inv: any) => inv.item.toString() === material.inventoryId
-        );
+          if (itemIndex >= 0) {
+            crew.assignedInventory[itemIndex].quantity += material.quantity;
+            crew.assignedInventory[itemIndex].lastUpdate = new Date();
+          } else {
+            crew.assignedInventory.push({
+              item: new mongoose.Types.ObjectId(material.inventoryId),
+              quantity: material.quantity,
+              lastUpdate: new Date(),
+            });
+          }
 
-        if (itemIndex >= 0) {
-          crew.assignedInventory[itemIndex].quantity += material.quantity;
-          crew.assignedInventory[itemIndex].lastUpdate = new Date();
         } else {
-          crew.assignedInventory.push({
-            item: new mongoose.Types.ObjectId(material.inventoryId),
-            quantity: material.quantity,
-            lastUpdate: new Date(),
-          });
+          // Batch no encontrado en la cuadrilla — NO sumamos nada al inventario
+          // para evitar materiales fantasma
+          console.warn(`[RESTORE] Batch ${material.batchCode} no encontrado en crew ${crewId}. Saltando restauración para evitar inventario fantasma.`);
         }
 
       }

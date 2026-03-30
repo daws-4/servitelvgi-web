@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { getStatusConfig } from "@/lib/orderConstants";
 
 export async function generateCertificateArrayBuffer(order: any): Promise<ArrayBuffer> {
     const usedMaterials = order.materialsUsed?.filter((m: any) => m.quantity > 0) || [];
@@ -161,11 +162,11 @@ export async function generateCertificateArrayBuffer(order: any): Promise<ArrayB
                                     <span style={{ fontWeight: '600', color: colors.gray600, marginBottom: '4px' }}>Estado:</span>
                                     <div style={{
                                         textTransform: 'uppercase', fontWeight: '500', padding: '4px 12px', borderRadius: '4px', display: 'flex',
-                                        backgroundColor: order.status === 'completed_special' ? '#ccfbf1' : '#dcfce7',
-                                        color: order.status === 'completed_special' ? '#115e59' : '#166534',
-                                        border: `1px solid ${order.status === 'completed_special' ? '#99f6e4' : '#bbf7d0'}`
+                                        backgroundColor: getStatusConfig(order.status).hexBgColor,
+                                        color: getStatusConfig(order.status).hexColor,
+                                        border: `1px solid ${getStatusConfig(order.status).hexColor}40` // 40 hex is 25% opacity
                                     }}>
-                                        {order.status === 'completed_special' ? 'C. ESPECIAL' : 'COMPLETADA'}
+                                        {getStatusConfig(order.status).label.toUpperCase()}
                                     </div>
                                 </div>
                             </div>

@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { getStartAndEndOfDay } from "@/lib/timezone";
 import OrderModel from "@/models/Order";
+import { COMPLETED_STATUSES, TERMINAL_STATUSES } from "@/lib/orderConstants";
 
 const CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -49,7 +50,7 @@ const getCachedDashboardStats = unstable_cache(
                 $match: {
                     $or: [
                         { updatedAt: { $gte: startOfDay, $lte: endOfDay } },
-                        { status: { $nin: ["completed", "completed_special", "cancelled", "canceled", "visita"] } }
+                        { status: { $nin: [...TERMINAL_STATUSES, "canceled"] } }
                     ],
                 },
             },
@@ -62,7 +63,7 @@ const getCachedDashboardStats = unstable_cache(
                                 {
                                     $and: [
                                         { $eq: ["$type", "averia"] },
-                                        { $in: ["$status", ["completed", "completed_special"]] },
+                                        { $in: ["$status", COMPLETED_STATUSES] },
                                         { $gte: ["$updatedAt", startOfDay] },
                                         { $lte: ["$updatedAt", endOfDay] }
                                     ]
@@ -77,7 +78,7 @@ const getCachedDashboardStats = unstable_cache(
                                 {
                                     $and: [
                                         { $eq: ["$type", "instalacion"] },
-                                        { $in: ["$status", ["completed", "completed_special"]] },
+                                        { $in: ["$status", COMPLETED_STATUSES] },
                                         { $gte: ["$updatedAt", startOfDay] },
                                         { $lte: ["$updatedAt", endOfDay] }
                                     ]
@@ -106,7 +107,7 @@ const getCachedDashboardStats = unstable_cache(
                                 {
                                     $and: [
                                         { $eq: ["$type", "averia"] },
-                                        { $not: [{ $in: ["$status", ["completed", "completed_special", "cancelled", "canceled", "visita"]] }] },
+                                        { $not: [{ $in: ["$status", [...TERMINAL_STATUSES, "canceled"]] }] },
                                     ],
                                 },
                                 1, 0,
@@ -119,7 +120,7 @@ const getCachedDashboardStats = unstable_cache(
                                 {
                                     $and: [
                                         { $eq: ["$type", "instalacion"] },
-                                        { $not: [{ $in: ["$status", ["completed", "completed_special", "cancelled", "canceled", "visita"]] }] },
+                                        { $not: [{ $in: ["$status", [...TERMINAL_STATUSES, "canceled"]] }] },
                                     ],
                                 },
                                 1, 0,

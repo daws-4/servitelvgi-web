@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { getStatusConfig, VALID_STATUSES } from "@/lib/orderConstants";
 
 interface ActivityItem {
     id: string;
@@ -105,6 +106,8 @@ export const RecentActivity = () => {
                 return `Orden ${item.order?.subscriberNumber} Completada`;
             case 'completed_special':
                 return `Orden ${item.order?.subscriberNumber} Completada Especial`;
+            case 'completed_via500':
+                return `Orden ${item.order?.subscriberNumber} Completada Vía 500`;
             case 'cancelled':
                 return `Orden ${item.order?.subscriberNumber} Cancelada`;
             default:
@@ -130,6 +133,10 @@ export const RecentActivity = () => {
     };
 
     const getOrderColor = (changeType: string) => {
+        if (VALID_STATUSES.includes(changeType as any)) {
+            return getStatusConfig(changeType).bgColor || 'bg-gray-500';
+        }
+
         switch (changeType) {
             case 'created':
                 return 'bg-blue-500';
@@ -143,6 +150,8 @@ export const RecentActivity = () => {
                 return 'bg-green-500';
             case 'completed_special':
                 return 'bg-teal-500';
+            case 'completed_via500':
+                return 'bg-cyan-500';
             case 'cancelled':
                 return 'bg-red-500';
             default:

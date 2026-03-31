@@ -5,7 +5,6 @@
 import { NextResponse } from "next/server";
 import { ORDER_STATUSES, ORDER_TYPES, VALID_STATUSES, COMPLETED_STATUSES, TERMINAL_STATUSES } from "@/lib/orderConstants";
 
-export const dynamic = "force-dynamic";
 
 /**
  * GET /api/web/order-config
@@ -26,7 +25,7 @@ export async function GET() {
     },
   }, {
     headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      "Cache-Control": "public, max-age=86400, s-maxage=86400",
     },
   });
 }

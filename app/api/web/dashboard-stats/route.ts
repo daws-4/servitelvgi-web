@@ -152,7 +152,7 @@ const getCachedDashboardStats = unstable_cache(
         };
     },
     ['dashboard-stats'],
-    { tags: ['orders'], revalidate: 60 }
+    { tags: ['dashboard-stats'], revalidate: 60 }
 );
 
 export async function GET() {

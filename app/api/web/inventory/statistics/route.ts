@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getInventoryStatistics } from "@/lib/inventoryService";
+import { unstable_cache } from "next/cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,11 +32,14 @@ export async function GET(request: NextRequest) {
       filters.itemId = searchParams.get("itemId");
     }
 
-    const statistics = await getInventoryStatistics(
-      new Date(startDate),
-      new Date(endDate),
-      filters
+    const cacheKey = `inventory-stats-${startDate}-${endDate}-${filters.crewId || 'all'}-${filters.itemId || 'all'}`;
+    const getCachedStats = unstable_cache(
+      async () => getInventoryStatistics(new Date(startDate), new Date(endDate), filters),
+      [cacheKey],
+      { tags: ['inventory-stats'], revalidate: 300 } // Revalida a los 5 minutos para ahorrar CPU
     );
+
+    const statistics = await getCachedStats();
 
     return NextResponse.json({
       success: true,

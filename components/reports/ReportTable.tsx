@@ -336,6 +336,8 @@ export default function ReportTable({ reportType, data, isLoading, crewId }: Rep
                     { key: "completed", label: "COMPLETADAS", align: "end" },
                     { key: "completed_special", label: "COMP. ESPECIAL", align: "end" },
                     { key: "completed_via500", label: "VÍA 500", align: "end" },
+                    { key: "completed_agd", label: "AGD", align: "end" },
+                    { key: "completed_anap", label: "ANAP", align: "end" },
                     { key: "cancelled", label: "CANCELADAS", align: "end" },
                     { key: "hard", label: "HARD", align: "end" },
                     { key: "visita", label: "VISITAS", align: "end" },

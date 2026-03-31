@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { syncOrderToNetuno } from "@/lib/orderService";
+import { COMPLETED_STATUSES } from "@/lib/orderConstants";
 import OrderModel from "@/models/Order";
 import { connectDB } from "@/lib/db";
 import { getUserFromRequest } from "@/lib/authHelpers";
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
         // Buscar todas las órdenes completadas pero no enviadas a netuno
         const unsentOrders = await OrderModel.find({
-            status: { $in: ['completed', 'completed_special'] },
+            status: { $in: COMPLETED_STATUSES },
             $or: [{ sentToNetuno: false }, { sentToNetuno: { $exists: false } }]
         }).select('_id').lean();
 

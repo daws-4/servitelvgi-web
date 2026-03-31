@@ -115,7 +115,10 @@ export async function POST(request: Request) {
       if (/pendiente|pending|baja/.test(str)) return "pending";
       if (/asignado|assigned/.test(str)) return "assigned";
       if (/en[_ ]?progreso|in[_ ]?progress/.test(str)) return "in_progress";
+      if (/completado[_ ]?agd|agd/.test(str)) return "completed_agd";
+      if (/completado[_ ]?anap|anap|auditor[ií]a/.test(str)) return "completed_anap";
       if (/completado[_ ]?especial|completed[_ ]?special/.test(str)) return "completed_special";
+      if (/completado[_ ]?v[íi]a[_ ]?500|via500|via 500/.test(str)) return "completed_via500";
       if (/completado|completed|finalizado|finished/.test(str)) return "completed";
       if (/cancelado|cancelled|canceled/.test(str)) return "cancelled";
       

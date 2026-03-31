@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getOrderById } from '@/lib/orderService';
+import { getStatusConfig } from '@/lib/orderConstants';
 import { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs'; // Node runtime required because Mongoose doesn't support Edge
@@ -149,11 +150,11 @@ export async function GET(
                                         <span style={{ fontWeight: '600', color: colors.gray600, fontSize: '12px', marginBottom: '2px' }}>Estado:</span>
                                         <div style={{ 
                                             textTransform: 'uppercase', fontWeight: '500', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', display: 'flex',
-                                            backgroundColor: order.status === 'completed_special' ? '#ccfbf1' : '#dcfce7',
-                                            color: order.status === 'completed_special' ? '#115e59' : '#166534',
-                                            border: `1px solid ${order.status === 'completed_special' ? '#99f6e4' : '#bbf7d0'}`
+                                            backgroundColor: getStatusConfig(order.status).hexBgColor || '#dcfce7',
+                                            color: getStatusConfig(order.status).hexColor || '#166534',
+                                            border: `1px solid ${getStatusConfig(order.status).hexColor || '#bbf7d0'}`
                                         }}>
-                                            {order.status === 'completed_special' ? 'COMPLETADA ESPECIAL' : 'COMPLETADA'}
+                                            {getStatusConfig(order.status).label.toUpperCase()}
                                         </div>
                                     </div>
                                 </div>

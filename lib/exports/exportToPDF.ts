@@ -4,7 +4,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { ReportType, ReportMetadata } from "@/types/reportTypes";
-import { getStatusConfig } from "@/lib/orderConstants";
+import { getStatusConfig, COMPLETED_STATUSES } from "@/lib/orderConstants";
 
 /**
  * Exporta datos de reporte a archivo PDF con tablas formateadas
@@ -95,7 +95,7 @@ export function exportReportToPDF(
         order.statusDisplayName,
         order.crewName || "N/A",
         order.assignmentDate ? new Date(order.assignmentDate).toLocaleDateString("es-ES") : "-",
-        ['completed', 'completed_special'].includes(order.status) && order.completionDate ? new Date(order.completionDate).toLocaleDateString("es-ES") : "-",
+        COMPLETED_STATUSES.includes(order.status) && order.completionDate ? new Date(order.completionDate).toLocaleDateString("es-ES") : "-",
       ]);
       break;
 
@@ -194,7 +194,7 @@ export function exportReportToPDF(
       break;
 
     case "crew_orders":
-      columns = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asig.", "Proc.", "Comp.", "C.Esp.", "Canc.", "Vis.", "Pend."];
+      columns = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asig.", "Proc.", "Comp.", "C.Esp.", "Vía500", "AGD", "ANAP", "Canc.", "Vis.", "Pend."];
       rows = (data.crews || []).map((crew: any) => [
         crew.crewName,
         crew.leaderName?.substring(0, 20) || "",
@@ -206,6 +206,9 @@ export function exportReportToPDF(
         crew.in_progress,
         crew.completed,
         crew.completed_special || 0,
+        crew.completed_via500 || 0,
+        crew.completed_agd || 0,
+        crew.completed_anap || 0,
         crew.cancelled,
         crew.visita,
         crew.pending,

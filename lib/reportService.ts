@@ -1289,6 +1289,8 @@ export async function getCrewOrdersReport(
     completed: number;
     completed_special: number;
     completed_via500: number;
+    completed_agd: number;
+    completed_anap: number;
     cancelled: number;
     visita: number;
     hard: number;
@@ -1326,6 +1328,8 @@ export async function getCrewOrdersReport(
           completed: 0,
           completed_special: 0,
           completed_via500: 0,
+          completed_agd: 0,
+          completed_anap: 0,
           cancelled: 0,
           visita: 0,
           hard: 0,
@@ -1342,9 +1346,11 @@ export async function getCrewOrdersReport(
       summary.pending = orders.pending || 0;
       summary.assigned = orders.assigned || 0;
       summary.in_progress = orders.in_progress || 0;
-      summary.completed = (orders.completed || 0) + (orders.completed_special || 0) + (orders.completed_via500 || 0);
+      summary.completed = (orders.completed || 0) + (orders.completed_special || 0) + (orders.completed_via500 || 0) + (orders.completed_agd || 0) + (orders.completed_anap || 0);
       summary.completed_special = orders.completed_special || 0;
       summary.completed_via500 = orders.completed_via500 || 0;
+      summary.completed_agd = orders.completed_agd || 0;
+      summary.completed_anap = orders.completed_anap || 0;
       summary.cancelled = orders.cancelled || 0;
       summary.visita = orders.visita || 0;
       summary.hard = orders.hard || 0;
@@ -1377,9 +1383,11 @@ export async function getCrewOrdersReport(
         pending: orders.pending || 0,
         assigned: orders.assigned || 0,
         in_progress: orders.in_progress || 0,
-        completed: (orders.completed || 0) + (orders.completed_special || 0) + (orders.completed_via500 || 0),
+        completed: (orders.completed || 0) + (orders.completed_special || 0) + (orders.completed_via500 || 0) + (orders.completed_agd || 0) + (orders.completed_anap || 0),
         completed_special: orders.completed_special || 0,
         completed_via500: orders.completed_via500 || 0,
+        completed_agd: orders.completed_agd || 0,
+        completed_anap: orders.completed_anap || 0,
         cancelled: orders.cancelled || 0,
         visita: orders.visita || 0,
         hard: orders.hard || 0,
@@ -1467,6 +1475,8 @@ export async function getCrewOrdersReport(
       completed: 0,
       completed_special: 0,
       completed_via500: 0,
+      completed_agd: 0,
+      completed_anap: 0,
       cancelled: 0,
       visita: 0,
       hard: 0,
@@ -1491,7 +1501,7 @@ export async function getCrewOrdersReport(
       }
       summary.total = liveEntry.total;
       // Recalculate completed as sum of completed statuses
-      summary.completed = (summary.completed || 0) + (summary.completed_special || 0) + (summary.completed_via500 || 0);
+      summary.completed = (summary.completed || 0) + (summary.completed_special || 0) + (summary.completed_via500 || 0) + (summary.completed_agd || 0) + (summary.completed_anap || 0);
     }
 
     crewSummaryMap.set(cIdStr, summary);

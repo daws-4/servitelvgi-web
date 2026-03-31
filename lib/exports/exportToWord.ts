@@ -15,7 +15,7 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import type { ReportType, ReportMetadata } from "@/types/reportTypes";
-import { getStatusConfig } from "@/lib/orderConstants";
+import { getStatusConfig, COMPLETED_STATUSES } from "@/lib/orderConstants";
 
 /**
  * Exporta datos de reporte a archivo Word (.docx)
@@ -119,7 +119,7 @@ export async function exportReportToWord(
         order.statusDisplayName,
         order.crewName || "N/A",
         order.assignmentDate ? new Date(order.assignmentDate).toLocaleDateString("es-ES") : "-",
-        ['completed', 'completed_special'].includes(order.status) && order.completionDate ? new Date(order.completionDate).toLocaleDateString("es-ES") : "-",
+        COMPLETED_STATUSES.includes(order.status) && order.completionDate ? new Date(order.completionDate).toLocaleDateString("es-ES") : "-",
       ]);
       break;
 
@@ -219,7 +219,7 @@ export async function exportReportToWord(
       break;
 
     case "crew_orders":
-      tableHeaders = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asignadas", "En Proceso", "Completadas", "Comp. Especial", "Canceladas", "Visitas", "Pendientes"];
+      tableHeaders = ["Cuadrilla", "Líder", "Total", "Inst.", "Aver.", "Rec.", "Asignadas", "En Proceso", "Completadas", "Comp. Especial", "Vía 500", "AGD", "ANAP", "Canceladas", "Visitas", "Pendientes"];
       tableRows = (data.crews || []).map((crew: any) => [
         crew.crewName,
         crew.leaderName || "",
@@ -231,6 +231,9 @@ export async function exportReportToWord(
         String(crew.in_progress),
         String(crew.completed),
         String(crew.completed_special || 0),
+        String(crew.completed_via500 || 0),
+        String(crew.completed_agd || 0),
+        String(crew.completed_anap || 0),
         String(crew.cancelled),
         String(crew.visita),
         String(crew.pending),

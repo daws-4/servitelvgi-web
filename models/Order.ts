@@ -8,7 +8,7 @@ export interface IOrder {
   subscriberNumber?: string;
   ticket_id?: string;
   type: "instalacion" | "averia" | "recuperacion" | "otro";
-  status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "completed_via500" | "cancelled" | "visita";
+  status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "completed_via500" | "completed_agd" | "completed_anap" | "cancelled" | "visita";
   subscriberName: string;
   address: string;
   phones?: string[];
@@ -26,7 +26,7 @@ export interface IOrder {
   installerLog?: {
     timestamp: Date;
     log: string;
-    status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "completed_via500" | "cancelled" | "visita";
+    status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "completed_via500" | "completed_agd" | "completed_anap" | "cancelled" | "visita";
   }[];
   materialsUsed?: {
     item: mongoose.Schema.Types.ObjectId | any;
@@ -109,6 +109,8 @@ const OrderSchema = new mongoose.Schema(
         "completed",
         "completed_special",
         "completed_via500",
+        "completed_agd",
+        "completed_anap",
         "cancelled",
         "hard",
         "visita",
@@ -172,7 +174,7 @@ const OrderSchema = new mongoose.Schema(
         log: { type: String, required: true },
         status: {
           type: String,
-          enum: ["pending", "assigned", "in_progress", "completed", "completed_special", "completed_via500", "cancelled", "visita"],
+          enum: ["pending", "assigned", "in_progress", "completed", "completed_special", "completed_via500", "completed_agd", "completed_anap", "cancelled", "visita"],
           required: true,
         },
       },

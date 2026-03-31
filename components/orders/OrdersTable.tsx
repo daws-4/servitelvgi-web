@@ -17,7 +17,7 @@ export interface OrderData {
     email?: string;
     type: "instalacion" | "averia" | "recuperacion" | "otro";
     address: string;
-    status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "cancelled" | "hard" | "visita";
+    status: "pending" | "assigned" | "in_progress" | "completed" | "completed_special" | "completed_via500" | "completed_agd" | "completed_anap" | "cancelled" | "hard" | "visita";
     assignedTo?: {
         _id: string;
         number?: number;
@@ -293,6 +293,24 @@ export const OrdersTable: React.FC<OrdersTableProps> = ({
                 return (
                     <span className="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
                         <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span> Completada Especial
+                    </span>
+                );
+            case "completed_via500":
+                return (
+                    <span className="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800">
+                        <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mr-1.5"></span> Vía 500
+                    </span>
+                );
+            case "completed_agd":
+                return (
+                    <span className="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-teal-100 text-teal-800 border border-teal-200">
+                        <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1.5"></span> AGD
+                    </span>
+                );
+            case "completed_anap":
+                return (
+                    <span className="inline-flex items-center py-1 px-2 rounded-full text-xs font-medium bg-sky-100 text-sky-800 border border-sky-200">
+                        <span className="w-1.5 h-1.5 bg-sky-500 rounded-full mr-1.5"></span> ANAP
                     </span>
                 );
             case "cancelled":

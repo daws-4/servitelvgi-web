@@ -93,12 +93,33 @@ export async function getOrders(filters: any = {}, projection: any = null, withD
         path: 'leader',
         select: 'name surname'
       }
-    })
-    .populate('materialsUsed.item', 'code description unit type')
-    .sort({ createdAt: -1 });
+    });
+
+  // Optimize CPU: Conditionally skip heavy population if the projection explicitly excludes 
+  // materialsUsed or it's a sync projection (only includes specific root fields).
+  const isExclusionMap = projection && Object.values(projection).some(v => v === 0);
+  const isInclusionMap = projection && Object.values(projection).some(v => v === 1);
+  const hasMaterialsIncluded = projection && (projection.materialsUsed === 1);
+  const hasMaterialsExcluded = projection && (projection.materialsUsed === 0);
+
+  // If no projection, or it's an exclusion map without excluding materials, 
+  // or it's an inclusion map that explicitly includes materials, we populate.
+  if (!projection ||
+    (isExclusionMap && !hasMaterialsExcluded) ||
+    (isInclusionMap && hasMaterialsIncluded) ||
+    withDetails) {
+    queryBuilder = queryBuilder.populate('materialsUsed.item', 'code description unit type');
+  }
+
+  queryBuilder = queryBuilder.sort({ createdAt: -1 });
 
   if (limit > 0) {
     queryBuilder = queryBuilder.skip(skip).limit(limit);
+  } else {
+    // PERFORMANCE ENFORCEMENT for Serverless:
+    // If no limit is explicitly provided (such as mobile apps syncing without limits),
+    // cap it to 2000 records maximum. This prevents OutOfMemory and high "Active CPU".
+    queryBuilder = queryBuilder.limit(500);
   }
 
   // Si envían parámetros de paginación explícitos (ej. endpoint de la tabla paginada)
@@ -503,11 +524,11 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
 
   // Ensure certificate is forcefully regenerated every time it is synced to catch last-minute database edits
   let resolvedCertificateUrl = certificateUrlOverride || '';
-  
+
   // We always force the generation because the user wants the latest Material/Name changes to reflect instantly on WhatsApp
   // However, we still fetch the old URL to clean up if we had one.
   const oldCertificateUrl = order.certificateUrl;
-  
+
   if (!resolvedCertificateUrl && (String(order.type).toLowerCase() === 'instalacion' || String(order.type).toLowerCase() === 'revision')) {
     try {
       console.log(`[AUTO-GENERATE] Forcibly generating server-rendered certificate for order ${id}...`);
@@ -519,12 +540,12 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
       // Check for existing records first to avoid duplicates
       try {
         const existingRecords = await pb.collection('certificates').getList(1, 1, {
-            filter: `ticket_id = "${order.ticket_id || order.subscriberNumber}"`
+          filter: `ticket_id = "${order.ticket_id || order.subscriberNumber}"`
         });
         if (existingRecords.items.length > 0) {
-            await pb.collection('certificates').delete(existingRecords.items[0].id);
+          await pb.collection('certificates').delete(existingRecords.items[0].id);
         }
-      } catch (err) {}
+      } catch (err) { }
 
       const pbFormData = new FormData();
       pbFormData.append('image', blob, `cert_${id}.png`);
@@ -533,13 +554,13 @@ export async function syncOrderToNetuno(id: string, certificateUrlOverride?: str
 
       console.log(`[AUTO-GENERATE] Uploading to PocketBase...`);
       const record = await pb.collection('certificates').create(pbFormData);
-      
+
       const publicUrl = pb.files.getURL(record, record.image);
       console.log(`[AUTO-GENERATE] Uploaded successfully: ${publicUrl}`);
-      
+
       // Update the main database so technically it is saved permanently
       await OrderModel.updateOne({ _id: id }, { $set: { certificateUrl: publicUrl } });
-      
+
       resolvedCertificateUrl = publicUrl;
     } catch (e) {
       console.error(`[AUTO-GENERATE] Failed to generate/upload dynamically. Falling back to old url or placeholder... Error:`, e);
@@ -721,58 +742,58 @@ export async function createOrderSnapshot() {
 
   // Iterate ALL active crews so every crew appears in the snapshot (even with 0 orders)
   const crewSnapshots = crews.map((crew: any) => {
-      const crewIdStr = crew._id.toString();
-      const entry = aggregatedMap.get(crewIdStr);
+    const crewIdStr = crew._id.toString();
+    const entry = aggregatedMap.get(crewIdStr);
 
-      // Init legacy orders structure
-      const orders: Record<string, number> = {};
-      for (const s of validStatuses) orders[s] = 0;
-      orders.total = 0;
+    // Init legacy orders structure
+    const orders: Record<string, number> = {};
+    for (const s of validStatuses) orders[s] = 0;
+    orders.total = 0;
 
-      // Init byType structure
-      const byType: Record<string, any> = {};
-      for (const t of validTypes) {
-        byType[t] = { total: 0 };
-        for (const s of validStatuses) byType[t][s] = 0;
-      }
+    // Init byType structure
+    const byType: Record<string, any> = {};
+    for (const t of validTypes) {
+      byType[t] = { total: 0 };
+      for (const s of validStatuses) byType[t][s] = 0;
+    }
 
-      // Fill data from aggregation (if this crew had orders)
-      if (entry) {
-        for (const { status, type, count } of entry.statuses) {
-          // Global totals (legacy)
-          if (validStatuses.includes(status)) {
-            orders[status] = (orders[status] || 0) + count;
-          }
-
-          // Type breakdown
-          const t = (type || 'otro').toLowerCase();
-          const targetType = validTypes.includes(t) ? t : 'otro';
-
-          if (validStatuses.includes(status)) {
-            byType[targetType][status] = (byType[targetType][status] || 0) + count;
-          }
-          byType[targetType].total = (byType[targetType].total || 0) + count;
+    // Fill data from aggregation (if this crew had orders)
+    if (entry) {
+      for (const { status, type, count } of entry.statuses) {
+        // Global totals (legacy)
+        if (validStatuses.includes(status)) {
+          orders[status] = (orders[status] || 0) + count;
         }
 
-        orders.total = entry.total;
+        // Type breakdown
+        const t = (type || 'otro').toLowerCase();
+        const targetType = validTypes.includes(t) ? t : 'otro';
+
+        if (validStatuses.includes(status)) {
+          byType[targetType][status] = (byType[targetType][status] || 0) + count;
+        }
+        byType[targetType].total = (byType[targetType].total || 0) + count;
       }
 
-      totalOrders += orders.total;
-      totalCompleted += orders.completed;
-      totalPending += orders.pending;
+      orders.total = entry.total;
+    }
 
-      const leaderName = crew.leader
-        ? `${crew.leader.name} ${crew.leader.surname}`
-        : 'Sin líder';
+    totalOrders += orders.total;
+    totalCompleted += orders.completed;
+    totalPending += orders.pending;
 
-      return {
-        crew: crew._id,
-        crewNumber: crew.number || 0,
-        leaderName,
-        orders,
-        byType
-      };
-    });
+    const leaderName = crew.leader
+      ? `${crew.leader.name} ${crew.leader.surname}`
+      : 'Sin líder';
+
+    return {
+      crew: crew._id,
+      crewNumber: crew.number || 0,
+      leaderName,
+      orders,
+      byType
+    };
+  });
 
   // Sort by crew number
   crewSnapshots.sort((a: any, b: any) => a.crewNumber - b.crewNumber);

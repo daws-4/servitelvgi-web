@@ -7,7 +7,6 @@ import { OrderHistoryModal } from '@/components/orders/OrderHistoryModal';
 import { OrderCompletionCertificate } from '@/components/orders/OrderCompletionCertificate';
 import axios from 'axios';
 import PocketBase from 'pocketbase';
-import html2canvas from 'html2canvas';
 import { getStatusConfig } from '@/lib/orderConstants';
 
 export default function OrderEditPage() {
@@ -165,6 +164,8 @@ export default function OrderEditPage() {
             // Wait a moment for any potential renders
             await new Promise(resolve => setTimeout(resolve, 500));
 
+            const html2canvas = (await import('html2canvas')).default;
+
             const canvas = await html2canvas(certificateRef.current, {
                 scale: 2,
                 useCORS: true,
@@ -224,6 +225,8 @@ export default function OrderEditPage() {
 
             // Wait a moment for any potential renders
             await new Promise(resolve => setTimeout(resolve, 500));
+
+            const html2canvas = (await import('html2canvas')).default;
 
             const canvas = await html2canvas(certificateRef.current, {
                 scale: 2, // Higher resolution

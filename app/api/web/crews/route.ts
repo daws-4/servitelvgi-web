@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { revalidateTag, revalidatePath } from "next/cache";
+import { revalidateTag, revalidatePath, unstable_cache } from "next/cache";
 import {
   createCrew,
   getCrews,
@@ -36,8 +36,13 @@ export async function GET(request: Request) {
         );
       return NextResponse.json(item, { status: 200, headers: CORS_HEADERS });
     }
-    // List fetch: use direct query
-    const items = await getCrews();
+    // List fetch: use cache to prevent unnecessary database hits on frequent reload
+    const getCachedCrews = unstable_cache(
+      async () => getCrews(),
+      ['web-crews-list-cache'],
+      { tags: ['web-crews-list'] }
+    );
+    const items = await getCachedCrews();
     return NextResponse.json(items, {
       status: 200,
       headers: CORS_HEADERS,

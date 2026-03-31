@@ -70,8 +70,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // PocketBase espera un FormData directamente
-    // El formData debe contener: order_id, installer_id, crew_id y imagen (el archivo)
+    // Reconstruir el FormData explícitamente usando la API estándar de Node/Vercel
+    // Esto previene que Next.js corrompa el binario al reenviar su propio objeto req.formData()
+    const pbFormData = new FormData();
+    if (imagen) pbFormData.append('imagen', imagen);
+    
+    const orderId = formData.get('order_id') as string;
+    const installerId = formData.get('installer_id') as string;
+    const crewId = formData.get('crew_id') as string;
+
+    if (orderId) pbFormData.append('order_id', orderId);
+    if (installerId) pbFormData.append('installer_id', installerId);
+    if (crewId) pbFormData.append('crew_id', crewId);
 
     // Usar autenticación cacheada (optimización #1)
     console.log('Authenticating with PocketBase...');
@@ -79,7 +89,7 @@ export async function POST(req: NextRequest) {
     console.log('Authentication successful (cached)');
 
     console.log('Creating record in PocketBase...');
-    const record = await pb.collection('evidencias').create(formData);
+    const record = await pb.collection('evidencias').create(pbFormData);
     console.log('Created PocketBase record:', record);
 
     // El campo 'imagen' puede ser un array o un string, dependiendo de la configuración
@@ -94,7 +104,6 @@ export async function POST(req: NextRequest) {
     console.log('Generated image URL:', imageUrl);
 
     // Auto-actualizar el campo photoEvidence de la orden
-    const orderId = formData.get('order_id') as string;
     if (orderId) {
       try {
         console.log('Auto-updating order photoEvidence with atomic $push...');

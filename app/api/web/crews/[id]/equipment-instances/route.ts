@@ -1,5 +1,6 @@
 // app/api/web/crews/[id]/equipment-instances/route.ts
 // API endpoint for fetching equipment instances assigned to a crew
+import { unstable_cache } from "next/cache";
 
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/db";
@@ -19,52 +20,59 @@ export async function GET(
     await connectDB();
     const { id: crewId } = await context.params;
 
-    const crew = await CrewModel.findById(crewId)
-      .populate('assignedInventory.item')
-      .lean();
+    const getCachedInstances = unstable_cache(
+      async (cId: string) => {
+        const crew = await CrewModel.findById(cId)
+          .populate('assignedInventory.item')
+          .lean();
 
-    if (!crew || Array.isArray(crew)) {
+        if (!crew || Array.isArray(crew)) {
+          return null;
+        }
+
+        const equipmentTypes = (crew.assignedInventory || [])
+          .filter((inv: any) => inv.item && inv.item.type === "equipment");
+
+        const instancesList: any[] = [];
+
+        if (equipmentTypes.length > 0) {
+          const eqIds = equipmentTypes.map((eq: any) => eq.item._id);
+          const fullItems = await InventoryModel.find({
+            _id: { $in: eqIds }
+          }).lean() as any[];
+
+          for (const fullItem of fullItems) {
+            if (!fullItem.instances) continue;
+
+            const crewInstances = fullItem.instances.filter(
+              (inst: any) => inst.assignedTo?.crewId?.toString() === cId && inst.status === 'assigned'
+            );
+
+            instancesList.push(...crewInstances.map((inst: any) => ({
+              uniqueId: inst.uniqueId,
+              serialNumber: inst.serialNumber,
+              macAddress: inst.macAddress,
+              status: inst.status,
+              notes: inst.notes,
+              inventoryId: fullItem._id.toString(),
+              itemCode: fullItem.code,
+              itemDescription: fullItem.description,
+            })));
+          }
+        }
+        return instancesList;
+      },
+      [`crew-equipment-${crewId}`],
+      { tags: ['inventory', 'crews'], revalidate: 60 }
+    );
+
+    const instances = await getCachedInstances(crewId);
+
+    if (!instances) {
       return NextResponse.json(
         { success: false, error: "Cuadrilla no encontrada" },
         { status: 404 }
       );
-    }
-
-    // Get equipment types assigned to crew
-    // Get equipment types assigned to crew
-    const equipmentTypes = (crew.assignedInventory || [])
-      .filter((inv: any) => inv.item && inv.item.type === "equipment");
-
-    const instances: any[] = [];
-
-    if (equipmentTypes.length > 0) {
-      // 1. Recolectar IDs únicos
-      const eqIds = equipmentTypes.map((eq: any) => eq.item._id);
-
-      // 2. Consulta en Batch
-      const fullItems = await InventoryModel.find({
-        _id: { $in: eqIds }
-      }).lean() as any[];
-
-      // 3. Procesar en memoria reteniendo el formato IDÉNTICO
-      for (const fullItem of fullItems) {
-        if (!fullItem.instances) continue;
-
-        const crewInstances = fullItem.instances.filter(
-          (inst: any) => inst.assignedTo?.crewId?.toString() === crewId && inst.status === 'assigned'
-        );
-
-        instances.push(...crewInstances.map((inst: any) => ({
-          uniqueId: inst.uniqueId,
-          serialNumber: inst.serialNumber,
-          macAddress: inst.macAddress,
-          status: inst.status,
-          notes: inst.notes,
-          inventoryId: fullItem._id.toString(),
-          itemCode: fullItem.code,
-          itemDescription: fullItem.description,
-        })));
-      }
     }
 
     return NextResponse.json({

@@ -153,16 +153,23 @@ export async function GET(request: Request) {
     const limit = limitParam ? parseInt(limitParam) : 0;
     const page = pageParam ? parseInt(pageParam) : 1;
 
-    // Wrap the primary DB query logic in unstable_cache
-    const cacheKey = `orders-list-${JSON.stringify(filters)}-${JSON.stringify(projection)}-${withDetails}-${limit}-${page}`;
-    const getCachedOrders = unstable_cache(
-      async () => getOrders(filters, projection, withDetails, limit, page, !!pageParam),
-      [cacheKey],
-      { tags: ['orders'] }
-    );
+    // Wrap the primary DB query logic in unstable_cache for generic lists
+    let result;
 
-    // The getOrders function now returns { data, pagination }
-    const result = await getCachedOrders();
+    // Si es una sincronización móvil (fecha exacta) o una búsqueda, el caché hace daño
+    // porque genera llaves únicas infinitamente e inunda la memoria de Vercel.
+    // Además provoca invalidaciones masivas cuando se actualiza una orden.
+    if (updatedAfter || search) {
+      result = await getOrders(filters, projection, withDetails, limit, page, !!pageParam);
+    } else {
+      const cacheKey = `orders-list-v2-${JSON.stringify(filters)}-${JSON.stringify(projection)}-${withDetails}-${limit}-${page}`;
+      const getCachedOrders = unstable_cache(
+        async () => getOrders(filters, projection, withDetails, limit, page, !!pageParam),
+        [cacheKey],
+        { tags: ['orders'] }
+      );
+      result = await getCachedOrders();
+    }
 
     // For backward compatibility (e.g. Mobile Apps, Dashboard latest 5 widgets without page param)
     // If they ask for page OR limit AND it's not a simple projection query (e.g search/sync)
